@@ -16,6 +16,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import * as Crypto from 'expo-crypto';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
+import { deleteChallenge } from '../redux/slices/challengesSlice';
 import { addParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, ChallengeParticipant } from '../types';
@@ -47,6 +48,8 @@ export default function ChallengeDetailScreen() {
     state.challenges.data.find(c => c.id === challengeId)
   );
 
+  const isCreator = challenge?.creatorId === user?.id;
+
   const handleShare = async () => {
     if (!challenge) return;
     try {
@@ -58,12 +61,53 @@ export default function ChallengeDetailScreen() {
     }
   };
 
-  // Set up header with share and analytics buttons
+  const handleCreatorMenu = () => {
+    if (!challenge) return;
+    Alert.alert(
+      'Challenge Options',
+      undefined,
+      [
+        {
+          text: 'Edit Challenge',
+          onPress: () => navigation.navigate('CreateChallenge', { mode: 'create', challengeId: challenge.id }),
+        },
+        {
+          text: 'Delete Challenge',
+          style: 'destructive',
+          onPress: () => {
+            const participantCount = participants.length;
+            const warningMessage = participantCount > 0
+              ? `This challenge has ${participantCount} participant${participantCount !== 1 ? 's' : ''}. Are you sure you want to delete it?`
+              : 'Are you sure you want to delete this challenge?';
+
+            Alert.alert(
+              'Delete Challenge',
+              warningMessage,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: () => {
+                    dispatch(deleteChallenge(challenge.id));
+                    navigation.goBack();
+                  },
+                },
+              ]
+            );
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  // Set up header with share, analytics, and creator menu buttons
   useLayoutEffect(() => {
     navigation.setOptions({
       title: challenge?.name || 'Challenge',
       headerRight: () => (
-        <View style={{ flexDirection: 'row', gap: 16 }}>
+        <View style={{ flexDirection: 'row', gap: 20, paddingHorizontal: 8 }}>
           <TouchableOpacity
             onPress={handleShare}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -78,10 +122,18 @@ export default function ChallengeDetailScreen() {
           >
             <Ionicons name="stats-chart" size={22} color={colors.text} />
           </TouchableOpacity>
+          {isCreator && (
+            <TouchableOpacity
+              onPress={handleCreatorMenu}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
+            </TouchableOpacity>
+          )}
         </View>
       ),
     });
-  }, [navigation, colors.text, challenge?.name, challengeId]);
+  }, [navigation, colors.text, challenge?.name, challengeId, isCreator]);
 
   // Fetch fresh participant data when screen gains focus
   useFocusEffect(

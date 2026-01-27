@@ -44,6 +44,14 @@ export default function CreateChallengeScreen() {
 
   const [mode, setMode] = useState<'browse' | 'create' | 'join'>(route.params?.mode || 'browse');
 
+  // Edit mode detection
+  const editChallengeId = route.params?.challengeId;
+  const existingChallenge = useSelector((state: RootState) =>
+    editChallengeId ? state.challenges.data.find(c => c.id === editChallengeId) : undefined
+  );
+  const isEditMode = Boolean(editChallengeId && existingChallenge);
+  const isActiveChallenge = existingChallenge?.status === 'active';
+
   // Fetch public challenges when in browse mode
   useEffect(() => {
     if (mode === 'browse') {
@@ -59,6 +67,17 @@ export default function CreateChallengeScreen() {
   const [habits, setHabits] = useState<string[]>(['']);
   const [isPublic, setIsPublic] = useState(true);
   const [inviteCode, setInviteCode] = useState('');
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (isEditMode && existingChallenge) {
+      setName(existingChallenge.name);
+      setDescription(existingChallenge.description || '');
+      setDurationDays(String(existingChallenge.durationDays));
+      setHabits(existingChallenge.habits.length > 0 ? existingChallenge.habits : ['']);
+      setIsPublic(existingChallenge.isPublic);
+    }
+  }, [isEditMode, existingChallenge]);
 
   const [errors, setErrors] = useState<{
     name?: string;
@@ -122,6 +141,32 @@ export default function CreateChallengeScreen() {
     setErrors({});
     setIsCreating(true);
 
+    // Handle edit mode
+    if (isEditMode && existingChallenge) {
+      const updatedChallenge: Challenge = {
+        ...existingChallenge,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        habits: validHabits,
+        isPublic,
+        // Only update duration if challenge hasn't started yet
+        ...(existingChallenge.status === 'upcoming' && {
+          durationDays: parseInt(durationDays) || existingChallenge.durationDays,
+          endDate: getChallengeEndDate(existingChallenge.startDate, parseInt(durationDays) || existingChallenge.durationDays),
+        }),
+        updatedAt: new Date().toISOString(),
+      };
+
+      dispatch(updateChallenge(updatedChallenge));
+      setIsCreating(false);
+
+      Alert.alert('Success', 'Challenge updated successfully!', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+      return;
+    }
+
+    // Handle create mode
     const challengeId = Crypto.randomUUID();
     const newChallenge: Challenge = {
       id: challengeId,
@@ -312,11 +357,11 @@ export default function CreateChallengeScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setMode('browse')}>
+        <TouchableOpacity onPress={() => isEditMode ? navigation.goBack() : setMode('browse')}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>
-          Create Challenge
+          {isEditMode ? 'Edit Challenge' : 'Create Challenge'}
         </Text>
         <View style={{ width: 24 }} />
       </View>
@@ -376,7 +421,7 @@ export default function CreateChallengeScreen() {
             styles.input,
             {
               backgroundColor: colors.surface,
-              color: colors.text,
+              color: isEditMode && isActiveChallenge ? colors.textTertiary : colors.text,
               borderColor: errors.duration ? colors.error : colors.border,
             },
           ]}
@@ -388,7 +433,13 @@ export default function CreateChallengeScreen() {
           placeholder="30"
           placeholderTextColor={colors.textTertiary}
           keyboardType="number-pad"
+          editable={!(isEditMode && isActiveChallenge)}
         />
+        {isEditMode && isActiveChallenge && (
+          <Text style={[styles.helperText, { color: colors.textSecondary }]}>
+            Duration cannot be changed for active challenges
+          </Text>
+        )}
         {errors.duration && (
           <Text style={[styles.errorText, { color: colors.error }]}>
             {errors.duration}
@@ -462,7 +513,7 @@ export default function CreateChallengeScreen() {
           {isCreating ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitButtonText}>Create Challenge</Text>
+            <Text style={styles.submitButtonText}>{isEditMode ? 'Save Changes' : 'Create Challenge'}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -638,6 +689,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorText: {
+    fontSize: 12,
+    marginTop: -12,
+    marginBottom: 16,
+  },
+  helperText: {
     fontSize: 12,
     marginTop: -12,
     marginBottom: 16,
