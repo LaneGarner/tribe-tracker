@@ -1,20 +1,126 @@
+import { NavigationContainer } from '@react-navigation/native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useContext, useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Provider, useDispatch } from 'react-redux';
+import RootNavigator from './navigation/RootNavigator';
+import {
+  loadChallengesFromStorage,
+  fetchChallengesFromServer,
+} from './redux/slices/challengesSlice';
+import {
+  loadCheckinsFromStorage,
+  fetchCheckinsFromServer,
+} from './redux/slices/checkinsSlice';
+import {
+  loadParticipantsFromStorage,
+  fetchParticipantsFromServer,
+} from './redux/slices/participantsSlice';
+import {
+  loadProfileFromStorage,
+  fetchProfileFromServer,
+} from './redux/slices/profileSlice';
+import { AppDispatch, store } from './redux/store';
+import { ThemeContext, ThemeProvider } from './theme/ThemeContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { isBackendConfigured } from './config/api';
 
-export default function App() {
+function AppContent() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { colorScheme } = useContext(ThemeContext);
+  const { isLoading: authLoading, isConfigured, user, session } = useAuth();
+  const [isInitializing, setIsInitializing] = useState(true);
+  const prevUserRef = useRef<typeof user>(undefined);
+
+  // Load data from storage on app start
+  useEffect(() => {
+    const loadData = async () => {
+      await Promise.all([
+        dispatch(loadChallengesFromStorage()),
+        dispatch(loadCheckinsFromStorage()),
+        dispatch(loadParticipantsFromStorage()),
+        dispatch(loadProfileFromStorage()),
+      ]);
+      setIsInitializing(false);
+    };
+    loadData();
+  }, [dispatch]);
+
+  // Fetch data from server when user logs in
+  useEffect(() => {
+    const wasLoggedOut = prevUserRef.current === null;
+    const isNowLoggedIn = user !== null;
+    prevUserRef.current = user;
+
+    if (wasLoggedOut && isNowLoggedIn && session?.access_token && isBackendConfigured()) {
+      const token = session.access_token;
+      dispatch(fetchChallengesFromServer(token));
+      dispatch(fetchParticipantsFromServer(token));
+      dispatch(fetchCheckinsFromServer(token));
+      dispatch(fetchProfileFromServer(token));
+    }
+  }, [user, session, dispatch]);
+
+  // Lock orientation to portrait
+  useEffect(() => {
+    const lockOrientation = async () => {
+      await ScreenOrientation.lockAsync(
+        ScreenOrientation.OrientationLock.PORTRAIT_UP
+      );
+    };
+    lockOrientation();
+  }, []);
+
+  // Show loading while checking auth (only if backend is configured)
+  if ((authLoading && isConfigured) || isInitializing) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colorScheme === 'dark' ? '#000' : '#F9FAFB',
+        }}
+      >
+        <ActivityIndicator
+          size="large"
+          color={colorScheme === 'dark' ? '#60A5FA' : '#3B82F6'}
+        />
+        <Text
+          style={{
+            marginTop: 16,
+            fontSize: 16,
+            color: colorScheme === 'dark' ? '#9CA3AF' : '#6B7280',
+          }}
+        >
+          Loading...
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <NavigationContainer>
+        <RootNavigator />
+      </NavigationContainer>
+    </>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Provider store={store}>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ThemeProvider>
+      </Provider>
+    </GestureHandlerRootView>
+  );
+}
