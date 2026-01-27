@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import {
   View,
   Text,
@@ -29,12 +29,17 @@ export default function TaskAnalyticsScreen() {
     state.challenges.data.find(c => c.id === challengeId)
   );
 
-  const participants = useSelector((state: RootState) =>
-    state.participants.data.filter(p => p.challengeId === challengeId)
+  const participantsData = useSelector((state: RootState) => state.participants.data);
+  const checkinsData = useSelector((state: RootState) => state.checkins.data);
+
+  const participants = useMemo(
+    () => participantsData.filter(p => p.challengeId === challengeId),
+    [participantsData, challengeId]
   );
 
-  const checkins = useSelector((state: RootState) =>
-    state.checkins.data.filter(c => c.challengeId === challengeId)
+  const checkins = useMemo(
+    () => checkinsData.filter(c => c.challengeId === challengeId),
+    [checkinsData, challengeId]
   );
 
   if (!challenge) {
