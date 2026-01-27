@@ -62,7 +62,15 @@ export default function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: colors.background,
+        },
+        headerTintColor: colors.text,
+        headerTitleStyle: {
+          fontWeight: '600',
+        },
+        headerShadowVisible: false,
         tabBarStyle: {
           backgroundColor: colors.tabBar,
           borderTopWidth: 1,
@@ -79,11 +87,12 @@ export default function TabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
+          headerShown: false,
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'home' : 'home-outline'}
-              size={24}
+              size={22}
               color={color}
             />
           ),
@@ -94,11 +103,13 @@ export default function TabNavigator() {
         name="Challenges"
         component={CreateChallengeScreen}
         options={{
+          title: 'Challenges',
+          headerShown: false,
           tabBarLabel: 'Challenges',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'add-circle' : 'add-circle-outline'}
-              size={24}
+              name={focused ? 'flag' : 'flag-outline'}
+              size={22}
               color={color}
             />
           ),
@@ -109,11 +120,12 @@ export default function TabNavigator() {
         name="Leaderboard"
         component={LeaderboardScreen}
         options={{
-          tabBarLabel: 'Leaderboard',
+          title: 'Leaderboards',
+          tabBarLabel: 'Leaderboards',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'trophy' : 'trophy-outline'}
-              size={24}
+              size={22}
               color={color}
             />
           ),
@@ -124,11 +136,12 @@ export default function TabNavigator() {
         name="Menu"
         component={MenuScreen}
         options={{
+          title: 'Menu',
           tabBarLabel: 'Menu',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               name={focused ? 'menu' : 'menu-outline'}
-              size={24}
+              size={26}
               color={color}
             />
           ),

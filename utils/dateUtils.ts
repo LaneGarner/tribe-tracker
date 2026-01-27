@@ -102,3 +102,21 @@ export function getCurrentChallengeDay(startDate: string): number {
   const start = dayjs(startDate);
   return today.diff(start, 'day') + 1;
 }
+
+// Get days remaining until a date (0 if past or today)
+export function getDaysRemaining(endDate: string): number {
+  const end = dayjs(endDate);
+  const today = dayjs();
+  const diff = end.diff(today, 'day');
+  return Math.max(0, diff);
+}
+
+// Add days to a date
+export function addDays(date: string, days: number): string {
+  return dayjs(date).add(days, 'day').format('YYYY-MM-DD');
+}
+
+// Subtract days from a date
+export function subtractDays(date: string, days: number): string {
+  return dayjs(date).subtract(days, 'day').format('YYYY-MM-DD');
+}

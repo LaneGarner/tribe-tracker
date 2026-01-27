@@ -1,30 +1,129 @@
-import React, { useContext } from 'react';
+import React, { useContext, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { createSelector } from '@reduxjs/toolkit';
+import { RootState } from '../../redux/store';
 import * as Crypto from 'expo-crypto';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { AppDispatch } from '../../redux/store';
 import { addCheckin, updateHabitCompletion } from '../../redux/slices/checkinsSlice';
+import { updateParticipantStats } from '../../redux/slices/participantsSlice';
 import { useAuth } from '../../context/AuthContext';
-import { Challenge, HabitCheckin } from '../../types';
-import { getToday } from '../../utils/dateUtils';
+import { Challenge, HabitCheckin, ChallengeParticipant } from '../../types';
+import { getToday, isToday } from '../../utils/dateUtils';
 
 interface HabitChecklistProps {
   challenge: Challenge;
   checkin?: HabitCheckin;
+  date?: string;
 }
 
 export default function HabitChecklist({
   challenge,
   checkin,
+  date,
 }: HabitChecklistProps) {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user } = useAuth();
 
+  // Use provided date or default to today
+  const checkinDate = date || getToday();
+  const canEdit = isToday(checkinDate);
+
+  // Memoized selectors to prevent unnecessary rerenders
+  const selectCheckins = useMemo(
+    () =>
+      createSelector(
+        [(state: RootState) => state.checkins.data],
+        checkins =>
+          checkins.filter(
+            c => c.challengeId === challenge.id && c.userId === user?.id
+          )
+      ),
+    [challenge.id, user?.id]
+  );
+
+  const selectParticipant = useMemo(
+    () =>
+      createSelector(
+        [(state: RootState) => state.participants.data],
+        participants =>
+          participants.find(
+            p => p.challengeId === challenge.id && p.userId === user?.id
+          )
+      ),
+    [challenge.id, user?.id]
+  );
+
+  const allCheckins = useSelector(selectCheckins);
+  const participant = useSelector(selectParticipant);
+
+  // Calculate and update participant stats after checkin changes
+  const updateStats = useCallback(
+    (updatedCheckins: HabitCheckin[]) => {
+      if (!participant) {
+        console.warn('[HabitChecklist] No participant found, cannot update stats');
+        return;
+      }
+
+      // Only count checkins on or after the challenge start date
+      const validCheckins = updatedCheckins.filter(
+        c => c.checkinDate >= challenge.startDate
+      );
+
+      // Calculate total points from valid checkins only
+      const totalPoints = validCheckins.reduce(
+        (sum, c) => sum + c.habitsCompleted.filter(h => h).length,
+        0
+      );
+
+      // Calculate days participated (unique checkin dates from valid checkins)
+      const daysParticipated = new Set(validCheckins.map(c => c.checkinDate)).size;
+
+      // Calculate current streak from valid checkins
+      const sortedDates = [...new Set(validCheckins.map(c => c.checkinDate))].sort().reverse();
+      let currentStreak = 0;
+      const today = getToday();
+
+      for (let i = 0; i < sortedDates.length; i++) {
+        const expectedDate = new Date(today);
+        expectedDate.setDate(expectedDate.getDate() - i);
+        const expectedDateStr = expectedDate.toISOString().split('T')[0];
+
+        if (sortedDates[i] === expectedDateStr) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+
+      // Get longest streak (simplified - just use current if it's larger)
+      const longestStreak = Math.max(currentStreak, participant.longestStreak || 0);
+
+      // Get last checkin date
+      const lastCheckinDate = sortedDates[0] || participant.lastCheckinDate;
+
+      const statsPayload = {
+        id: participant.id,
+        totalPoints,
+        currentStreak,
+        longestStreak,
+        daysParticipated,
+        lastCheckinDate: lastCheckinDate || today,
+      };
+      console.log('[HabitChecklist] Dispatching updateParticipantStats:', statsPayload);
+      dispatch(updateParticipantStats(statsPayload));
+    },
+    [dispatch, participant, challenge.startDate]
+  );
+
   const handleToggle = (habitIndex: number) => {
+    // Only allow editing for today's habits
+    if (!canEdit) return;
+
     if (checkin) {
       // Update existing checkin
       dispatch(
@@ -34,6 +133,14 @@ export default function HabitChecklist({
           completed: !checkin.habitsCompleted[habitIndex],
         })
       );
+
+      // Calculate updated stats with the modified checkin
+      const updatedHabits = [...checkin.habitsCompleted];
+      updatedHabits[habitIndex] = !updatedHabits[habitIndex];
+      const updatedCheckins = allCheckins.map(c =>
+        c.id === checkin.id ? { ...c, habitsCompleted: updatedHabits } : c
+      );
+      updateStats(updatedCheckins);
     } else {
       // Create new checkin
       const habitsCompleted = challenge.habits.map((_, i) => i === habitIndex);
@@ -42,13 +149,16 @@ export default function HabitChecklist({
         challengeId: challenge.id,
         userId: user?.id || 'anonymous',
         userName: user?.email?.split('@')[0] || 'Anonymous',
-        checkinDate: getToday(),
+        checkinDate,
         habitsCompleted,
         pointsEarned: 1,
         allHabitsCompleted: habitsCompleted.every(h => h),
         updatedAt: new Date().toISOString(),
       };
       dispatch(addCheckin(newCheckin));
+
+      // Calculate updated stats with the new checkin
+      updateStats([...allCheckins, newCheckin]);
     }
   };
 
@@ -93,7 +203,8 @@ export default function HabitChecklist({
               index === challenge.habits.length - 1 && styles.lastRow,
             ]}
             onPress={() => handleToggle(index)}
-            activeOpacity={0.7}
+            activeOpacity={canEdit ? 0.7 : 1}
+            disabled={!canEdit}
           >
             <View
               style={[

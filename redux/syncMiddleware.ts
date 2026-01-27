@@ -17,11 +17,16 @@ export function setSyncAuth(token: string | null, configured: boolean) {
   isConfigured = configured;
 }
 
-// Push data to server
+// Delay helper for retry logic
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Push data to server with retry support for foreign key violations
 async function pushToServer(
   endpoint: string,
   data: unknown,
-  method: 'POST' | 'PUT' | 'DELETE' = 'POST'
+  method: 'POST' | 'PUT' | 'DELETE' = 'POST',
+  retryCount: number = 0,
+  maxRetries: number = 3
 ): Promise<void> {
   if (!API_URL) {
     console.warn('[Sync] API_URL not configured, skipping sync');
@@ -44,6 +49,15 @@ async function pushToServer(
 
     if (!response.ok) {
       const errorText = await response.text();
+
+      // Check for foreign key violation (challenge not found) - retry with backoff
+      if (response.status === 400 && errorText.includes('Challenge not found') && retryCount < maxRetries) {
+        const retryDelay = Math.pow(2, retryCount) * 500; // 500ms, 1s, 2s
+        console.log(`[Sync] Challenge not found, retrying in ${retryDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+        await delay(retryDelay);
+        return pushToServer(endpoint, data, method, retryCount + 1, maxRetries);
+      }
+
       console.error(`[Sync] Server error ${response.status} for ${method} ${endpoint}:`, errorText);
       throw new Error(`Server error: ${response.status}`);
     }
@@ -122,7 +136,7 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
           });
         } else if (action.type === 'challenges/updateChallenge') {
           const challenge = action.payload as Challenge;
-          await pushToServer(`challenges/${challenge.id}`, {
+          await pushToServer(`challenges?id=${challenge.id}`, {
             challenge: {
               ...challenge,
               updated_at: new Date().toISOString(),
@@ -130,7 +144,7 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
           }, 'PUT');
         } else if (action.type === 'challenges/deleteChallenge') {
           const challengeId = action.payload as string;
-          await pushToServer(`challenges/${challengeId}`, {}, 'DELETE');
+          await pushToServer(`challenges?id=${challengeId}`, {}, 'DELETE');
         }
 
         // Participant actions
@@ -142,36 +156,49 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
               updated_at: new Date().toISOString(),
             },
           });
-        } else if (
-          action.type === 'participants/updateParticipant' ||
-          action.type === 'participants/updateParticipantStats'
-        ) {
+        } else if (action.type === 'participants/updateParticipant') {
           const participant = action.payload as ChallengeParticipant;
-          await pushToServer(`participants/${participant.id}`, {
+          await pushToServer(`participants?id=${participant.id}`, {
             participant: {
               ...participant,
               updated_at: new Date().toISOString(),
             },
           }, 'PUT');
+        } else if (action.type === 'participants/updateParticipantStats') {
+          // updateParticipantStats payload is just stats, not full participant
+          // Get the full participant from state after the reducer updated it
+          const { id } = action.payload as { id: string };
+          const participant = state.participants.data.find(
+            (p: ChallengeParticipant) => p.id === id
+          );
+          console.log('[Sync] updateParticipantStats - payload:', action.payload);
+          console.log('[Sync] updateParticipantStats - found participant:', participant);
+          if (participant) {
+            console.log('[Sync] Sending participant stats to server:', {
+              id,
+              totalPoints: participant.totalPoints,
+              currentStreak: participant.currentStreak,
+            });
+            await pushToServer(`participants?id=${id}`, {
+              participant: {
+                ...participant,
+                updated_at: new Date().toISOString(),
+              },
+            }, 'PUT');
+          } else {
+            console.warn('[Sync] Could not find participant with id:', id);
+          }
         } else if (action.type === 'participants/removeParticipant') {
           const participantId = action.payload as string;
-          await pushToServer(`participants/${participantId}`, {}, 'DELETE');
+          await pushToServer(`participants?id=${participantId}`, {}, 'DELETE');
         }
 
-        // Checkin actions
-        else if (action.type === 'checkins/addCheckin') {
-          const checkin = action.payload as HabitCheckin;
-          await pushToServer('checkins', {
-            checkin: {
-              ...checkin,
-              updated_at: new Date().toISOString(),
-            },
-          });
-        } else if (
+        // Checkin actions - all use POST with upsert logic since backend doesn't have PUT
+        else if (
+          action.type === 'checkins/addCheckin' ||
           action.type === 'checkins/updateCheckin' ||
           action.type === 'checkins/updateHabitCompletion'
         ) {
-          // For updateHabitCompletion, we need to find the full checkin
           let checkin: HabitCheckin | undefined;
           if (action.type === 'checkins/updateHabitCompletion') {
             const { checkinId } = action.payload as { checkinId: string };
@@ -182,16 +209,16 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
             checkin = action.payload as HabitCheckin;
           }
           if (checkin) {
-            await pushToServer(`checkins/${checkin.id}`, {
+            await pushToServer('checkins', {
               checkin: {
                 ...checkin,
                 updated_at: new Date().toISOString(),
               },
-            }, 'PUT');
+            });
           }
         } else if (action.type === 'checkins/deleteCheckin') {
           const checkinId = action.payload as string;
-          await pushToServer(`checkins/${checkinId}`, {}, 'DELETE');
+          await pushToServer(`checkins?id=${checkinId}`, {}, 'DELETE');
         }
 
         // Profile actions

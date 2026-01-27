@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { ChallengeParticipant } from '../../types';
 import { saveParticipants, loadParticipants } from '../../utils/storage';
 import { API_URL } from '../../config/api';
@@ -11,7 +11,7 @@ interface ParticipantsState {
 
 const initialState: ParticipantsState = {
   data: [],
-  loading: false,
+  loading: true,
   error: null,
 };
 
@@ -140,3 +140,20 @@ export const {
 } = participantsSlice.actions;
 
 export default participantsSlice.reducer;
+
+// Memoized selectors
+const selectParticipantsData = (state: { participants: ParticipantsState }) =>
+  state.participants.data;
+
+export const makeSelectParticipantsByChallengeId = () =>
+  createSelector(
+    [selectParticipantsData, (_state: unknown, challengeId: string) => challengeId],
+    (participants, challengeId) =>
+      participants.filter(p => p.challengeId === challengeId)
+  );
+
+export const makeSelectParticipantsByUserId = () =>
+  createSelector(
+    [selectParticipantsData, (_state: unknown, userId: string) => userId],
+    (participants, userId) => participants.filter(p => p.userId === userId)
+  );

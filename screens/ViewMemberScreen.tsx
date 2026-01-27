@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,9 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState } from '../redux/store';
+import { makeSelectParticipantsByUserId } from '../redux/slices/participantsSlice';
 import { RootStackParamList } from '../types';
 
 type ViewMemberRouteProp = RouteProp<RootStackParamList, 'ViewMember'>;
@@ -30,9 +30,10 @@ export default function ViewMemberScreen() {
 
   const { userId } = route.params;
 
-  // Find user's participations
+  // Find user's participations (memoized to prevent unnecessary rerenders)
+  const selectParticipantsByUserId = useMemo(makeSelectParticipantsByUserId, []);
   const participants = useSelector((state: RootState) =>
-    state.participants.data.filter(p => p.userId === userId)
+    selectParticipantsByUserId(state, userId)
   );
 
   const profile = useSelector((state: RootState) => state.profile.data);
@@ -54,22 +55,7 @@ export default function ViewMemberScreen() {
   );
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.surface }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -134,7 +120,7 @@ export default function ViewMemberScreen() {
         {/* Challenge participations */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Challenge History
+            Challenges
           </Text>
           {participants.length > 0 ? (
             participants.map(participation => (
@@ -192,31 +178,13 @@ export default function ViewMemberScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

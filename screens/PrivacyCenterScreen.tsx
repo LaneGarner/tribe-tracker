@@ -5,17 +5,15 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Switch,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { updatePrivacySettings } from '../redux/slices/profileSlice';
+import { updatePrivacySettings, updateProfile } from '../redux/slices/profileSlice';
 
 export default function PrivacyCenterScreen() {
-  const navigation = useNavigation();
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -69,24 +67,16 @@ export default function PrivacyCenterScreen() {
     );
   };
 
-  return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.surface }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Privacy Center
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
+  const toggleChildAccount = () => {
+    dispatch(updateProfile({ isChildAccount: !profile?.isChildAccount }));
+  };
 
+  const toggleProfileVisible = () => {
+    dispatch(updateProfile({ profileVisible: !profile?.profileVisible }));
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -102,9 +92,35 @@ export default function PrivacyCenterScreen() {
           </Text>
         </View>
 
+        {/* Privacy Section - Profile Visibility */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="lock-closed-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
+              Privacy
+            </Text>
+          </View>
+          <View style={[styles.visibilityCard, { backgroundColor: colors.surface }]}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                Profile Visibility
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Make profile visible to others
+              </Text>
+            </View>
+            <Switch
+              value={profile?.profileVisible ?? true}
+              onValueChange={toggleProfileVisible}
+              trackColor={{ false: colors.surfaceSecondary, true: colors.primary }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            Profile Visibility
+            Field Visibility
           </Text>
           {privacySettings.map(setting => (
             <TouchableOpacity
@@ -133,32 +149,47 @@ export default function PrivacyCenterScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Account Type */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="people-outline" size={20} color={colors.text} />
+            <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
+              Account Type
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.accountTypeCard,
+              { backgroundColor: colors.warning + '15' },
+            ]}
+          >
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                Child Account (Under 13)
+              </Text>
+              <Text
+                style={[styles.settingDescription, { color: colors.textSecondary }]}
+              >
+                Child accounts require adult supervision
+              </Text>
+            </View>
+            <Switch
+              value={profile?.isChildAccount ?? false}
+              onValueChange={toggleChildAccount}
+              trackColor={{ false: colors.surfaceSecondary, true: colors.warning }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
@@ -193,6 +224,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
     paddingLeft: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  accountTypeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+  },
+  visibilityCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
   },
   settingRow: {
     flexDirection: 'row',

@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Crown, Medal, Award, Trophy, Flame } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { ChallengeParticipant } from '../../types';
@@ -13,12 +13,24 @@ interface LeaderboardProps {
 }
 
 const PODIUM_COLORS = {
-  first: '#F7B928',
-  second: '#9CA3AF',
-  third: '#F97316',
+  first: {
+    main: '#F7B928',
+    gradient: ['#FACC15', '#CA8A04'] as [string, string],
+    border: '#FACC15',
+  },
+  second: {
+    main: '#9CA3AF',
+    gradient: ['#D1D5DB', '#9CA3AF'] as [string, string],
+    border: '#D1D5DB',
+  },
+  third: {
+    main: '#F97316',
+    gradient: ['#FB923C', '#EA580C'] as [string, string],
+    border: '#FB923C',
+  },
 };
 
-const AVATAR_GRADIENT = ['#818CF8', '#6366F1'] as [string, string];
+const AVATAR_GRADIENT = ['#60A5FA', '#A855F7'] as [string, string];
 
 export default function Leaderboard({
   participants,
@@ -39,7 +51,7 @@ export default function Leaderboard({
   if (sortedParticipants.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <Ionicons name="podium-outline" size={48} color={colors.textTertiary} />
+        <Trophy size={48} color={colors.textTertiary} />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
           No participants yet
         </Text>
@@ -47,75 +59,120 @@ export default function Leaderboard({
     );
   }
 
-  const renderPodiumAvatar = (
+  const renderPodiumColumn = (
     participant: ChallengeParticipant,
     rank: 1 | 2 | 3
   ) => {
-    const podiumColor =
-      rank === 1
-        ? PODIUM_COLORS.first
-        : rank === 2
-          ? PODIUM_COLORS.second
-          : PODIUM_COLORS.third;
-    const isFirst = rank === 1;
-    const avatarSize = isFirst ? 80 : 64;
+    const podiumConfig = rank === 1
+      ? PODIUM_COLORS.first
+      : rank === 2
+        ? PODIUM_COLORS.second
+        : PODIUM_COLORS.third;
+
+    // Sizes based on base44: 1st=80px, 2nd=64px, 3rd=56px
+    const avatarSize = rank === 1 ? 80 : rank === 2 ? 64 : 56;
+    const borderWidth = 4;
+    const badgeSize = rank === 1 ? 40 : rank === 2 ? 34 : 28;
+    const badgeOffset = rank === 1 ? -10 : -8;
+    const iconSize = rank === 1 ? 22 : rank === 2 ? 18 : 16;
+
+    // Bar heights - bottoms should align, so paddingTop + barHeight = 100 for all
+    const barHeight = rank === 1 ? 100 : rank === 2 ? 65 : 50;
+    // Subtle gradient - darker at top, lighter at bottom
+    const barGradient = rank === 1
+      ? ['#EAB308', '#FACC15'] as [string, string]
+      : rank === 2
+        ? ['#9CA3AF', '#D1D5DB'] as [string, string]
+        : ['#EA580C', '#FB923C'] as [string, string];
+
+    // Vertical offset calculated so bar bottoms align: paddingTop = 100 - barHeight
+    // 1st: 0, 2nd: 35, 3rd: 50
+    const paddingTop = rank === 1 ? 0 : rank === 2 ? 35 : 50;
 
     return (
       <TouchableOpacity
         key={participant.id}
-        style={[styles.podiumItem, isFirst && styles.podiumItemFirst]}
+        style={[styles.podiumColumn, { paddingTop }]}
         onPress={() => onParticipantPress?.(participant)}
         activeOpacity={0.7}
       >
         <View style={styles.podiumAvatarContainer}>
-          {/* Crown on top for 1st place */}
-          {rank === 1 && (
-            <View style={styles.crownContainer}>
-              <Text style={styles.crownEmoji}>👑</Text>
-            </View>
-          )}
+          <View
+            style={[
+              styles.podiumAvatarShadow,
+              {
+                width: avatarSize,
+                height: avatarSize,
+                borderRadius: avatarSize / 2,
+                backgroundColor: podiumConfig.gradient[1],
+              },
+            ]}
+          >
+            {participant.userPhotoUrl ? (
+              <Image
+                source={{ uri: participant.userPhotoUrl }}
+                style={[
+                  styles.podiumAvatarImage,
+                  {
+                    width: avatarSize,
+                    height: avatarSize,
+                    borderRadius: avatarSize / 2,
+                    borderWidth,
+                    borderColor: podiumConfig.border,
+                  },
+                ]}
+              />
+            ) : (
+              <LinearGradient
+                colors={podiumConfig.gradient}
+                style={[
+                  styles.podiumAvatar,
+                  {
+                    width: avatarSize,
+                    height: avatarSize,
+                    borderRadius: avatarSize / 2,
+                    borderWidth,
+                    borderColor: podiumConfig.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.podiumAvatarText, { fontSize: avatarSize * 0.4 }]}>
+                  {participant.userName[0].toUpperCase()}
+                </Text>
+              </LinearGradient>
+            )}
+          </View>
 
-          {participant.userPhotoUrl ? (
-            <Image
-              source={{ uri: participant.userPhotoUrl }}
+          {/* Badge */}
+          <View
+            style={[
+              styles.podiumBadgeShadow,
+              {
+                width: badgeSize,
+                height: badgeSize,
+                borderRadius: badgeSize / 2,
+                top: badgeOffset,
+                right: badgeOffset,
+                backgroundColor: podiumConfig.gradient[1],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={podiumConfig.gradient}
               style={[
-                styles.podiumAvatar,
+                styles.podiumBadgeInner,
                 {
-                  width: avatarSize,
-                  height: avatarSize,
-                  borderRadius: avatarSize / 2,
-                },
-              ]}
-            />
-          ) : (
-            <View
-              style={[
-                styles.podiumAvatar,
-                {
-                  width: avatarSize,
-                  height: avatarSize,
-                  borderRadius: avatarSize / 2,
-                  backgroundColor: podiumColor,
+                  width: badgeSize,
+                  height: badgeSize,
+                  borderRadius: badgeSize / 2,
                 },
               ]}
             >
-              <Text
-                style={[
-                  styles.podiumAvatarText,
-                  { fontSize: isFirst ? 32 : 24 },
-                ]}
-              >
-                {participant.userName[0].toUpperCase()}
-              </Text>
-            </View>
-          )}
-
-          {/* Ribbon badge for 2nd and 3rd */}
-          {rank !== 1 && (
-            <View style={[styles.podiumBadge, { backgroundColor: podiumColor }]}>
-              <Ionicons name="ribbon" size={12} color="#fff" />
-            </View>
-          )}
+              {rank === 1 && <Crown size={iconSize} color="#fff" />}
+              {rank === 2 && <Medal size={iconSize} color="#fff" />}
+              {rank === 3 && <Award size={iconSize} color="#fff" />}
+            </LinearGradient>
+          </View>
         </View>
 
         <Text
@@ -124,47 +181,61 @@ export default function Leaderboard({
         >
           {participant.userName.split(' ')[0]}
         </Text>
-        <Text style={[styles.podiumPoints, { color: podiumColor }]}>
+        <Text style={[styles.podiumPoints, { color: podiumConfig.main }]}>
           {participant.totalPoints}
         </Text>
-        <Text style={[styles.podiumPointsLabel, { color: podiumColor }]}>
+        <Text style={[styles.podiumPointsLabel, { color: podiumConfig.main }]}>
           points
         </Text>
+
+        {/* Bar directly under this column */}
+        <LinearGradient
+          colors={barGradient}
+          style={[styles.podiumBar, { height: barHeight }]}
+        />
       </TouchableOpacity>
     );
   };
 
-  const renderPodiumBars = () => {
-    if (top3.length < 3) return null;
-    return (
-      <View style={styles.podiumBars}>
-        <View style={[styles.podiumBar, styles.podiumBarSecond]} />
-        <View style={[styles.podiumBar, styles.podiumBarFirst]} />
-        <View style={[styles.podiumBar, styles.podiumBarThird]} />
-      </View>
-    );
-  };
-
   const getRankBadge = (rank: number) => {
-    if (rank <= 3) {
-      const badgeColor =
-        rank === 1
-          ? PODIUM_COLORS.first
-          : rank === 2
-            ? PODIUM_COLORS.second
-            : PODIUM_COLORS.third;
+    if (rank === 1) {
       return (
-        <View style={[styles.rankMedalBadge, { backgroundColor: badgeColor }]}>
-          {rank === 1 ? (
-            <Ionicons name="trophy" size={16} color="#fff" />
-          ) : (
-            <Ionicons name="ribbon" size={14} color="#fff" />
-          )}
+        <View style={[styles.rankMedalShadow, { backgroundColor: PODIUM_COLORS.first.gradient[1] }]}>
+          <LinearGradient
+            colors={PODIUM_COLORS.first.gradient}
+            style={styles.rankMedalBadge}
+          >
+            <Crown size={20} color="#fff" />
+          </LinearGradient>
+        </View>
+      );
+    }
+    if (rank === 2) {
+      return (
+        <View style={[styles.rankMedalShadow, { backgroundColor: PODIUM_COLORS.second.gradient[1] }]}>
+          <LinearGradient
+            colors={PODIUM_COLORS.second.gradient}
+            style={styles.rankMedalBadge}
+          >
+            <Medal size={20} color="#fff" />
+          </LinearGradient>
+        </View>
+      );
+    }
+    if (rank === 3) {
+      return (
+        <View style={[styles.rankMedalShadow, { backgroundColor: PODIUM_COLORS.third.gradient[1] }]}>
+          <LinearGradient
+            colors={PODIUM_COLORS.third.gradient}
+            style={styles.rankMedalBadge}
+          >
+            <Award size={20} color="#fff" />
+          </LinearGradient>
         </View>
       );
     }
     return (
-      <View style={[styles.rankNumberCircle, { borderColor: colors.border }]}>
+      <View style={[styles.rankNumberCircle, { borderColor: colors.border, backgroundColor: colors.surface }]}>
         <Text style={[styles.rankNumberText, { color: colors.textSecondary }]}>
           {rank}
         </Text>
@@ -177,11 +248,10 @@ export default function Leaderboard({
       {showPodiumSection && (
         <View style={styles.podiumSection}>
           <View style={styles.podiumRow}>
-            {renderPodiumAvatar(top3[1], 2)}
-            {renderPodiumAvatar(top3[0], 1)}
-            {renderPodiumAvatar(top3[2], 3)}
+            {renderPodiumColumn(top3[1], 2)}
+            {renderPodiumColumn(top3[0], 1)}
+            {renderPodiumColumn(top3[2], 3)}
           </View>
-          {renderPodiumBars()}
         </View>
       )}
 
@@ -189,7 +259,7 @@ export default function Leaderboard({
         style={[styles.listContainer, { backgroundColor: colors.surface }]}
       >
         <View style={styles.listHeader}>
-          <Ionicons name="trophy-outline" size={20} color={colors.primary} />
+          <Trophy size={20} color={colors.primary} />
           <Text style={[styles.listHeaderText, { color: colors.text }]}>
             All Participants ({sortedParticipants.length})
           </Text>
@@ -198,32 +268,31 @@ export default function Leaderboard({
         {sortedParticipants.map((participant, index) => {
           const rank = index + 1;
           const isCurrentUser = participant.userId === currentUserId;
+          const isTopThree = rank <= 3;
 
-          return (
-            <TouchableOpacity
-              key={participant.id}
-              style={[
-                styles.row,
-                isCurrentUser && styles.rowCurrentUser,
-              ]}
-              onPress={() => onParticipantPress?.(participant)}
-              disabled={!onParticipantPress}
-              activeOpacity={0.7}
-            >
+          const rowContent = (
+            <>
               {getRankBadge(rank)}
 
-              {participant.userPhotoUrl ? (
-                <Image
-                  source={{ uri: participant.userPhotoUrl }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <LinearGradient colors={AVATAR_GRADIENT} style={styles.avatar}>
-                  <Text style={styles.avatarText}>
-                    {participant.userName[0].toUpperCase()}
-                  </Text>
-                </LinearGradient>
-              )}
+              <View style={styles.avatarShadow}>
+                {participant.userPhotoUrl ? (
+                  <Image
+                    source={{ uri: participant.userPhotoUrl }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <LinearGradient
+                    colors={AVATAR_GRADIENT}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.avatar}
+                  >
+                    <Text style={styles.avatarText}>
+                      {participant.userName[0].toUpperCase()}
+                    </Text>
+                  </LinearGradient>
+                )}
+              </View>
 
               <View style={styles.info}>
                 <View style={styles.nameRow}>
@@ -234,8 +303,14 @@ export default function Leaderboard({
                     {participant.userName}
                   </Text>
                   {isCurrentUser && (
-                    <View style={styles.youBadge}>
-                      <Text style={styles.youBadgeText}>You</Text>
+                    <View style={[
+                      styles.youBadge,
+                      {
+                        backgroundColor: colorScheme === 'dark' ? '#064E3B' : '#D1FAE5',
+                        borderColor: colorScheme === 'dark' ? '#065F46' : '#A7F3D0',
+                      }
+                    ]}>
+                      <Text style={[styles.youBadgeText, { color: colorScheme === 'dark' ? '#34D399' : '#059669' }]}>You</Text>
                     </View>
                   )}
                 </View>
@@ -252,7 +327,7 @@ export default function Leaderboard({
                       >
                         ·
                       </Text>
-                      <Text style={styles.streakEmoji}>🔥</Text>
+                      <Flame size={14} color="#F97316" />
                       <Text
                         style={[
                           styles.streakValue,
@@ -265,6 +340,41 @@ export default function Leaderboard({
                   )}
                 </View>
               </View>
+            </>
+          );
+
+          if (isCurrentUser) {
+            return (
+              <TouchableOpacity
+                key={participant.id}
+                onPress={() => onParticipantPress?.(participant)}
+                disabled={!onParticipantPress}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={colorScheme === 'dark' ? ['#064E3B', '#1E3A5F'] : ['#DCFCE7', '#DBEAFE']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.row, styles.rowCurrentUser]}
+                >
+                  {rowContent}
+                </LinearGradient>
+              </TouchableOpacity>
+            );
+          }
+
+          return (
+            <TouchableOpacity
+              key={participant.id}
+              style={[
+                styles.row,
+                isTopThree && { backgroundColor: colorScheme === 'dark' ? colors.surfaceSecondary : '#FEFCE8' },
+              ]}
+              onPress={() => onParticipantPress?.(participant)}
+              disabled={!onParticipantPress}
+              activeOpacity={0.7}
+            >
+              {rowContent}
             </TouchableOpacity>
           );
         })}
@@ -275,7 +385,7 @@ export default function Leaderboard({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
+    marginTop: 20,
   },
   emptyState: {
     alignItems: 'center',
@@ -293,49 +403,50 @@ const styles = StyleSheet.create({
   podiumRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
-  podiumItem: {
+  podiumColumn: {
     alignItems: 'center',
     flex: 1,
-    paddingTop: 30,
-  },
-  podiumItemFirst: {
-    paddingTop: 0,
   },
   podiumAvatarContainer: {
     position: 'relative',
-    alignItems: 'center',
   },
-  crownContainer: {
-    marginBottom: -8,
-    zIndex: 1,
-  },
-  crownEmoji: {
-    fontSize: 24,
+  podiumAvatarShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   podiumAvatar: {
     justifyContent: 'center',
     alignItems: 'center',
   },
+  podiumAvatarImage: {
+    backgroundColor: '#f0f0f0',
+  },
   podiumAvatarText: {
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#fff',
   },
-  podiumBadge: {
+  podiumBadgeShadow: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  podiumBadgeInner: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   podiumName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     marginTop: 8,
+    textAlign: 'center',
   },
   podiumPoints: {
     fontSize: 22,
@@ -345,28 +456,11 @@ const styles = StyleSheet.create({
   podiumPointsLabel: {
     fontSize: 12,
   },
-  podiumBars: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    marginTop: 16,
-  },
   podiumBar: {
-    flex: 1,
-    marginHorizontal: 6,
-    borderRadius: 6,
-  },
-  podiumBarFirst: {
-    height: 90,
-    backgroundColor: PODIUM_COLORS.first,
-  },
-  podiumBarSecond: {
-    height: 60,
-    backgroundColor: PODIUM_COLORS.second,
-  },
-  podiumBarThird: {
-    height: 45,
-    backgroundColor: PODIUM_COLORS.third,
+    width: '85%',
+    marginTop: 8,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   listContainer: {
     borderRadius: 20,
@@ -387,37 +481,57 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    marginBottom: 4,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    marginBottom: 8,
   },
   rowCurrentUser: {
-    backgroundColor: '#ECFDF5',
     borderWidth: 2,
-    borderColor: '#10B981',
+    borderColor: '#4ADE80',
+  },
+  rankMedalShadow: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
   },
   rankMedalBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
   rankNumberCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    marginRight: 10,
-    backgroundColor: '#F9FAFB',
+    marginRight: 12,
   },
   rankNumberText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  avatarShadow: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+    backgroundColor: '#A855F7',
   },
   avatar: {
     width: 44,
@@ -425,11 +539,12 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
   avatarText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#fff',
   },
   info: {
@@ -442,36 +557,33 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   youBadge: {
-    backgroundColor: '#D1FAE5',
     paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 12,
+    borderWidth: 1,
   },
   youBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#059669',
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 3,
   },
   pointsText: {
     fontSize: 14,
+    fontWeight: '600',
   },
   statDot: {
     marginHorizontal: 6,
     fontSize: 14,
   },
-  streakEmoji: {
-    fontSize: 12,
-  },
   streakValue: {
     fontSize: 14,
-    marginLeft: 2,
+    marginLeft: 4,
   },
 });

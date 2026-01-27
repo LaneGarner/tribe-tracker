@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useMemo, useCallback, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,14 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { addParticipant } from '../redux/slices/participantsSlice';
+import { addParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, ChallengeParticipant } from '../types';
 import {
@@ -40,7 +39,7 @@ export default function ChallengeDetailScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
   const { challengeId } = route.params;
 
@@ -48,8 +47,54 @@ export default function ChallengeDetailScreen() {
     state.challenges.data.find(c => c.id === challengeId)
   );
 
+  const handleShare = async () => {
+    if (!challenge) return;
+    try {
+      await Share.share({
+        message: `Join my challenge "${challenge.name}" on Tribe Tracker! Use code: ${challenge.inviteCode}`,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  // Set up header with share and analytics buttons
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: challenge?.name || 'Challenge',
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <TouchableOpacity
+            onPress={handleShare}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="share-outline" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate('TaskAnalytics', { challengeId })
+            }
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="stats-chart" size={22} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [navigation, colors.text, challenge?.name, challengeId]);
+
+  // Fetch fresh participant data when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      if (session?.access_token) {
+        dispatch(fetchParticipantsFromServer(session.access_token));
+      }
+    }, [dispatch, session?.access_token])
+  );
+
+  const selectParticipantsByChallengeId = useMemo(makeSelectParticipantsByChallengeId, []);
   const participants = useSelector((state: RootState) =>
-    state.participants.data.filter(p => p.challengeId === challengeId)
+    selectParticipantsByChallengeId(state, challengeId)
   );
 
   const userParticipation = participants.find(p => p.userId === user?.id);
@@ -58,9 +103,7 @@ export default function ChallengeDetailScreen() {
 
   if (!challenge) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
-      >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.notFound}>
           <Text style={[styles.notFoundText, { color: colors.text }]}>
             Challenge not found
@@ -71,7 +114,7 @@ export default function ChallengeDetailScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -82,7 +125,7 @@ export default function ChallengeDetailScreen() {
   const currentDay = status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0;
   const totalDays = challenge.durationDays;
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (isJoined || isJoining) return;
 
     setIsJoining(true);
@@ -91,7 +134,7 @@ export default function ChallengeDetailScreen() {
       challengeId: challenge.id,
       challengeName: challenge.name,
       userId: user?.id || 'anonymous',
-      userName: user?.email?.split('@')[0] || 'Anonymous',
+      userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
       userEmail: user?.email || '',
       totalPoints: 0,
       currentStreak: 0,
@@ -102,51 +145,20 @@ export default function ChallengeDetailScreen() {
     };
 
     dispatch(addParticipant(participation));
-    setIsJoining(false);
-    Alert.alert('Joined!', `You've joined "${challenge.name}"`);
-  };
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `Join my challenge "${challenge.name}" on Tribe Tracker! Use code: ${challenge.inviteCode}`,
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
+    // Fetch all participants from server to see other members
+    if (session?.access_token) {
+      await dispatch(fetchParticipantsFromServer(session.access_token));
     }
+
+    setIsJoining(false);
+    Alert.alert('Joined!', `You've joined "${challenge.name}"`, [
+      { text: 'OK', onPress: () => navigation.navigate('Main') },
+    ]);
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.surface }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.iconButton, { backgroundColor: colors.surface }]}
-            onPress={handleShare}
-          >
-            <Ionicons name="share-outline" size={20} color={colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.iconButton, { backgroundColor: colors.surface }]}
-            onPress={() =>
-              navigation.navigate('TaskAnalytics', { challengeId: challenge.id })
-            }
-          >
-            <Ionicons name="stats-chart" size={20} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -319,38 +331,13 @@ export default function ChallengeDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   scrollView: {
     flex: 1,

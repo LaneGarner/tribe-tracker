@@ -1,4 +1,4 @@
-import React, { useContext, useState, useRef } from 'react';
+import React, { useContext, useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { ChallengeListSkeleton } from '../components/challenge/ChallengeItemSkeleton';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { AppDispatch, RootState } from '../redux/store';
-import { addChallenge } from '../redux/slices/challengesSlice';
+import { addChallenge, updateChallenge, fetchPublicChallenges } from '../redux/slices/challengesSlice';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
@@ -38,9 +39,19 @@ export default function CreateChallengeScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
 
   const [mode, setMode] = useState<'browse' | 'create' | 'join'>(route.params?.mode || 'browse');
+
+  // Fetch public challenges when in browse mode
+  useEffect(() => {
+    if (mode === 'browse') {
+      const token = getAccessToken();
+      if (token) {
+        dispatch(fetchPublicChallenges(token));
+      }
+    }
+  }, [mode, dispatch, getAccessToken]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [durationDays, setDurationDays] = useState('30');
@@ -59,6 +70,7 @@ export default function CreateChallengeScreen() {
   const habitInputRefs = useRef<(TextInput | null)[]>([]);
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
+  const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
   const publicChallenges = challenges.filter(c => c.isPublic);
 
   const addHabit = () => {
@@ -113,7 +125,7 @@ export default function CreateChallengeScreen() {
       name: name.trim(),
       description: description.trim() || undefined,
       creatorId: user?.id || 'anonymous',
-      creatorName: user?.email?.split('@')[0] || 'Anonymous',
+      creatorName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
       durationDays: parseInt(durationDays) || 30,
       startDate: getToday(),
       endDate: getChallengeEndDate(getToday(), parseInt(durationDays) || 30),
@@ -121,44 +133,61 @@ export default function CreateChallengeScreen() {
       isPublic,
       inviteCode: generateInviteCode(),
       status: 'active',
-      participantCount: 1,
+      participantCount: 0,
       updatedAt: new Date().toISOString(),
     };
 
     dispatch(addChallenge(newChallenge));
+    setIsCreating(false);
 
-    // Auto-join creator
-    const participation: ChallengeParticipant = {
-      id: Crypto.randomUUID(),
-      challengeId: challengeId,
-      challengeName: newChallenge.name,
-      userId: user?.id || 'anonymous',
-      userName: user?.email?.split('@')[0] || 'Anonymous',
-      userEmail: user?.email || '',
-      totalPoints: 0,
-      currentStreak: 0,
-      longestStreak: 0,
-      daysParticipated: 0,
-      joinDate: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    const resetForm = () => {
+      setMode('browse');
+      setName('');
+      setDescription('');
+      setDurationDays('30');
+      setHabits(['']);
+      setErrors({});
     };
 
-    dispatch(addParticipant(participation));
+    const joinChallenge = () => {
+      const participation: ChallengeParticipant = {
+        id: Crypto.randomUUID(),
+        challengeId: challengeId,
+        challengeName: newChallenge.name,
+        userId: user?.id || 'anonymous',
+        userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
+        userEmail: user?.email || '',
+        totalPoints: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        daysParticipated: 0,
+        joinDate: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      dispatch(addParticipant(participation));
+      dispatch(updateChallenge({ ...newChallenge, participantCount: 1 }));
+    };
 
-    setIsCreating(false);
-    Alert.alert('Success', 'Challenge created!', [
-      {
-        text: 'OK',
-        onPress: () => {
-          setMode('browse');
-          setName('');
-          setDescription('');
-          setDurationDays('30');
-          setHabits(['']);
-          setErrors({});
+    Alert.alert(
+      'Challenge Created!',
+      'Would you like to join this challenge?',
+      [
+        {
+          text: 'Not Now',
+          style: 'cancel',
+          onPress: resetForm,
         },
-      },
-    ]);
+        {
+          text: 'Join Challenge',
+          onPress: () => {
+            joinChallenge();
+            Alert.alert('Joined!', `You've joined "${newChallenge.name}"`, [
+              { text: 'OK', onPress: resetForm },
+            ]);
+          },
+        },
+      ]
+    );
   };
 
   const handleJoinByCode = () => {
@@ -184,7 +213,7 @@ export default function CreateChallengeScreen() {
       challengeId: challenge.id,
       challengeName: challenge.name,
       userId: user?.id || 'anonymous',
-      userName: user?.email?.split('@')[0] || 'Anonymous',
+      userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
       userEmail: user?.email || '',
       totalPoints: 0,
       currentStreak: 0,
@@ -199,7 +228,7 @@ export default function CreateChallengeScreen() {
 
     setIsJoining(false);
     Alert.alert('Success', `Joined "${challenge.name}"!`, [
-      { text: 'OK', onPress: () => setMode('browse') },
+      { text: 'OK', onPress: () => navigation.navigate('Main') },
     ]);
   };
 
@@ -232,7 +261,9 @@ export default function CreateChallengeScreen() {
         Public Challenges
       </Text>
 
-      {publicChallenges.length === 0 ? (
+      {challengesLoading ? (
+        <ChallengeListSkeleton count={3} />
+      ) : publicChallenges.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons
             name="globe-outline"

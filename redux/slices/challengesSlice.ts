@@ -11,7 +11,7 @@ interface ChallengesState {
 
 const initialState: ChallengesState = {
   data: [],
-  loading: false,
+  loading: true,
   error: null,
 };
 
@@ -40,6 +40,23 @@ export const fetchChallengesFromServer = createAsyncThunk(
     const challenges: Challenge[] = data.challenges || [];
     await saveChallenges(challenges);
     return challenges;
+  }
+);
+
+// Async thunk to fetch public challenges from the backend API
+export const fetchPublicChallenges = createAsyncThunk(
+  'challenges/fetchPublicChallenges',
+  async (token: string, { getState }) => {
+    const response = await fetch(`${API_URL}/api/challenges?isPublic=true`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch public challenges');
+    }
+    const data = await response.json();
+    return data.challenges || [];
   }
 );
 
@@ -111,6 +128,23 @@ const challengesSlice = createSlice({
       })
       .addCase(fetchChallengesFromServer.rejected, (state, action) => {
         state.error = action.error.message || 'Failed to fetch challenges';
+        state.loading = false;
+      })
+      .addCase(fetchPublicChallenges.pending, state => {
+        state.loading = true;
+      })
+      .addCase(fetchPublicChallenges.fulfilled, (state, action) => {
+        // Merge public challenges with existing ones (avoid duplicates)
+        const existingIds = new Set(state.data.map(c => c.id));
+        const newChallenges = action.payload.filter(
+          (c: Challenge) => !existingIds.has(c.id)
+        );
+        state.data = [...state.data, ...newChallenges];
+        saveChallenges(state.data);
+        state.loading = false;
+      })
+      .addCase(fetchPublicChallenges.rejected, (state, action) => {
+        state.error = action.error.message || 'Failed to fetch public challenges';
         state.loading = false;
       });
   },

@@ -138,6 +138,8 @@ export default function AuthScreen() {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoComplete="email"
+          textContentType="emailAddress"
         />
 
         <TextInput
@@ -154,16 +156,18 @@ export default function AuthScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoComplete={isLogin ? 'current-password' : 'new-password'}
+          textContentType={isLogin ? 'password' : 'newPassword'}
         />
 
         <TouchableOpacity
           style={[
             styles.button,
             { backgroundColor: colors.primary },
-            isLoading && styles.buttonDisabled,
+            (isLoading || !email || !password || (!isLogin && !fullName)) && styles.buttonDisabled,
           ]}
           onPress={handleSubmit}
-          disabled={isLoading}
+          disabled={isLoading || !email || !password || (!isLogin && !fullName)}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" />

@@ -1,12 +1,9 @@
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 
 export default function HelpScreen() {
-  const navigation = useNavigation();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
 
@@ -39,23 +36,7 @@ export default function HelpScreen() {
   ];
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
-    >
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.surface }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Help & Support
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
-
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -91,31 +72,13 @@ export default function HelpScreen() {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
   },
   scrollView: {
     flex: 1,

@@ -25,7 +25,7 @@ export interface ChallengeParticipant {
   challengeName?: string;
   userId: string;
   userName: string;
-  userEmail: string;
+  userEmail?: string; // Optional - only included for own data (privacy)
   userPhotoUrl?: string;
   totalPoints: number;
   currentStreak: number;
@@ -69,6 +69,10 @@ export interface UserProfile {
   hideWeight: boolean;
   hideLocation: boolean;
   hideBio: boolean;
+  profileVisible: boolean;
+  // Notification settings
+  pushNotifications: boolean;
+  emailNotifications: boolean;
   // Child account
   isChildAccount: boolean;
   parentUserId?: string;
@@ -116,8 +120,10 @@ export type RootStackParamList = {
   ViewMember: { userId: string };
   ManageChild: { childId: string };
   TaskAnalytics: { challengeId: string };
-  Settings: undefined;
+  Profile: undefined;
   PrivacyCenter: undefined;
+  Notifications: undefined;
+  Preferences: undefined;
   Help: undefined;
   Chat: undefined;
   Coaching: undefined;
@@ -132,6 +138,6 @@ export type RootStackParamList = {
 export type TabParamList = {
   Home: undefined;
   Challenges: undefined;
-  Leaderboard: undefined;
+  Leaderboard: { challengeId?: string } | undefined;
   Menu: undefined;
 };

@@ -1,18 +1,22 @@
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { Challenge, ChallengeParticipant } from '../../types';
 import {
   getChallengeStatus,
   getCurrentChallengeDay,
-  formatDate,
+  getDaysRemaining,
 } from '../../utils/dateUtils';
 
 interface ChallengeCardProps {
   challenge: Challenge;
   participation?: ChallengeParticipant;
 }
+
+// Default gradient - cyan/teal blue
+const DEFAULT_GRADIENT = ['#00B4DB', '#0083B0'];
 
 export default function ChallengeCard({
   challenge,
@@ -27,210 +31,172 @@ export default function ChallengeCard({
   );
   const currentDay =
     status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0;
-  const progressPercent = (currentDay / challenge.durationDays) * 100;
+  const daysRemaining = getDaysRemaining(challenge.endDate || challenge.startDate);
+  const progressPercent = Math.min((currentDay / challenge.durationDays) * 100, 100);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      {/* Header */}
+    <LinearGradient
+      colors={DEFAULT_GRADIENT as [string, string]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}
+    >
+      {/* Header with title and streak badge */}
       <View style={styles.header}>
         <View style={styles.titleSection}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+          <Text style={styles.name} numberOfLines={2}>
             {challenge.name}
           </Text>
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor:
-                  status === 'active'
-                    ? colors.success
-                    : status === 'upcoming'
-                      ? colors.warning
-                      : colors.textTertiary,
-              },
-            ]}
-          >
-            <Text style={styles.statusText}>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
+          {status !== 'active' && (
+            <Text style={styles.daysRemaining}>
+              {status === 'upcoming' ? 'Starting soon' : 'Completed'}
+            </Text>
+          )}
+          {status === 'active' && daysRemaining > 0 && (
+            <Text style={styles.daysRemaining}>
+              {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
+            </Text>
+          )}
+        </View>
+        {participation && (
+          <View style={styles.streakBadge}>
+            <Ionicons name="flame" size={16} color="#fff" />
+            <Text style={styles.streakBadgeText}>
+              {participation.currentStreak} day{'\n'}streak
             </Text>
           </View>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        )}
       </View>
 
-      {/* Progress */}
+      {/* Stats row */}
+      {participation && (
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>My Points</Text>
+            <Text style={styles.statValue}>{participation.totalPoints}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Best Streak</Text>
+            <Text style={styles.statValue}>{participation.longestStreak}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Days Active</Text>
+            <Text style={styles.statValue}>{participation.daysParticipated}</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Progress bar */}
       {status === 'active' && (
         <View style={styles.progressSection}>
-          <View style={styles.progressInfo}>
-            <Text style={[styles.dayText, { color: colors.primary }]}>
-              Day {currentDay}
-            </Text>
-            <Text style={[styles.totalText, { color: colors.textSecondary }]}>
-              of {challenge.durationDays}
-            </Text>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressLabel}>Progress</Text>
+            <Text style={styles.progressPercent}>{Math.round(progressPercent)}%</Text>
           </View>
-          <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+          <View style={styles.progressBar}>
             <View
               style={[
                 styles.progressFill,
-                {
-                  backgroundColor: colors.primary,
-                  width: `${Math.min(progressPercent, 100)}%`,
-                },
+                { width: `${progressPercent}%` },
               ]}
             />
           </View>
         </View>
       )}
-
-      {/* Stats */}
-      {participation && (
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="star" size={16} color={colors.warning} />
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {participation.totalPoints}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              points
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons name="flame" size={16} color={colors.error} />
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {participation.currentStreak}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              streak
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons name="calendar" size={16} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.text }]}>
-              {participation.daysParticipated}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-              days
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* Meta */}
-      <View style={styles.metaRow}>
-        <View style={styles.metaItem}>
-          <Ionicons
-            name="people-outline"
-            size={14}
-            color={colors.textSecondary}
-          />
-          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-            {challenge.participantCount} participant
-            {challenge.participantCount !== 1 ? 's' : ''}
-          </Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Ionicons
-            name="checkbox-outline"
-            size={14}
-            color={colors.textSecondary}
-          />
-          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-            {challenge.habits.length} habit{challenge.habits.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
-      </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
-    borderRadius: 16,
+    padding: 20,
+    borderRadius: 20,
     marginHorizontal: 20,
     marginTop: 16,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 20,
   },
   titleSection: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginRight: 12,
   },
   name: {
-    fontSize: 18,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  daysRemaining: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  streakBadgeText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#fff',
+    lineHeight: 14,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  statItem: {
+    alignItems: 'center',
     flex: 1,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+  statLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 4,
   },
-  statusText: {
+  statValue: {
+    fontSize: 28,
+    fontWeight: '700',
     color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
   },
   progressSection: {
-    marginBottom: 12,
+    marginTop: 4,
   },
-  progressInfo: {
+  progressHeader: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  dayText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  totalText: {
+  progressLabel: {
     fontSize: 14,
-    marginLeft: 4,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  progressPercent: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   progressBar: {
-    height: 6,
-    borderRadius: 3,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 3,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    marginBottom: 8,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  statLabel: {
-    fontSize: 12,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
+    borderRadius: 4,
+    backgroundColor: '#fff',
   },
 });

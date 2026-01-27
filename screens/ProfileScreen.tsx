@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -13,12 +13,12 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
 import { updateProfile } from '../redux/slices/profileSlice';
+import { removeParticipant } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
-import { RootStackParamList, UserProfile } from '../types';
+import { RootStackParamList } from '../types';
 
 type ProfileNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -30,7 +30,7 @@ export default function ProfileScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   const profile = useSelector((state: RootState) => state.profile.data);
   const participants = useSelector((state: RootState) => state.participants.data);
@@ -38,10 +38,30 @@ export default function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     fullName: profile?.fullName || '',
+    age: profile?.age?.toString() || '',
+    height: profile?.height || '',
+    weight: profile?.weight || '',
     bio: profile?.bio || '',
     city: profile?.city || '',
     state: profile?.state || '',
   });
+
+  // Set up header with Edit button
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: 'Profile',
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => setIsEditing(!isEditing)}
+          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+        >
+          <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '500' }}>
+            {isEditing ? 'Cancel' : 'Edit'}
+          </Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, colors.primary, isEditing]);
 
   const userParticipations = participants.filter(p => p.userId === user?.id);
   const totalPoints = userParticipations.reduce(
@@ -53,42 +73,43 @@ export default function ProfileScreen() {
     0,
     ...userParticipations.map(p => p.longestStreak)
   );
+  const totalDays = userParticipations.reduce(
+    (sum, p) => sum + p.daysParticipated,
+    0
+  );
 
   const handleSave = () => {
-    dispatch(updateProfile(editForm));
+    dispatch(updateProfile({
+      ...editForm,
+      age: editForm.age ? parseInt(editForm.age, 10) : undefined,
+    }));
     setIsEditing(false);
     Alert.alert('Success', 'Profile updated');
   };
 
-  const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
-    ]);
+  const handleLeaveChallenge = (participationId: string, challengeName: string) => {
+    Alert.alert(
+      'Leave Challenge',
+      `Are you sure you want to leave "${challengeName}"? Your progress will be lost.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(removeParticipant(participationId));
+          },
+        },
+      ]
+    );
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.text }]}>Profile</Text>
-          <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
-            <Text style={[styles.editButton, { color: colors.primary }]}>
-              {isEditing ? 'Cancel' : 'Edit'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Avatar */}
         <View style={styles.avatarSection}>
           <View
@@ -137,6 +158,60 @@ export default function ProfileScreen() {
               placeholder="Your name"
               placeholderTextColor={colors.textTertiary}
             />
+
+            <Text style={[styles.label, { color: colors.text }]}>Age</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              value={editForm.age}
+              onChangeText={text => setEditForm({ ...editForm, age: text })}
+              placeholder="Your age"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="number-pad"
+            />
+
+            <View style={styles.rowInputs}>
+              <View style={styles.halfInput}>
+                <Text style={[styles.label, { color: colors.text }]}>Height</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface,
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  value={editForm.height}
+                  onChangeText={text => setEditForm({ ...editForm, height: text })}
+                  placeholder="e.g. 5'10&quot;"
+                  placeholderTextColor={colors.textTertiary}
+                />
+              </View>
+              <View style={styles.halfInput}>
+                <Text style={[styles.label, { color: colors.text }]}>Weight</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface,
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  value={editForm.weight}
+                  onChangeText={text => setEditForm({ ...editForm, weight: text })}
+                  placeholder="e.g. 170 lbs"
+                  placeholderTextColor={colors.textTertiary}
+                />
+              </View>
+            </View>
 
             <Text style={[styles.label, { color: colors.text }]}>Bio</Text>
             <TextInput
@@ -197,119 +272,136 @@ export default function ProfileScreen() {
             >
               <Text style={styles.saveButtonText}>Save Changes</Text>
             </TouchableOpacity>
+
+            {/* Challenges with remove option */}
+            {userParticipations.length > 0 && (
+              <View style={styles.editChallengesSection}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Challenges
+                </Text>
+                {userParticipations.map(participation => (
+                  <View
+                    key={participation.id}
+                    style={[styles.editChallengeItem, { backgroundColor: colors.surface }]}
+                  >
+                    <View style={styles.challengeInfo}>
+                      <Text
+                        style={[styles.challengeName, { color: colors.text }]}
+                        numberOfLines={1}
+                      >
+                        {participation.challengeName || 'Challenge'}
+                      </Text>
+                      <Text style={[styles.challengeStreak, { color: colors.textSecondary }]}>
+                        {participation.totalPoints} pts • {participation.currentStreak} day streak
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.leaveButton, { borderColor: colors.error }]}
+                      onPress={() =>
+                        handleLeaveChallenge(
+                          participation.id,
+                          participation.challengeName || 'this challenge'
+                        )
+                      }
+                    >
+                      <Text style={[styles.leaveButtonText, { color: colors.error }]}>
+                        Leave
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         ) : (
           <>
-            {/* Stats */}
-            <View style={styles.statsRow}>
-              <View
-                style={[styles.statCard, { backgroundColor: colors.surface }]}
-              >
+            {/* Stats Grid */}
+            <View style={styles.statsGrid}>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
                 <Text style={[styles.statValue, { color: colors.primary }]}>
                   {totalPoints}
                 </Text>
-                <Text
-                  style={[styles.statLabel, { color: colors.textSecondary }]}
-                >
-                  Points
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Total Points
                 </Text>
               </View>
-              <View
-                style={[styles.statCard, { backgroundColor: colors.surface }]}
-              >
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
                 <Text style={[styles.statValue, { color: colors.success }]}>
                   {totalChallenges}
                 </Text>
-                <Text
-                  style={[styles.statLabel, { color: colors.textSecondary }]}
-                >
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                   Challenges
                 </Text>
               </View>
-              <View
-                style={[styles.statCard, { backgroundColor: colors.surface }]}
-              >
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
                 <Text style={[styles.statValue, { color: colors.warning }]}>
                   {longestStreak}
                 </Text>
-                <Text
-                  style={[styles.statLabel, { color: colors.textSecondary }]}
-                >
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
                   Best Streak
+                </Text>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {totalDays}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+                  Days Active
                 </Text>
               </View>
             </View>
 
-            {/* Bio */}
-            {profile?.bio && (
-              <View
-                style={[styles.bioCard, { backgroundColor: colors.surface }]}
-              >
-                <Text style={[styles.bioTitle, { color: colors.text }]}>
-                  About
-                </Text>
-                <Text style={[styles.bioText, { color: colors.textSecondary }]}>
-                  {profile.bio}
-                </Text>
-              </View>
-            )}
-
-            {/* Location */}
-            {(profile?.city || profile?.state) && (
-              <View
-                style={[styles.infoCard, { backgroundColor: colors.surface }]}
-              >
-                <Ionicons
-                  name="location-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-                <Text style={[styles.infoText, { color: colors.text }]}>
-                  {[profile.city, profile.state].filter(Boolean).join(', ')}
-                </Text>
-              </View>
-            )}
-
-            {/* Actions */}
-            <View style={styles.actions}>
-              <TouchableOpacity
-                style={[styles.actionItem, { backgroundColor: colors.surface }]}
-                onPress={() => navigation.navigate('PrivacyCenter')}
-              >
-                <Ionicons
-                  name="shield-outline"
-                  size={20}
-                  color={colors.text}
-                />
-                <Text style={[styles.actionText, { color: colors.text }]}>
-                  Privacy Settings
-                </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={colors.textTertiary}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionItem, { backgroundColor: colors.surface }]}
-                onPress={handleSignOut}
-              >
-                <Ionicons name="log-out-outline" size={20} color={colors.error} />
-                <Text style={[styles.actionText, { color: colors.error }]}>
-                  Sign Out
-                </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={colors.textTertiary}
-                />
-              </TouchableOpacity>
+            {/* Challenges */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Challenges
+              </Text>
+              {userParticipations.length > 0 ? (
+                userParticipations.map(participation => (
+                  <TouchableOpacity
+                    key={participation.id}
+                    style={[styles.challengeItem, { backgroundColor: colors.surface }]}
+                    onPress={() =>
+                      navigation.navigate('ChallengeDetail', {
+                        challengeId: participation.challengeId,
+                      })
+                    }
+                  >
+                    <View style={styles.challengeInfo}>
+                      <Text
+                        style={[styles.challengeName, { color: colors.text }]}
+                        numberOfLines={1}
+                      >
+                        {participation.challengeName || 'Challenge'}
+                      </Text>
+                      <View style={styles.challengeMeta}>
+                        <Text style={[styles.challengePoints, { color: colors.primary }]}>
+                          {participation.totalPoints} pts
+                        </Text>
+                        <Text style={[styles.challengeStreak, { color: colors.textSecondary }]}>
+                          {' '}• {participation.currentStreak} day streak
+                        </Text>
+                      </View>
+                    </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color={colors.textTertiary}
+                    />
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    No challenges yet. Join one to get started!
+                  </Text>
+                </View>
+              )}
             </View>
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -322,22 +414,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  editButton: {
-    fontSize: 16,
-    fontWeight: '500',
   },
   avatarSection: {
     alignItems: 'center',
@@ -368,63 +446,88 @@ const styles = StyleSheet.create({
   userEmail: {
     fontSize: 14,
   },
-  statsRow: {
+  statsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   statCard: {
-    flex: 1,
+    width: '47%',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
   },
-  bioCard: {
-    padding: 16,
-    borderRadius: 12,
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     marginBottom: 12,
   },
-  bioTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+  challengeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
     marginBottom: 8,
   },
-  bioText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    gap: 12,
-  },
-  infoText: {
-    fontSize: 14,
-  },
-  actions: {
-    gap: 8,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-  },
-  actionText: {
+  challengeInfo: {
     flex: 1,
+  },
+  challengeName: {
     fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  challengeMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  challengePoints: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  challengeStreak: {
+    fontSize: 14,
+  },
+  emptyState: {
+    padding: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  editChallengesSection: {
+    marginTop: 24,
+  },
+  editChallengeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  leaveButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  leaveButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   form: {
     marginTop: 12,
@@ -445,6 +548,13 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  rowInputs: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  halfInput: {
+    flex: 1,
   },
   locationRow: {
     flexDirection: 'row',

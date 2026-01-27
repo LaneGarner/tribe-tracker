@@ -1,6 +1,11 @@
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
+} from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts, Kanit_700Bold } from '@expo-google-fonts/kanit';
 import React, { useContext, useEffect, useState, useRef } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -23,7 +28,7 @@ import {
   fetchProfileFromServer,
 } from './redux/slices/profileSlice';
 import { AppDispatch, store } from './redux/store';
-import { ThemeContext, ThemeProvider } from './theme/ThemeContext';
+import { ThemeContext, ThemeProvider, getColors } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { isBackendConfigured } from './config/api';
 
@@ -101,10 +106,23 @@ function AppContent() {
     );
   }
 
+  const colors = getColors(colorScheme);
+  const navTheme = {
+    ...(colorScheme === 'dark' ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(colorScheme === 'dark' ? DarkTheme.colors : DefaultTheme.colors),
+      background: colors.background,
+      card: colors.background,
+      border: colors.border,
+      text: colors.text,
+      primary: colors.primary,
+    },
+  };
+
   return (
     <>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      <NavigationContainer>
+      <NavigationContainer theme={navTheme}>
         <RootNavigator />
       </NavigationContainer>
     </>
@@ -112,6 +130,14 @@ function AppContent() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Kanit_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Provider store={store}>
