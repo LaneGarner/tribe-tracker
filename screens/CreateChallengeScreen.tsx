@@ -25,6 +25,7 @@ import { addParticipant } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
 import { getToday, getChallengeEndDate } from '../utils/dateUtils';
+import Toggle from '../components/Toggle';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -438,19 +439,16 @@ export default function CreateChallengeScreen() {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.toggleRow}
-          onPress={() => setIsPublic(!isPublic)}
-        >
+        <View style={styles.toggleRow}>
           <Text style={[styles.toggleLabel, { color: colors.text }]}>
             Make challenge public
           </Text>
-          <Ionicons
-            name={isPublic ? 'checkbox' : 'square-outline'}
-            size={24}
-            color={isPublic ? colors.primary : colors.textTertiary}
+          <Toggle
+            value={isPublic}
+            onValueChange={setIsPublic}
+            accessibilityLabel="Toggle challenge visibility"
           />
-        </TouchableOpacity>
+        </View>
       </ScrollView>
 
       <View style={[styles.fixedButtonContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>

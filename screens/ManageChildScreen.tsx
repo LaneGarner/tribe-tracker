@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootStackParamList } from '../types';
+import Toggle from '../components/Toggle';
 
 type ManageChildRouteProp = RouteProp<RootStackParamList, 'ManageChild'>;
 type ManageChildNavigationProp = NativeStackNavigationProp<
@@ -86,15 +87,7 @@ export default function ManageChildScreen() {
             Permissions
           </Text>
 
-          <TouchableOpacity
-            style={[styles.toggleRow, { backgroundColor: colors.surface }]}
-            onPress={() =>
-              setRestrictions(r => ({
-                ...r,
-                canJoinPublicChallenges: !r.canJoinPublicChallenges,
-              }))
-            }
-          >
+          <View style={[styles.toggleRow, { backgroundColor: colors.surface }]}>
             <View style={styles.toggleInfo}>
               <Text style={[styles.toggleLabel, { color: colors.text }]}>
                 Join Public Challenges
@@ -105,27 +98,16 @@ export default function ManageChildScreen() {
                 Allow child to join public challenges
               </Text>
             </View>
-            <Ionicons
-              name={
-                restrictions.canJoinPublicChallenges
-                  ? 'checkbox'
-                  : 'square-outline'
+            <Toggle
+              value={restrictions.canJoinPublicChallenges}
+              onValueChange={value =>
+                setRestrictions(r => ({ ...r, canJoinPublicChallenges: value }))
               }
-              size={24}
-              color={
-                restrictions.canJoinPublicChallenges
-                  ? colors.primary
-                  : colors.textTertiary
-              }
+              accessibilityLabel="Toggle join public challenges"
             />
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={[styles.toggleRow, { backgroundColor: colors.surface }]}
-            onPress={() =>
-              setRestrictions(r => ({ ...r, canChat: !r.canChat }))
-            }
-          >
+          <View style={[styles.toggleRow, { backgroundColor: colors.surface }]}>
             <View style={styles.toggleInfo}>
               <Text style={[styles.toggleLabel, { color: colors.text }]}>
                 Chat Features
@@ -136,24 +118,16 @@ export default function ManageChildScreen() {
                 Allow child to use chat features
               </Text>
             </View>
-            <Ionicons
-              name={restrictions.canChat ? 'checkbox' : 'square-outline'}
-              size={24}
-              color={
-                restrictions.canChat ? colors.primary : colors.textTertiary
+            <Toggle
+              value={restrictions.canChat}
+              onValueChange={value =>
+                setRestrictions(r => ({ ...r, canChat: value }))
               }
+              accessibilityLabel="Toggle chat features"
             />
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            style={[styles.toggleRow, { backgroundColor: colors.surface }]}
-            onPress={() =>
-              setRestrictions(r => ({
-                ...r,
-                requireApproval: !r.requireApproval,
-              }))
-            }
-          >
+          <View style={[styles.toggleRow, { backgroundColor: colors.surface }]}>
             <View style={styles.toggleInfo}>
               <Text style={[styles.toggleLabel, { color: colors.text }]}>
                 Require Approval
@@ -164,16 +138,14 @@ export default function ManageChildScreen() {
                 Require parent approval for new challenges
               </Text>
             </View>
-            <Ionicons
-              name={restrictions.requireApproval ? 'checkbox' : 'square-outline'}
-              size={24}
-              color={
-                restrictions.requireApproval
-                  ? colors.primary
-                  : colors.textTertiary
+            <Toggle
+              value={restrictions.requireApproval}
+              onValueChange={value =>
+                setRestrictions(r => ({ ...r, requireApproval: value }))
               }
+              accessibilityLabel="Toggle require approval"
             />
-          </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={[styles.saveButton, { backgroundColor: colors.primary }]}

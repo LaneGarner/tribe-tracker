@@ -4,13 +4,13 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
 import { updateProfile } from '../redux/slices/profileSlice';
+import Toggle from '../components/Toggle';
 
 export default function NotificationsScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -51,11 +51,10 @@ export default function NotificationsScreen() {
                 Receive push notifications
               </Text>
             </View>
-            <Switch
+            <Toggle
               value={profile?.pushNotifications ?? false}
               onValueChange={togglePushNotifications}
-              trackColor={{ false: colors.surfaceSecondary, true: colors.primary }}
-              thumbColor="#fff"
+              accessibilityLabel="Toggle push notifications"
             />
           </View>
 
@@ -70,11 +69,10 @@ export default function NotificationsScreen() {
                 Receive email updates
               </Text>
             </View>
-            <Switch
+            <Toggle
               value={profile?.emailNotifications ?? false}
               onValueChange={toggleEmailNotifications}
-              trackColor={{ false: colors.surfaceSecondary, true: colors.primary }}
-              thumbColor="#fff"
+              accessibilityLabel="Toggle email notifications"
             />
           </View>
         </View>

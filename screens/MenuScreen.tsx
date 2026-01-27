@@ -14,6 +14,7 @@ import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { clearAllAppData } from '../utils/storage';
 import { RootStackParamList } from '../types';
+import Toggle from '../components/Toggle';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -129,29 +130,11 @@ export default function MenuScreen() {
             <Text style={[styles.menuItemText, { color: colors.text }]}>
               Dark Mode
             </Text>
-            <View
-              style={[
-                styles.toggleTrack,
-                {
-                  backgroundColor:
-                    colorScheme === 'dark'
-                      ? colors.primary
-                      : colors.surfaceSecondary,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.toggleThumb,
-                  {
-                    backgroundColor: '#fff',
-                    transform: [
-                      { translateX: colorScheme === 'dark' ? 20 : 0 },
-                    ],
-                  },
-                ]}
-              />
-            </View>
+            <Toggle
+              value={colorScheme === 'dark'}
+              onValueChange={toggleTheme}
+              accessibilityLabel="Toggle dark mode"
+            />
           </TouchableOpacity>
         </View>
 
@@ -329,17 +312,6 @@ const styles = StyleSheet.create({
   menuItemText: {
     flex: 1,
     fontSize: 16,
-  },
-  toggleTrack: {
-    width: 44,
-    height: 24,
-    borderRadius: 12,
-    padding: 2,
-  },
-  toggleThumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
   },
   signOutButton: {
     flexDirection: 'row',

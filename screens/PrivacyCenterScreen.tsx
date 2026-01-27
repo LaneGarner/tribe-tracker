@@ -5,13 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
 import { updatePrivacySettings, updateProfile } from '../redux/slices/profileSlice';
+import Toggle from '../components/Toggle';
 
 export default function PrivacyCenterScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -109,11 +109,10 @@ export default function PrivacyCenterScreen() {
                 Make profile visible to others
               </Text>
             </View>
-            <Switch
+            <Toggle
               value={profile?.profileVisible ?? true}
               onValueChange={toggleProfileVisible}
-              trackColor={{ false: colors.surfaceSecondary, true: colors.primary }}
-              thumbColor="#fff"
+              accessibilityLabel="Toggle profile visibility"
             />
           </View>
         </View>
@@ -123,10 +122,9 @@ export default function PrivacyCenterScreen() {
             Field Visibility
           </Text>
           {privacySettings.map(setting => (
-            <TouchableOpacity
+            <View
               key={setting.key}
               style={[styles.settingRow, { backgroundColor: colors.surface }]}
-              onPress={() => toggleSetting(setting.key)}
             >
               <View style={styles.settingInfo}>
                 <Text style={[styles.settingLabel, { color: colors.text }]}>
@@ -141,12 +139,12 @@ export default function PrivacyCenterScreen() {
                   {setting.description}
                 </Text>
               </View>
-              <Ionicons
-                name={setting.value ? 'checkbox' : 'square-outline'}
-                size={24}
-                color={setting.value ? colors.primary : colors.textTertiary}
+              <Toggle
+                value={setting.value}
+                onValueChange={() => toggleSetting(setting.key)}
+                accessibilityLabel={`Toggle ${setting.label}`}
               />
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
 
@@ -174,11 +172,11 @@ export default function PrivacyCenterScreen() {
                 Child accounts require adult supervision
               </Text>
             </View>
-            <Switch
+            <Toggle
               value={profile?.isChildAccount ?? false}
               onValueChange={toggleChildAccount}
-              trackColor={{ false: colors.surfaceSecondary, true: colors.warning }}
-              thumbColor="#fff"
+              variant="warning"
+              accessibilityLabel="Toggle child account"
             />
           </View>
         </View>
