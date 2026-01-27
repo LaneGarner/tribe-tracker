@@ -69,6 +69,7 @@ export default function CreateChallengeScreen() {
   const [isJoining, setIsJoining] = useState(false);
 
   const habitInputRefs = useRef<(TextInput | null)[]>([]);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
@@ -79,7 +80,8 @@ export default function CreateChallengeScreen() {
     setHabits([...habits, '']);
     setTimeout(() => {
       habitInputRefs.current[newIndex]?.focus();
-    }, 50);
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const removeHabit = (index: number) => {
@@ -319,7 +321,7 @@ export default function CreateChallengeScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollViewRef} style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Text style={[styles.label, { color: colors.text }]}>
           Challenge Name <Text style={{ color: colors.error }}>*</Text>
         </Text>
