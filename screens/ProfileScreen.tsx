@@ -1,4 +1,4 @@
-import React, { useContext, useState, useLayoutEffect } from 'react';
+import React, { useContext, useState, useLayoutEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,17 +8,20 @@ import {
   TextInput,
   Alert,
   Image,
+  Share,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
+import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
 import { updateProfile } from '../redux/slices/profileSlice';
 import { removeParticipant } from '../redux/slices/participantsSlice';
+import { deleteChallenge } from '../redux/slices/challengesSlice';
 import { useAuth } from '../context/AuthContext';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, Challenge } from '../types';
 
 type ProfileNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -34,6 +37,7 @@ export default function ProfileScreen() {
 
   const profile = useSelector((state: RootState) => state.profile.data);
   const participants = useSelector((state: RootState) => state.participants.data);
+  const challenges = useSelector((state: RootState) => state.challenges.data);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -78,6 +82,25 @@ export default function ProfileScreen() {
     0
   );
 
+  // Enrich participations with challenge data
+  const enrichedParticipations = useMemo(() => {
+    return userParticipations.map(participation => {
+      const challenge = challenges.find(c => c.id === participation.challengeId);
+      const isCreator = challenge?.creatorId === user?.id;
+      const daysLeft = challenge?.endDate
+        ? Math.max(0, dayjs(challenge.endDate).diff(dayjs(), 'day'))
+        : 0;
+      const status = challenge?.status || 'active';
+      return {
+        ...participation,
+        challenge,
+        isCreator,
+        daysLeft,
+        status,
+      };
+    });
+  }, [userParticipations, challenges, user?.id]);
+
   const handleSave = () => {
     dispatch(updateProfile({
       ...editForm,
@@ -102,6 +125,37 @@ export default function ProfileScreen() {
         },
       ]
     );
+  };
+
+  const handleDeleteChallenge = (challengeId: string, challengeName: string) => {
+    Alert.alert(
+      'Delete Challenge',
+      `Are you sure you want to delete "${challengeName}"? This will remove it for all participants.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(deleteChallenge(challengeId));
+          },
+        },
+      ]
+    );
+  };
+
+  const handleShareInvite = async (challenge: Challenge | undefined) => {
+    if (!challenge?.inviteCode) {
+      Alert.alert('No Invite Code', 'This challenge does not have an invite code.');
+      return;
+    }
+    try {
+      await Share.share({
+        message: `Join my challenge "${challenge.name}" on Tribe Tracker! Use invite code: ${challenge.inviteCode}`,
+      });
+    } catch {
+      // User cancelled share
+    }
   };
 
   return (
@@ -352,46 +406,152 @@ export default function ProfileScreen() {
             </View>
 
             {/* Challenges */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Challenges
-              </Text>
-              {userParticipations.length > 0 ? (
-                userParticipations.map(participation => (
-                  <TouchableOpacity
-                    key={participation.id}
-                    style={[styles.challengeItem, { backgroundColor: colors.surface }]}
-                    onPress={() =>
-                      navigation.navigate('ChallengeDetail', {
-                        challengeId: participation.challengeId,
-                      })
-                    }
-                  >
-                    <View style={styles.challengeInfo}>
-                      <Text
-                        style={[styles.challengeName, { color: colors.text }]}
-                        numberOfLines={1}
-                      >
-                        {participation.challengeName || 'Challenge'}
-                      </Text>
-                      <View style={styles.challengeMeta}>
-                        <Text style={[styles.challengePoints, { color: colors.primary }]}>
-                          {participation.totalPoints} pts
+            <View style={[styles.challengesCard, { backgroundColor: colors.surface }]}>
+              {/* Header */}
+              <View style={styles.challengesHeader}>
+                <Ionicons name="trophy-outline" size={20} color={colors.primary} />
+                <Text style={[styles.challengesTitle, { color: colors.text }]}>
+                  My Challenges ({enrichedParticipations.length})
+                </Text>
+              </View>
+
+              {enrichedParticipations.length > 0 ? (
+                <>
+                  <Text style={[styles.challengesSubheader, { color: colors.textSecondary }]}>
+                    Active Challenges
+                  </Text>
+                  {enrichedParticipations.map(participation => (
+                    <TouchableOpacity
+                      key={participation.id}
+                      style={[
+                        styles.challengeCard,
+                        { backgroundColor: colors.background, borderColor: colors.border },
+                      ]}
+                      onPress={() =>
+                        navigation.navigate('ChallengeDetail', {
+                          challengeId: participation.challengeId,
+                        })
+                      }
+                      activeOpacity={0.7}
+                    >
+                      {/* Challenge name and badges */}
+                      <View style={styles.challengeNameRow}>
+                        <Text
+                          style={[styles.challengeName, { color: colors.text }]}
+                          numberOfLines={1}
+                        >
+                          {participation.challengeName || 'Challenge'}
                         </Text>
-                        <Text style={[styles.challengeStreak, { color: colors.textSecondary }]}>
-                          {' '}• {participation.currentStreak} day streak
-                        </Text>
+                        <View style={[styles.badge, { backgroundColor: '#e8f5e9' }]}>
+                          <Text style={[styles.badgeText, { color: '#4caf50' }]}>
+                            {participation.status === 'active' ? 'Active' : participation.status}
+                          </Text>
+                        </View>
+                        {participation.isCreator && (
+                          <View style={[styles.badge, { backgroundColor: '#fce4ec' }]}>
+                            <Text style={[styles.badgeText, { color: '#e91e63' }]}>Creator</Text>
+                          </View>
+                        )}
                       </View>
-                    </View>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color={colors.textTertiary}
-                    />
-                  </TouchableOpacity>
-                ))
+
+                      {/* Stats row */}
+                      <View style={styles.statsRow}>
+                        <View style={styles.statItem}>
+                          <Ionicons name="trophy-outline" size={14} color={colors.textSecondary} />
+                          <Text style={[styles.statText, { color: colors.textSecondary }]}>
+                            {participation.totalPoints} pts
+                          </Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Ionicons name="flame-outline" size={14} color={colors.textSecondary} />
+                          <Text style={[styles.statText, { color: colors.textSecondary }]}>
+                            {participation.currentStreak} streak
+                          </Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                          <Text style={[styles.statText, { color: colors.textSecondary }]}>
+                            {participation.daysLeft} days left
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Action buttons */}
+                      <View style={styles.actionButtonsRow}>
+                        <TouchableOpacity
+                          style={[styles.actionButton, { borderColor: colors.primary }]}
+                          onPress={() =>
+                            navigation.navigate('TaskAnalytics', {
+                              challengeId: participation.challengeId,
+                            })
+                          }
+                        >
+                          <Ionicons name="bar-chart-outline" size={20} color={colors.primary} />
+                        </TouchableOpacity>
+
+                        {participation.isCreator ? (
+                          <>
+                            <TouchableOpacity
+                              style={[styles.actionButton, { borderColor: '#c084fc' }]}
+                              onPress={() =>
+                                navigation.navigate('CreateChallenge', {
+                                  mode: 'create',
+                                  challengeId: participation.challengeId,
+                                })
+                              }
+                            >
+                              <Ionicons name="pencil-outline" size={20} color="#a855f7" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.actionButton, { borderColor: '#4ade80' }]}
+                              onPress={() =>
+                                navigation.navigate('ChallengeDetail', {
+                                  challengeId: participation.challengeId,
+                                })
+                              }
+                            >
+                              <Ionicons name="sync-outline" size={20} color="#22c55e" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.actionButton, { borderColor: colors.primary }]}
+                              onPress={() => handleShareInvite(participation.challenge)}
+                            >
+                              <Ionicons name="mail-outline" size={20} color={colors.primary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.actionButton, styles.deleteButton]}
+                              onPress={() =>
+                                handleDeleteChallenge(
+                                  participation.challengeId,
+                                  participation.challengeName || 'this challenge'
+                                )
+                              }
+                            >
+                              <Ionicons name="trash-outline" size={20} color="#fff" />
+                            </TouchableOpacity>
+                          </>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.leaveButtonLarge, { borderColor: colors.error }]}
+                            onPress={() =>
+                              handleLeaveChallenge(
+                                participation.id,
+                                participation.challengeName || 'this challenge'
+                              )
+                            }
+                          >
+                            <Ionicons name="close" size={18} color={colors.error} />
+                            <Text style={[styles.leaveButtonLargeText, { color: colors.error }]}>
+                              Leave Challenge
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
               ) : (
-                <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
+                <View style={styles.emptyState}>
                   <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                     No challenges yet. Join one to get started!
                   </Text>
@@ -474,31 +634,97 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
   },
-  challengeItem: {
+  challengesCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  challengesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    gap: 8,
+    marginBottom: 16,
   },
-  challengeInfo: {
-    flex: 1,
+  challengesTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  challengesSubheader: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  challengeCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+  },
+  challengeNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 8,
   },
   challengeName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
   },
-  challengeMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
-  challengePoints: {
-    fontSize: 14,
+  badgeText: {
+    fontSize: 12,
     fontWeight: '500',
   },
-  challengeStreak: {
+  statsRow: {
+    flexDirection: 'row',
+    gap: 18,
+    marginBottom: 14,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statText: {
+    fontSize: 13,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  actionButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteButton: {
+    backgroundColor: '#ef5350',
+    borderColor: '#ef5350',
+  },
+  leaveButtonLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  leaveButtonLargeText: {
     fontSize: 14,
+    fontWeight: '500',
   },
   emptyState: {
     padding: 24,
@@ -518,6 +744,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
+  },
+  challengeInfo: {
+    flex: 1,
+  },
+  challengeStreak: {
+    fontSize: 14,
   },
   leaveButton: {
     paddingHorizontal: 12,
