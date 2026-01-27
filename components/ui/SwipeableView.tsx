@@ -12,6 +12,8 @@ interface SwipeableViewProps {
   onSwipeRight?: () => void;
   disabled?: boolean;
   style?: ViewStyle;
+  canSwipeLeft?: boolean;   // Whether left swipe is allowed (default true)
+  canSwipeRight?: boolean;  // Whether right swipe is allowed (default true)
 }
 
 export interface SwipeableViewRef {
@@ -28,6 +30,8 @@ const SwipeableView = forwardRef<SwipeableViewRef, SwipeableViewProps>(({
   onSwipeRight,
   disabled = false,
   style,
+  canSwipeLeft = true,
+  canSwipeRight = true,
 }, ref) => {
   const translateX = useRef(new Animated.Value(0)).current;
 
@@ -62,15 +66,32 @@ const SwipeableView = forwardRef<SwipeableViewRef, SwipeableViewProps>(({
     animateRight,
   }), [animateLeft, animateRight]);
 
-  const onGestureEvent = Animated.event(
-    [{ nativeEvent: { translationX: translateX } }],
-    { useNativeDriver: true }
+  const onGestureEvent = useCallback(
+    (event: PanGestureHandlerGestureEvent) => {
+      const { translationX: tx } = event.nativeEvent;
+
+      // Block visual feedback at boundaries
+      if (tx < 0 && !canSwipeLeft) {
+        translateX.setValue(0);
+      } else if (tx > 0 && !canSwipeRight) {
+        translateX.setValue(0);
+      } else {
+        translateX.setValue(tx);
+      }
+    },
+    [canSwipeLeft, canSwipeRight, translateX]
   );
 
   const onHandlerStateChange = useCallback(
     (event: PanGestureHandlerGestureEvent) => {
       if (event.nativeEvent.state === State.END) {
         const { translationX: tx, velocityX } = event.nativeEvent;
+
+        // If swipe was blocked, just reset without animation
+        if ((tx < 0 && !canSwipeLeft) || (tx > 0 && !canSwipeRight)) {
+          translateX.setValue(0);
+          return;
+        }
 
         const swipedRight = tx > SWIPE_THRESHOLD || velocityX > 400;
         const swipedLeft = tx < -SWIPE_THRESHOLD || velocityX < -400;
@@ -90,7 +111,7 @@ const SwipeableView = forwardRef<SwipeableViewRef, SwipeableViewProps>(({
         }
       }
     },
-    [animateLeft, animateRight, onSwipeLeft, onSwipeRight, translateX]
+    [animateLeft, animateRight, canSwipeLeft, canSwipeRight, onSwipeLeft, onSwipeRight, translateX]
   );
 
   const opacity = translateX.interpolate({

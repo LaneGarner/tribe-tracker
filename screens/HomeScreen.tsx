@@ -647,6 +647,8 @@ export default function HomeScreen() {
                 ref={swipeableRef}
                 onSwipeLeft={handleSwipeLeft}
                 onSwipeRight={handleSwipeRight}
+                canSwipeLeft={canSwipeForward}
+                canSwipeRight={canSwipeBack}
               >
               {/* Date carousel */}
               <DateCarousel
@@ -680,6 +682,8 @@ export default function HomeScreen() {
                 ref={calendarSwipeRef}
                 onSwipeLeft={handleCalendarSwipeLeft}
                 onSwipeRight={handleCalendarSwipeRight}
+                canSwipeLeft={!maxMonth || dayjs(displayMonth + '-01').add(1, 'month').format('YYYY-MM') <= maxMonth}
+                canSwipeRight={!minMonth || dayjs(displayMonth + '-01').subtract(1, 'month').format('YYYY-MM') >= minMonth}
               >
                 <ActivityCalendar
                   challenges={activeChallenges}
