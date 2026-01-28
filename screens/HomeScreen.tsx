@@ -667,9 +667,18 @@ export default function HomeScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
                 </Text>
-                <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-                  {formatDate(selectedDate, 'dddd, MMMM D')}
-                </Text>
+                <View style={styles.dateRow}>
+                  <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+                    {formatDate(selectedDate, 'dddd, MMMM D')}
+                  </Text>
+                  {!isToday(selectedDate) && (
+                    <View style={[styles.pastDayBadge, { borderColor: colors.primary }]}>
+                      <Text style={[styles.pastDayBadgeText, { color: colors.primary }]}>
+                        Editing Past Day
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <HabitChecklist
                   challenge={selectedChallenge}
                   checkin={dateCheckin}
@@ -811,10 +820,25 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100, // Extra padding for floating badge
   },
-  dateText: {
-    fontSize: 14,
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: -8,
     marginBottom: 16,
+    gap: 8,
+  },
+  dateText: {
+    fontSize: 14,
+  },
+  pastDayBadge: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  pastDayBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   selectorTitle: {
     fontSize: 16,
