@@ -326,8 +326,11 @@ export default function HomeScreen() {
 
   // Swipe handlers for date navigation
   const today = getToday();
-  const canSwipeForward = selectedDate < today;
-  const canSwipeBack = !minDateForCarousel || selectedDate > minDateForCarousel;
+  // Normalize dates to YYYY-MM-DD for consistent comparison
+  const selectedNormalized = dayjs(selectedDate).format('YYYY-MM-DD');
+  const minNormalized = minDateForCarousel ? dayjs(minDateForCarousel).format('YYYY-MM-DD') : null;
+  const canSwipeForward = selectedNormalized < today;
+  const canSwipeBack = !minNormalized || selectedNormalized > minNormalized;
 
   const handleSwipeLeft = () => {
     // Swipe left = go forward in time (next day)

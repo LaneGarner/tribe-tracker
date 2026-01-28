@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import {
   getToday,
@@ -30,8 +31,11 @@ export default function DateCarousel({
 
   const today = getToday();
   const isSelectedToday = isToday(selectedDate);
-  const canGoForward = selectedDate < today;
-  const canGoBack = !minDate || selectedDate > minDate;
+  // Normalize dates to YYYY-MM-DD for consistent comparison
+  const selectedNormalized = dayjs(selectedDate).format('YYYY-MM-DD');
+  const minNormalized = minDate ? dayjs(minDate).format('YYYY-MM-DD') : null;
+  const canGoForward = selectedNormalized < today;
+  const canGoBack = !minNormalized || selectedNormalized > minNormalized;
 
   const handlePrevious = () => {
     if (canGoBack) {
