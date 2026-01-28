@@ -90,6 +90,9 @@ export default function HomeScreen() {
   // Ref for swipeable animations
   const swipeableRef = useRef<SwipeableViewRef>(null);
   const calendarSwipeRef = useRef<SwipeableViewRef>(null);
+  const challengeSwipeRef = useRef<SwipeableViewRef>(null);
+  const pillsScrollRef = useRef<ScrollView | any>(null);
+  const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
 
   // Points badge swipe state
   const [badgeHidden, setBadgeHidden] = useState(false);
@@ -413,6 +416,42 @@ export default function HomeScreen() {
     }
   };
 
+  // Challenge carousel handlers
+  const currentChallengeIndex = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
+  const canSwipeNextChallenge = currentChallengeIndex < orderedChallenges.length - 1;
+  const canSwipePrevChallenge = currentChallengeIndex > 0;
+
+  const scrollPillIntoView = useCallback((challengeId: string) => {
+    const pos = pillPositions.current[challengeId];
+    if (pos && pillsScrollRef.current) {
+      const offset = Math.max(0, pos.x - 100);
+      // Handle both ScrollView (scrollTo) and FlatList (scrollToOffset)
+      if (pillsScrollRef.current.scrollTo) {
+        pillsScrollRef.current.scrollTo({ x: offset, animated: true });
+      } else if (pillsScrollRef.current.scrollToOffset) {
+        pillsScrollRef.current.scrollToOffset({ offset, animated: true });
+      }
+    }
+  }, []);
+
+  const handleChallengeSwipeLeft = useCallback(() => {
+    // Swipe left = go to next challenge
+    if (canSwipeNextChallenge) {
+      const nextChallenge = orderedChallenges[currentChallengeIndex + 1];
+      setSelectedChallengeId(nextChallenge.id);
+      scrollPillIntoView(nextChallenge.id);
+    }
+  }, [canSwipeNextChallenge, currentChallengeIndex, orderedChallenges, scrollPillIntoView]);
+
+  const handleChallengeSwipeRight = useCallback(() => {
+    // Swipe right = go to previous challenge
+    if (canSwipePrevChallenge) {
+      const prevChallenge = orderedChallenges[currentChallengeIndex - 1];
+      setSelectedChallengeId(prevChallenge.id);
+      scrollPillIntoView(prevChallenge.id);
+    }
+  }, [canSwipePrevChallenge, currentChallengeIndex, orderedChallenges, scrollPillIntoView]);
+
   // Get user's checkins for the calendar
   const userCheckins = useMemo(() => {
     return checkins.filter(c => c.userId === user?.id);
@@ -487,6 +526,7 @@ export default function HomeScreen() {
             {isExpoGo || !DraggableFlatList ? (
               // Expo Go: arrows inside tabs for reordering
               <ScrollView
+              ref={pillsScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.challengeSelector}
@@ -502,6 +542,12 @@ export default function HomeScreen() {
                 return (
                   <View
                     key={challenge.id}
+                    onLayout={(e) => {
+                      pillPositions.current[challenge.id] = {
+                        x: e.nativeEvent.layout.x,
+                        width: e.nativeEvent.layout.width,
+                      };
+                    }}
                     style={[
                       styles.challengeTab,
                       {
@@ -525,7 +571,10 @@ export default function HomeScreen() {
                       />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => setSelectedChallengeId(challenge.id)}
+                      onPress={() => {
+                        setSelectedChallengeId(challenge.id);
+                        scrollPillIntoView(challenge.id);
+                      }}
                       style={styles.tabTextContainer}
                     >
                       <Text
@@ -558,16 +607,23 @@ export default function HomeScreen() {
             // Production build: draggable with long press
             <View style={styles.challengeSelector}>
               <DraggableFlatList
+                ref={pillsScrollRef}
                 horizontal
                 data={orderedChallenges}
-                keyExtractor={item => item.id}
-                onDragEnd={({ data }) => saveOrder(data.map(c => c.id))}
+                keyExtractor={(item: Challenge) => item.id}
+                onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.challengeSelectorContent}
                 renderItem={({ item: challenge, drag, isActive }: any) => {
                   const isSelected = selectedChallengeId === challenge.id;
                   const content = (
                     <TouchableOpacity
+                      onLayout={(e) => {
+                        pillPositions.current[challenge.id] = {
+                          x: e.nativeEvent.layout.x,
+                          width: e.nativeEvent.layout.width,
+                        };
+                      }}
                       onLongPress={drag}
                       delayLongPress={150}
                       disabled={isActive}
@@ -581,7 +637,10 @@ export default function HomeScreen() {
                           opacity: isActive ? 0.9 : 1,
                         },
                       ]}
-                      onPress={() => setSelectedChallengeId(challenge.id)}
+                      onPress={() => {
+                        setSelectedChallengeId(challenge.id);
+                        scrollPillIntoView(challenge.id);
+                      }}
                     >
                       <Text
                         style={[
@@ -619,30 +678,39 @@ export default function HomeScreen() {
           </>
         ) : selectedChallenge ? (
           <>
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('ChallengeDetail', {
-                  challengeId: selectedChallenge.id,
-                })
-              }
+            <SwipeableView
+              ref={challengeSwipeRef}
+              onSwipeLeft={handleChallengeSwipeLeft}
+              onSwipeRight={handleChallengeSwipeRight}
+              canSwipeLeft={canSwipeNextChallenge}
+              canSwipeRight={canSwipePrevChallenge}
             >
-              <ChallengeCard
-                challenge={selectedChallenge}
-                participation={userParticipation}
-              />
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('ChallengeDetail', {
+                    challengeId: selectedChallenge.id,
+                  })
+                }
+                activeOpacity={0.9}
+              >
+                <ChallengeCard
+                  challenge={selectedChallenge}
+                  participation={userParticipation}
+                />
+              </TouchableOpacity>
 
-            {/* Leaderboard Link */}
-            <TouchableOpacity
-              style={styles.leaderboardLink}
-              onPress={() => navigation.navigate('Leaderboard', { challengeId: selectedChallengeId || undefined })}
-            >
-              <Ionicons name="trophy-outline" size={16} color={colors.primary} />
-              <Text style={[styles.leaderboardLinkText, { color: colors.primary }]}>
-                View Leaderboard
-              </Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.primary} />
-            </TouchableOpacity>
+              {/* Leaderboard Link */}
+              <TouchableOpacity
+                style={styles.leaderboardLink}
+                onPress={() => navigation.navigate('Leaderboard', { challengeId: selectedChallengeId || undefined })}
+              >
+                <Ionicons name="trophy-outline" size={16} color={colors.primary} />
+                <Text style={[styles.leaderboardLinkText, { color: colors.primary }]}>
+                  View Leaderboard
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+              </TouchableOpacity>
+            </SwipeableView>
 
             {/* Swipeable date section */}
             <View style={styles.dateSection}>
