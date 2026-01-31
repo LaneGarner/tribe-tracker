@@ -1,15 +1,20 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Crown, Medal, Award, Trophy, Flame } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSelector } from 'react-redux';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
-import { ChallengeParticipant } from '../../types';
+import { RootState } from '../../redux/store';
+import { ChallengeParticipant, HabitCheckin } from '../../types';
+import { calculateActiveStreak } from '../../utils/streakUtils';
 
 interface LeaderboardProps {
   participants: ChallengeParticipant[];
   currentUserId?: string;
   onParticipantPress?: (participant: ChallengeParticipant) => void;
   showPodium?: boolean;
+  challengeId?: string;
+  challengeStartDate?: string;
 }
 
 const PODIUM_COLORS = {
@@ -37,9 +42,33 @@ export default function Leaderboard({
   currentUserId,
   onParticipantPress,
   showPodium = true,
+  challengeId,
+  challengeStartDate,
 }: LeaderboardProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+
+  // Get all checkins for this challenge to calculate active streaks
+  const checkins = useSelector((state: RootState) =>
+    challengeId
+      ? state.checkins.data.filter(
+          c => c.challengeId === challengeId &&
+            (!challengeStartDate || c.checkinDate >= challengeStartDate)
+        )
+      : []
+  );
+
+  // Build a map of userId -> active streak
+  const streaksByUserId = useMemo(() => {
+    const map: Record<string, number> = {};
+    participants.forEach(p => {
+      const userCheckinDates = checkins
+        .filter(c => c.userId === p.userId)
+        .map(c => c.checkinDate);
+      map[p.userId] = calculateActiveStreak(userCheckinDates);
+    });
+    return map;
+  }, [participants, checkins]);
 
   const sortedParticipants = [...participants].sort(
     (a, b) => b.totalPoints - a.totalPoints
@@ -320,7 +349,7 @@ export default function Leaderboard({
                   >
                     {participant.totalPoints} pts
                   </Text>
-                  {participant.currentStreak > 0 && (
+                  {(streaksByUserId[participant.userId] ?? participant.currentStreak) > 0 && (
                     <>
                       <Text
                         style={[styles.statDot, { color: colors.textTertiary }]}
@@ -334,7 +363,7 @@ export default function Leaderboard({
                           { color: colors.textSecondary },
                         ]}
                       >
-                        {participant.currentStreak} day streak
+                        {streaksByUserId[participant.userId] ?? participant.currentStreak} day streak
                       </Text>
                     </>
                   )}

@@ -13,7 +13,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { Trophy, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Trophy } from 'lucide-react-native';
 
 // Check if running in Expo Go vs a build
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -39,6 +39,7 @@ import { isBackendConfigured } from '../config/api';
 import { RootStackParamList, TabParamList, Challenge } from '../types';
 import { getChallengeStatus } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
+import ChallengeChip from '../components/challenge/ChallengeChip';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
@@ -249,135 +250,72 @@ export default function LeaderboardScreen() {
                 : 'Hold and drag to reorder'}
             </Text>
             {isExpoGo || !DraggableFlatList ? (
-              // Expo Go: arrows inside tabs for reordering
+              // Expo Go: arrows inside chips for reordering
               <ScrollView
-              ref={pillsScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.challengeSelector}
-              contentContainerStyle={styles.challengeSelectorContent}
-            >
-              {orderedChallenges.map((challenge, index) => {
-                const isSelected = selectedChallengeId === challenge.id;
-                const isFirst = index === 0;
-                const isLast = index === orderedChallenges.length - 1;
-                const arrowColor = isSelected ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
-                const disabledColor = isSelected ? 'rgba(255,255,255,0.25)' : colors.border;
-
-                return (
-                  <View
+                ref={pillsScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.challengeSelector}
+                contentContainerStyle={styles.challengeSelectorContent}
+              >
+                {orderedChallenges.map((challenge, index) => (
+                  <ChallengeChip
                     key={challenge.id}
+                    name={challenge.name}
+                    isSelected={selectedChallengeId === challenge.id}
+                    onPress={() => {
+                      setSelectedChallengeId(challenge.id);
+                      scrollPillIntoView(challenge.id, index);
+                    }}
                     onLayout={(e) => {
                       pillPositions.current[challenge.id] = {
                         x: e.nativeEvent.layout.x,
                         width: e.nativeEvent.layout.width,
                       };
                     }}
-                    style={[
-                      styles.challengeTab,
-                      {
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: isSelected
-                          ? colors.primary
-                          : colors.surface,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                  >
-                    <TouchableOpacity
-                      onPress={() => !isFirst && moveChallengeLeft(challenge.id)}
-                      disabled={isFirst}
-                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                    >
-                      <ChevronLeft
-                        size={14}
-                        color={isFirst ? disabledColor : arrowColor}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setSelectedChallengeId(challenge.id);
-                        scrollPillIntoView(challenge.id, index);
-                      }}
-                      style={styles.tabTextContainer}
-                    >
-                      <Text
-                        style={[
-                          styles.challengeTabText,
-                          {
-                            color: isSelected ? '#fff' : colors.text,
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {challenge.name}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => !isLast && moveChallengeRight(challenge.id)}
-                      disabled={isLast}
-                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                    >
-                      <ChevronRight
-                        size={14}
-                        color={isLast ? disabledColor : arrowColor}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          ) : (
+                    showArrows
+                    onMoveLeft={() => moveChallengeLeft(challenge.id)}
+                    onMoveRight={() => moveChallengeRight(challenge.id)}
+                    isFirst={index === 0}
+                    isLast={index === orderedChallenges.length - 1}
+                  />
+                ))}
+              </ScrollView>
+            ) : (
             // Production build: draggable with long press
-            <View style={styles.challengeSelector}>
-              <DraggableFlatList
-                ref={pillsScrollRef}
-                horizontal
-                data={orderedChallenges}
-                keyExtractor={item => item.id}
-                onDragEnd={({ data }) => saveOrder(data.map(c => c.id))}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.challengeSelectorContent}
-                renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
-                  const isSelected = selectedChallengeId === challenge.id;
-                  const content = (
-                    <TouchableOpacity
-                      onLongPress={drag}
-                      delayLongPress={150}
-                      disabled={isActive}
-                      style={[
-                        styles.challengeTab,
-                        {
-                          backgroundColor: isSelected
-                            ? colors.primary
-                            : colors.surface,
-                          borderColor: colors.border,
-                          opacity: isActive ? 0.9 : 1,
-                        },
-                      ]}
-                      onPress={() => {
-                        setSelectedChallengeId(challenge.id);
-                        scrollPillIntoView(challenge.id, getIndex() ?? 0);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.challengeTabText,
-                          {
-                            color: isSelected ? '#fff' : colors.text,
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {challenge.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                  return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
-                }}
-              />
-            </View>
+              <View style={styles.challengeSelector}>
+                <DraggableFlatList
+                  ref={pillsScrollRef}
+                  horizontal
+                  data={orderedChallenges}
+                  keyExtractor={(item: Challenge) => item.id}
+                  onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.challengeSelectorContent}
+                  renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
+                    const isSelected = selectedChallengeId === challenge.id;
+                    const content = (
+                      <ChallengeChip
+                        name={challenge.name}
+                        isSelected={isSelected}
+                        onPress={() => {
+                          setSelectedChallengeId(challenge.id);
+                          scrollPillIntoView(challenge.id, getIndex() ?? 0);
+                        }}
+                        onLongPress={drag}
+                        disabled={isActive}
+                        onLayout={(e) => {
+                          pillPositions.current[challenge.id] = {
+                            x: e.nativeEvent.layout.x,
+                            width: e.nativeEvent.layout.width,
+                          };
+                        }}
+                      />
+                    );
+                    return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
+                  }}
+                />
+              </View>
             )}
           </>
         )}
@@ -438,6 +376,8 @@ export default function LeaderboardScreen() {
               onParticipantPress={participant =>
                 navigation.navigate('ViewMember', { userId: participant.userId })
               }
+              challengeId={selectedChallenge?.id}
+              challengeStartDate={selectedChallenge?.startDate}
             />
           </SwipeableView>
         ) : (
@@ -483,22 +423,6 @@ const styles = StyleSheet.create({
   },
   challengeSelectorContent: {
     paddingHorizontal: 16,
-    gap: 4,
-  },
-  challengeTab: {
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 2,
-    gap: 2,
-  },
-  tabTextContainer: {
-    paddingHorizontal: 4,
-  },
-  challengeTabText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   selectedChallengeHeader: {
     paddingHorizontal: 16,

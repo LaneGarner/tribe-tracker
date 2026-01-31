@@ -1,14 +1,18 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSelector } from 'react-redux';
+import { createSelector } from '@reduxjs/toolkit';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
+import { RootState } from '../../redux/store';
 import { Challenge, ChallengeParticipant } from '../../types';
 import {
   getChallengeStatus,
   getCurrentChallengeDay,
   getDaysRemaining,
 } from '../../utils/dateUtils';
+import { calculateActiveStreak } from '../../utils/streakUtils';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -24,6 +28,27 @@ export default function ChallengeCard({
 }: ChallengeCardProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+
+  // Get checkins for this participant to calculate active streak
+  const selectCheckinDates = useMemo(
+    () =>
+      createSelector(
+        [(state: RootState) => state.checkins.data],
+        checkins =>
+          checkins
+            .filter(
+              c =>
+                c.challengeId === challenge.id &&
+                c.userId === participation?.userId &&
+                c.checkinDate >= challenge.startDate
+            )
+            .map(c => c.checkinDate)
+      ),
+    [challenge.id, challenge.startDate, participation?.userId]
+  );
+
+  const checkinDates = useSelector(selectCheckinDates);
+  const activeStreak = calculateActiveStreak(checkinDates);
 
   const status = getChallengeStatus(
     challenge.startDate,
@@ -62,7 +87,7 @@ export default function ChallengeCard({
           <View style={styles.streakBadge}>
             <Ionicons name="flame" size={16} color="#fff" />
             <Text style={styles.streakBadgeText}>
-              {participation.currentStreak} day{'\n'}streak
+              {activeStreak} day{'\n'}streak
             </Text>
           </View>
         )}

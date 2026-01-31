@@ -22,6 +22,7 @@ import { removeParticipant, makeSelectParticipantsByUserId } from '../redux/slic
 import { deleteChallenge } from '../redux/slices/challengesSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge } from '../types';
+import { calculateActiveStreak } from '../utils/streakUtils';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 type ProfileNavigationProp = NativeStackNavigationProp<
@@ -44,6 +45,7 @@ export default function ProfileScreen() {
 
   const profile = useSelector((state: RootState) => state.profile.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
+  const checkins = useSelector((state: RootState) => state.checkins.data);
 
   // For viewing other users, use memoized selector
   const selectParticipantsByUserId = useMemo(makeSelectParticipantsByUserId, []);
@@ -110,7 +112,7 @@ export default function ProfileScreen() {
     0
   );
 
-  // Enrich participations with challenge data
+  // Enrich participations with challenge data and calculate active streaks
   const enrichedParticipations = useMemo(() => {
     return userParticipations.map(participation => {
       const challenge = challenges.find(c => c.id === participation.challengeId);
@@ -119,15 +121,28 @@ export default function ProfileScreen() {
         ? Math.max(0, dayjs(challenge.endDate).diff(dayjs(), 'day'))
         : 0;
       const status = challenge?.status || 'active';
+
+      // Calculate active streak from checkin data
+      const participantCheckinDates = checkins
+        .filter(
+          c =>
+            c.challengeId === participation.challengeId &&
+            c.userId === participation.userId &&
+            (!challenge?.startDate || c.checkinDate >= challenge.startDate)
+        )
+        .map(c => c.checkinDate);
+      const activeStreak = calculateActiveStreak(participantCheckinDates);
+
       return {
         ...participation,
         challenge,
         isCreator,
         daysLeft,
         status,
+        activeStreak,
       };
     });
-  }, [userParticipations, challenges, targetUserId]);
+  }, [userParticipations, challenges, targetUserId, checkins]);
 
   const handleSave = () => {
     dispatch(updateProfile({
@@ -364,12 +379,12 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Challenges with remove option */}
-            {userParticipations.length > 0 && (
+            {enrichedParticipations.length > 0 && (
               <View style={styles.editChallengesSection}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   Challenges
                 </Text>
-                {userParticipations.map(participation => (
+                {enrichedParticipations.map(participation => (
                   <View
                     key={participation.id}
                     style={[styles.editChallengeItem, { backgroundColor: colors.surface }]}
@@ -382,7 +397,7 @@ export default function ProfileScreen() {
                         {participation.challengeName || 'Challenge'}
                       </Text>
                       <Text style={[styles.challengeStreak, { color: colors.textSecondary }]}>
-                        {participation.totalPoints} pts • {participation.currentStreak} day streak
+                        {participation.totalPoints} pts • {participation.activeStreak} day streak
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -503,7 +518,7 @@ export default function ProfileScreen() {
                         <View style={styles.statItem}>
                           <Ionicons name="flame-outline" size={14} color={colors.textSecondary} />
                           <Text style={[styles.statText, { color: colors.textSecondary }]}>
-                            {participation.currentStreak} streak
+                            {participation.activeStreak} streak
                           </Text>
                         </View>
                         <View style={styles.statItem}>

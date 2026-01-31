@@ -12,6 +12,7 @@ import { updateParticipantStats } from '../../redux/slices/participantsSlice';
 import { useAuth } from '../../context/AuthContext';
 import { Challenge, HabitCheckin, ChallengeParticipant } from '../../types';
 import { getToday, isToday, isPast } from '../../utils/dateUtils';
+import { calculateActiveStreak } from '../../utils/streakUtils';
 
 interface HabitChecklistProps {
   challenge: Challenge;
@@ -84,27 +85,15 @@ export default function HabitChecklist({
       // Calculate days participated (unique checkin dates from valid checkins)
       const daysParticipated = new Set(validCheckins.map(c => c.checkinDate)).size;
 
-      // Calculate current streak from valid checkins
-      const sortedDates = [...new Set(validCheckins.map(c => c.checkinDate))].sort().reverse();
-      let currentStreak = 0;
-      const today = getToday();
-
-      for (let i = 0; i < sortedDates.length; i++) {
-        const expectedDate = new Date(today);
-        expectedDate.setDate(expectedDate.getDate() - i);
-        const expectedDateStr = expectedDate.toISOString().split('T')[0];
-
-        if (sortedDates[i] === expectedDateStr) {
-          currentStreak++;
-        } else {
-          break;
-        }
-      }
+      // Calculate current streak using shared utility
+      const checkinDates = validCheckins.map(c => c.checkinDate);
+      const currentStreak = calculateActiveStreak(checkinDates);
 
       // Get longest streak (simplified - just use current if it's larger)
       const longestStreak = Math.max(currentStreak, participant.longestStreak || 0);
 
       // Get last checkin date
+      const sortedDates = [...new Set(checkinDates)].sort().reverse();
       const lastCheckinDate = sortedDates[0] || participant.lastCheckinDate;
 
       const statsPayload = {
@@ -113,7 +102,7 @@ export default function HabitChecklist({
         currentStreak,
         longestStreak,
         daysParticipated,
-        lastCheckinDate: lastCheckinDate || today,
+        lastCheckinDate: lastCheckinDate || getToday(),
       };
       console.log('[HabitChecklist] Dispatching updateParticipantStats:', statsPayload);
       dispatch(updateParticipantStats(statsPayload));

@@ -364,6 +364,8 @@ export default function ChallengeDetailScreen() {
               navigation.navigate('ViewMember', { userId: participant.userId })
             }
             showPodium={false}
+            challengeId={challenge?.id}
+            challengeStartDate={challenge?.startDate}
           />
         </View>
       </ScrollView>
