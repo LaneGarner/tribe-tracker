@@ -17,7 +17,7 @@ import { clearAllAppData } from '../utils/storage';
 import { RootStackParamList } from '../types';
 import { RootState } from '../redux/store';
 import Toggle from '../components/Toggle';
-import { TAB_BAR_HEIGHT } from '../navigation/TabNavigator';
+import { TAB_BAR_HEIGHT } from '../constants/layout';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 

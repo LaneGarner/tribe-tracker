@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { PublicChallengeListSkeleton } from '../components/challenge/PublicChallengeCardSkeleton';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -20,14 +21,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { AppDispatch, RootState } from '../redux/store';
-import { addChallenge, updateChallenge, fetchPublicChallenges } from '../redux/slices/challengesSlice';
+import { addChallenge, updateChallenge, fetchPublicChallenges, loadChallengesFromStorage } from '../redux/slices/challengesSlice';
+import { isBackendConfigured } from '../config/api';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
 import { getToday, getChallengeEndDate } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
 import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
-import { TAB_BAR_HEIGHT } from '../navigation/TabNavigator';
+import { TAB_BAR_HEIGHT } from '../constants/layout';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -88,6 +90,17 @@ export default function CreateChallengeScreen() {
   }>({});
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await dispatch(loadChallengesFromStorage());
+    const token = getAccessToken();
+    if (token && isBackendConfigured()) {
+      await dispatch(fetchPublicChallenges(token));
+    }
+    setRefreshing(false);
+  };
 
   const habitInputRefs = useRef<(TextInput | null)[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -594,6 +607,11 @@ export default function CreateChallengeScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          mode === 'browse' ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          ) : undefined
+        }
       >
         {mode === 'browse' && renderBrowse()}
         {mode === 'join' && renderJoin()}
@@ -614,7 +632,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: TAB_BAR_HEIGHT,
+    paddingBottom: TAB_BAR_HEIGHT + 32,
   },
   header: {
     flexDirection: 'row',

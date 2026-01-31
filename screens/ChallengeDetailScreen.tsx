@@ -8,6 +8,7 @@ import {
   Share,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,6 +28,7 @@ import {
   getDaysBetween,
 } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
+import { isBackendConfigured } from '../config/api';
 
 type ChallengeDetailRouteProp = RouteProp<RootStackParamList, 'ChallengeDetail'>;
 type ChallengeDetailNavigationProp = NativeStackNavigationProp<
@@ -153,6 +155,15 @@ export default function ChallengeDetailScreen() {
   const userParticipation = participants.find(p => p.userId === user?.id);
   const isJoined = Boolean(userParticipation);
   const [isJoining, setIsJoining] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (session?.access_token && isBackendConfigured()) {
+      await dispatch(fetchParticipantsFromServer(session.access_token));
+    }
+    setRefreshing(false);
+  };
 
   if (!challenge) {
     return (
@@ -215,6 +226,9 @@ export default function ChallengeDetailScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Challenge Info */}
         <View style={styles.challengeInfo}>

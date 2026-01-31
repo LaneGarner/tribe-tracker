@@ -53,7 +53,7 @@ import DateCarousel from '../components/ui/DateCarousel';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import Skeleton from '../components/ui/Skeleton';
 import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCalendar';
-import { TAB_BAR_HEIGHT } from '../navigation/TabNavigator';
+import { TAB_BAR_HEIGHT } from '../constants/layout';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 
@@ -680,6 +680,7 @@ export default function HomeScreen() {
                 <ChallengeCard
                   challenge={selectedChallenge}
                   participation={userParticipation}
+                  allParticipants={participants.filter(p => p.challengeId === selectedChallengeId)}
                 />
               </TouchableOpacity>
 
@@ -938,7 +939,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // Extra padding for floating badge
+    paddingBottom: TAB_BAR_HEIGHT + 32, // Extra padding for floating badge
   },
   dateRow: {
     flexDirection: 'row',

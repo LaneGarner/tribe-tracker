@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import React, { useContext, useEffect, useRef } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -19,6 +19,7 @@ import LeaderboardScreen from '../screens/LeaderboardScreen';
 import MenuScreen from '../screens/MenuScreen';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { TabParamList } from '../types';
+import { TAB_BAR_HEIGHT } from '../constants/layout';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -41,9 +42,8 @@ const VELOCITY_THRESHOLD = 500;
 const HORIZONTAL_MARGIN = 32;
 const TAB_BAR_PADDING = 0;
 const SELECTION_PILL_PADDING = 6;
+const SELECTION_PILL_HORIZONTAL_INSET = 4;
 
-// Exported constant for screens to use as bottom padding
-export const TAB_BAR_HEIGHT = 80;
 
 // Selection indicator component for the floating pill
 const SelectionIndicator = ({
@@ -84,6 +84,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   // Track tab widths and positions for the sliding indicator
   const tabWidths = useRef<number[]>([]);
   const tabPositions = useRef<number[]>([]);
+  const [indicatorReady, setIndicatorReady] = useState(false);
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
 
@@ -98,8 +99,8 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   // Calculate and animate indicator position when tab changes
   useEffect(() => {
     if (tabPositions.current.length > state.index && tabWidths.current.length > state.index) {
-      const targetX = tabPositions.current[state.index];
-      const targetWidth = tabWidths.current[state.index];
+      const targetX = tabPositions.current[state.index] + SELECTION_PILL_HORIZONTAL_INSET;
+      const targetWidth = tabWidths.current[state.index] - SELECTION_PILL_HORIZONTAL_INSET * 2;
 
       indicatorX.value = withTiming(targetX, TIMING_CONFIG);
       indicatorWidth.value = withTiming(targetWidth, TIMING_CONFIG);
@@ -133,21 +134,27 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
     tabPositions.current[index] = x;
     tabWidths.current[index] = width;
 
-    // Initialize indicator position for the first tab
-    if (index === state.index && indicatorWidth.value === 0) {
-      indicatorX.value = x;
-      indicatorWidth.value = width;
+    // Initialize indicator position for the initial selected tab (only once)
+    // Set values immediately, then show indicator on next frame to ensure layout is settled
+    if (index === state.index && !indicatorReady) {
+      indicatorX.value = x + SELECTION_PILL_HORIZONTAL_INSET;
+      indicatorWidth.value = width - SELECTION_PILL_HORIZONTAL_INSET * 2;
+      requestAnimationFrame(() => {
+        setIndicatorReady(true);
+      });
     }
   };
 
   const TabBarContent = () => (
     <View style={styles.tabBarContent}>
-      {/* Animated selection indicator */}
-      <SelectionIndicator
-        indicatorStyle={indicatorStyle}
-        colors={colors}
-        colorScheme={colorScheme}
-      />
+      {/* Animated selection indicator - only render when initialized */}
+      {indicatorReady && (
+        <SelectionIndicator
+          indicatorStyle={indicatorStyle}
+          colors={colors}
+          colorScheme={colorScheme}
+        />
+      )}
 
       {/* Tab buttons */}
       {state.routes.map((route, index) => {

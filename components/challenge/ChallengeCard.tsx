@@ -17,6 +17,13 @@ import { calculateActiveStreak } from '../../utils/streakUtils';
 interface ChallengeCardProps {
   challenge: Challenge;
   participation?: ChallengeParticipant;
+  allParticipants?: ChallengeParticipant[];
+}
+
+function getOrdinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 // Default gradient - cyan/teal blue
@@ -25,6 +32,7 @@ const DEFAULT_GRADIENT = ['#00B4DB', '#0083B0'];
 export default function ChallengeCard({
   challenge,
   participation,
+  allParticipants,
 }: ChallengeCardProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -49,6 +57,14 @@ export default function ChallengeCard({
 
   const checkinDates = useSelector(selectCheckinDates);
   const activeStreak = calculateActiveStreak(checkinDates);
+
+  // Calculate user's rank among all participants
+  const userRank = useMemo(() => {
+    if (!allParticipants || !participation) return null;
+    const sorted = [...allParticipants].sort((a, b) => b.totalPoints - a.totalPoints);
+    const index = sorted.findIndex(p => p.userId === participation.userId);
+    return index >= 0 ? index + 1 : null;
+  }, [allParticipants, participation]);
 
   const status = getChallengeStatus(
     challenge.startDate,
@@ -108,6 +124,12 @@ export default function ChallengeCard({
             <Text style={styles.statLabel}>Days Active</Text>
             <Text style={styles.statValue}>{participation.daysParticipated}</Text>
           </View>
+          {userRank !== null && (
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>My Rank</Text>
+              <Text style={styles.statValue}>{getOrdinal(userRank)}</Text>
+            </View>
+          )}
         </View>
       )}
 

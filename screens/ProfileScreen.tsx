@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
   Share,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,9 +18,10 @@ import { useSelector, useDispatch } from 'react-redux';
 import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { updateProfile } from '../redux/slices/profileSlice';
-import { removeParticipant, makeSelectParticipantsByUserId } from '../redux/slices/participantsSlice';
-import { deleteChallenge } from '../redux/slices/challengesSlice';
+import { updateProfile, loadProfileFromStorage, fetchProfileFromServer } from '../redux/slices/profileSlice';
+import { removeParticipant, makeSelectParticipantsByUserId, loadParticipantsFromStorage, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
+import { deleteChallenge, loadChallengesFromStorage, fetchChallengesFromServer } from '../redux/slices/challengesSlice';
+import { isBackendConfigured } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge } from '../types';
 import { calculateActiveStreak } from '../utils/streakUtils';
@@ -36,7 +38,7 @@ export default function ProfileScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
   // Determine if viewing own profile or another user's
   const { userId } = route.params ?? {};
@@ -68,6 +70,7 @@ export default function ProfileScreen() {
   }, [isOwnProfile, participants, targetUserId]);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [editForm, setEditForm] = useState({
     fullName: profile?.fullName || '',
     age: profile?.age?.toString() || '',
@@ -77,6 +80,23 @@ export default function ProfileScreen() {
     city: profile?.city || '',
     state: profile?.state || '',
   });
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      dispatch(loadProfileFromStorage()),
+      dispatch(loadChallengesFromStorage()),
+      dispatch(loadParticipantsFromStorage()),
+    ]);
+    if (session?.access_token && isBackendConfigured()) {
+      await Promise.all([
+        dispatch(fetchProfileFromServer(session.access_token)),
+        dispatch(fetchChallengesFromServer(session.access_token)),
+        dispatch(fetchParticipantsFromServer(session.access_token)),
+      ]);
+    }
+    setRefreshing(false);
+  };
 
   // Set up header with Edit button (only for own profile)
   useLayoutEffect(() => {
@@ -204,6 +224,9 @@ export default function ProfileScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
         {/* Avatar */}
         <View style={styles.avatarSection}>
