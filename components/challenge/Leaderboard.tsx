@@ -49,14 +49,14 @@ export default function Leaderboard({
   const colors = getColors(colorScheme);
 
   // Get all checkins for this challenge to calculate active streaks
-  const checkins = useSelector((state: RootState) =>
-    challengeId
-      ? state.checkins.data.filter(
-          c => c.challengeId === challengeId &&
-            (!challengeStartDate || c.checkinDate >= challengeStartDate)
-        )
-      : []
-  );
+  const allCheckins = useSelector((state: RootState) => state.checkins.data);
+  const checkins = useMemo(() => {
+    if (!challengeId) return [];
+    return allCheckins.filter(
+      c => c.challengeId === challengeId &&
+        (!challengeStartDate || c.checkinDate >= challengeStartDate)
+    );
+  }, [allCheckins, challengeId, challengeStartDate]);
 
   // Build a map of userId -> active streak
   const streaksByUserId = useMemo(() => {
