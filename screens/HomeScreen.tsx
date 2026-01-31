@@ -545,9 +545,6 @@ export default function HomeScreen() {
             }}
           >
             <View style={styles.selectorHeader}>
-              <Text style={[styles.selectorTitle, { color: colors.text }]}>
-                Challenges
-              </Text>
               <View ref={helpButtonRef}>
                 <TouchableOpacity
                   onPress={() => {
@@ -558,8 +555,8 @@ export default function HomeScreen() {
                         // When sticky, measureInWindow can return incorrect Y values
                         // Use a minimum Y based on where the sticky header actually appears
                         const isSticky = scrollOffsetRef.current > carouselLayoutYRef.current;
-                        // When sticky: safe area + collapsed header (70) + selectorHeader marginTop (16)
-                        const minStickyY = insets.top + 70 + 16;
+                        // When sticky: safe area + collapsed header height (30)
+                        const minStickyY = insets.top + 30;
                         const correctedY = isSticky ? Math.max(buttonY, minStickyY) : buttonY;
                         setHelpButtonPosition({ x: buttonX, y: correctedY, width: buttonWidth, height: buttonHeight });
                         setShowHelpTooltip(true);
@@ -574,6 +571,9 @@ export default function HomeScreen() {
                   <Ionicons name="help-circle-outline" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
+              <Text style={[styles.selectorTitle, { color: colors.text }]}>
+                Challenges
+              </Text>
             </View>
             {isExpoGo || !DraggableFlatList ? (
               // Expo Go: arrows inside chips for reordering
@@ -853,7 +853,7 @@ export default function HomeScreen() {
       {/* Help Tooltip - positioned based on help button */}
       {showHelpTooltip && helpButtonPosition && (() => {
         const tooltipWidth = 260;
-        const arrowSize = 10;
+        const arrowSize = 8;
         const buttonCenterX = helpButtonPosition.x + helpButtonPosition.width / 2;
         const tooltipLeft = Math.max(16, Math.min(buttonCenterX - 40, 400 - tooltipWidth - 16));
         const arrowLeft = buttonCenterX - tooltipLeft - arrowSize;
@@ -971,7 +971,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   helpButton: {
-    marginLeft: 6,
+    marginRight: 6,
     padding: 2,
   },
   tooltipBackdrop: {
@@ -1008,12 +1008,12 @@ const styles = StyleSheet.create({
   },
   helpTooltipArrow: {
     position: 'absolute',
-    top: -10,
+    top: -8,
     width: 0,
     height: 0,
-    borderLeftWidth: 10,
-    borderRightWidth: 10,
-    borderBottomWidth: 10,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
     borderBottomColor: '#1F2937',
