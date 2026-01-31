@@ -546,7 +546,7 @@ export default function HomeScreen() {
           >
             <View style={styles.selectorHeader}>
               <Text style={[styles.selectorTitle, { color: colors.text }]}>
-                Active Challenges
+                Challenges
               </Text>
               <View ref={helpButtonRef}>
                 <TouchableOpacity
@@ -697,6 +697,25 @@ export default function HomeScreen() {
 
             {/* Swipeable date section */}
             <View style={styles.dateSection}>
+              {/* Habits header and date - fixed above swipeable content */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
+                </Text>
+                <View style={styles.dateRow}>
+                  <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+                    {formatDate(selectedDate, 'dddd, MMMM D')}
+                  </Text>
+                  {!isToday(selectedDate) && (
+                    <View style={[styles.pastDayBadge, { borderColor: colors.primary }]}>
+                      <Text style={[styles.pastDayBadgeText, { color: colors.primary }]}>
+                        Editing Past Day
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
               <SwipeableView
                 ref={swipeableRef}
                 onSwipeLeft={handleSwipeLeft}
@@ -714,22 +733,7 @@ export default function HomeScreen() {
               />
 
               {/* Habits checklist */}
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
-                </Text>
-                <View style={styles.dateRow}>
-                  <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-                    {formatDate(selectedDate, 'dddd, MMMM D')}
-                  </Text>
-                  {!isToday(selectedDate) && (
-                    <View style={[styles.pastDayBadge, { borderColor: colors.primary }]}>
-                      <Text style={[styles.pastDayBadgeText, { color: colors.primary }]}>
-                        Editing Past Day
-                      </Text>
-                    </View>
-                  )}
-                </View>
+              <View style={styles.habitListSection}>
                 <HabitChecklist
                   challenge={selectedChallenge}
                   checkin={dateCheckin}
@@ -741,6 +745,9 @@ export default function HomeScreen() {
 
             {/* Activity Calendar */}
             <View style={styles.calendarSection}>
+              <Text style={[styles.sectionTitle, styles.calendarSectionTitle, { color: colors.text }]}>
+                Calendar
+              </Text>
               <SwipeableView
                 ref={calendarSwipeRef}
                 onSwipeLeft={handleCalendarSwipeLeft}
@@ -936,7 +943,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: -8,
-    marginBottom: 16,
+    marginBottom: 4,
     gap: 8,
   },
   dateText: {
@@ -960,8 +967,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   selectorTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
   },
   helpButton: {
     marginLeft: 6,
@@ -1073,6 +1080,13 @@ const styles = StyleSheet.create({
   },
   calendarSection: {
     marginTop: 24,
+  },
+  calendarSectionTitle: {
+    paddingHorizontal: 20,
+  },
+  habitListSection: {
+    paddingHorizontal: 20,
+    marginTop: 16,
   },
   leaderboardLink: {
     flexDirection: 'row',
