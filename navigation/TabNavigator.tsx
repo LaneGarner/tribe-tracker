@@ -81,6 +81,9 @@ export default function TabNavigator() {
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.tabBarInactive,
+        tabBarLabelStyle: {
+          fontSize: 11,
+        },
       }}
     >
       <Tab.Screen
