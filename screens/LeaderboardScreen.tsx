@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback } from 'react';
+import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -39,6 +39,7 @@ import { isBackendConfigured } from '../config/api';
 import { RootStackParamList, TabParamList, Challenge } from '../types';
 import { getChallengeStatus } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
+import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
 
@@ -66,6 +67,9 @@ export default function LeaderboardScreen() {
   );
   const [refreshing, setRefreshing] = useState(false);
   const [challengeOrder, setChallengeOrder] = useState<string[]>([]);
+  const challengeSwipeRef = useRef<SwipeableViewRef>(null);
+  const pillsScrollRef = useRef<ScrollView | any>(null);
+  const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
 
   // Filter active challenges
   const activeChallenges = challenges.filter(
@@ -82,6 +86,11 @@ export default function LeaderboardScreen() {
     if (indexB === -1) return -1;
     return indexA - indexB;
   });
+
+  // Challenge carousel boundary detection
+  const currentChallengeIndex = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
+  const canSwipeNextChallenge = currentChallengeIndex < orderedChallenges.length - 1;
+  const canSwipePrevChallenge = currentChallengeIndex > 0;
 
   // Load challenge order from AsyncStorage
   useEffect(() => {
@@ -129,6 +138,46 @@ export default function LeaderboardScreen() {
       saveOrder(newOrder);
     }
   }, [orderedChallenges, saveOrder]);
+
+  // Scroll chip into view when swiping between challenges
+  const scrollPillIntoView = useCallback((challengeId: string, index: number) => {
+    if (!pillsScrollRef.current) return;
+
+    // For DraggableFlatList (production builds), use scrollToIndex
+    if (pillsScrollRef.current.scrollToIndex) {
+      pillsScrollRef.current.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0.5 // Center the item
+      });
+    } else if (pillsScrollRef.current.scrollTo) {
+      // For ScrollView (Expo Go), use pixel-based scrolling
+      const pos = pillPositions.current[challengeId];
+      if (pos) {
+        const offset = Math.max(0, pos.x - 100);
+        pillsScrollRef.current.scrollTo({ x: offset, animated: true });
+      }
+    }
+  }, []);
+
+  // Challenge swipe handlers
+  const handleChallengeSwipeLeft = useCallback(() => {
+    if (canSwipeNextChallenge) {
+      const nextIndex = currentChallengeIndex + 1;
+      const nextChallenge = orderedChallenges[nextIndex];
+      setSelectedChallengeId(nextChallenge.id);
+      scrollPillIntoView(nextChallenge.id, nextIndex);
+    }
+  }, [canSwipeNextChallenge, currentChallengeIndex, orderedChallenges, scrollPillIntoView]);
+
+  const handleChallengeSwipeRight = useCallback(() => {
+    if (canSwipePrevChallenge) {
+      const prevIndex = currentChallengeIndex - 1;
+      const prevChallenge = orderedChallenges[prevIndex];
+      setSelectedChallengeId(prevChallenge.id);
+      scrollPillIntoView(prevChallenge.id, prevIndex);
+    }
+  }, [canSwipePrevChallenge, currentChallengeIndex, orderedChallenges, scrollPillIntoView]);
 
   // Set initial selected challenge - prioritize route param if provided
   useEffect(() => {
@@ -200,6 +249,7 @@ export default function LeaderboardScreen() {
             {isExpoGo || !DraggableFlatList ? (
               // Expo Go: arrows inside tabs for reordering
               <ScrollView
+              ref={pillsScrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.challengeSelector}
@@ -215,6 +265,12 @@ export default function LeaderboardScreen() {
                 return (
                   <View
                     key={challenge.id}
+                    onLayout={(e) => {
+                      pillPositions.current[challenge.id] = {
+                        x: e.nativeEvent.layout.x,
+                        width: e.nativeEvent.layout.width,
+                      };
+                    }}
                     style={[
                       styles.challengeTab,
                       {
@@ -238,7 +294,10 @@ export default function LeaderboardScreen() {
                       />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => setSelectedChallengeId(challenge.id)}
+                      onPress={() => {
+                        setSelectedChallengeId(challenge.id);
+                        scrollPillIntoView(challenge.id, index);
+                      }}
                       style={styles.tabTextContainer}
                     >
                       <Text
@@ -271,13 +330,14 @@ export default function LeaderboardScreen() {
             // Production build: draggable with long press
             <View style={styles.challengeSelector}>
               <DraggableFlatList
+                ref={pillsScrollRef}
                 horizontal
                 data={orderedChallenges}
                 keyExtractor={item => item.id}
                 onDragEnd={({ data }) => saveOrder(data.map(c => c.id))}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.challengeSelectorContent}
-                renderItem={({ item: challenge, drag, isActive }: any) => {
+                renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
                   const isSelected = selectedChallengeId === challenge.id;
                   const content = (
                     <TouchableOpacity
@@ -294,7 +354,10 @@ export default function LeaderboardScreen() {
                           opacity: isActive ? 0.9 : 1,
                         },
                       ]}
-                      onPress={() => setSelectedChallengeId(challenge.id)}
+                      onPress={() => {
+                        setSelectedChallengeId(challenge.id);
+                        scrollPillIntoView(challenge.id, getIndex() ?? 0);
+                      }}
                     >
                       <Text
                         style={[
@@ -319,7 +382,13 @@ export default function LeaderboardScreen() {
 
         {/* Challenge info */}
         {orderedChallenges.length > 0 ? (
-          <>
+          <SwipeableView
+            ref={challengeSwipeRef}
+            onSwipeLeft={handleChallengeSwipeLeft}
+            onSwipeRight={handleChallengeSwipeRight}
+            canSwipeLeft={canSwipeNextChallenge}
+            canSwipeRight={canSwipePrevChallenge}
+          >
             {selectedChallenge && (
               <View style={styles.selectedChallengeHeader}>
                 <Text style={[styles.selectedChallengeTitle, { color: colors.text }]}>
@@ -368,7 +437,7 @@ export default function LeaderboardScreen() {
                 navigation.navigate('ViewMember', { userId: participant.userId })
               }
             />
-          </>
+          </SwipeableView>
         ) : (
           <View style={styles.emptyState}>
             <Trophy size={64} color={colors.textTertiary} />
