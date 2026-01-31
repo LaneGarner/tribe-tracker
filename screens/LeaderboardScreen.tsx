@@ -182,16 +182,18 @@ export default function LeaderboardScreen() {
   // Set initial selected challenge - prioritize route param if provided
   useEffect(() => {
     if (initialChallengeId) {
-      const match = orderedChallenges.find(c => c.id === initialChallengeId);
-      if (match) {
+      const index = orderedChallenges.findIndex(c => c.id === initialChallengeId);
+      if (index !== -1) {
         setSelectedChallengeId(initialChallengeId);
+        // Scroll chip into view after a brief delay to ensure layout is ready
+        setTimeout(() => scrollPillIntoView(initialChallengeId, index), 100);
         return;
       }
     }
     if (orderedChallenges.length > 0 && !selectedChallengeId) {
       setSelectedChallengeId(orderedChallenges[0].id);
     }
-  }, [orderedChallenges, selectedChallengeId, initialChallengeId]);
+  }, [orderedChallenges, selectedChallengeId, initialChallengeId, scrollPillIntoView]);
 
   const onRefresh = async () => {
     setRefreshing(true);
