@@ -120,7 +120,7 @@ export type RootStackParamList = {
   ViewMember: { userId: string };
   ManageChild: { childId: string };
   TaskAnalytics: { challengeId: string };
-  Profile: undefined;
+  Profile: { userId?: string } | undefined;
   PrivacyCenter: undefined;
   Notifications: undefined;
   Preferences: undefined;

@@ -10,7 +10,6 @@ import AuthScreen from '../screens/AuthScreen';
 // Core screens
 import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
 import CreateChallengeScreen from '../screens/CreateChallengeScreen';
-import ViewMemberScreen from '../screens/ViewMemberScreen';
 import ManageChildScreen from '../screens/ManageChildScreen';
 import TaskAnalyticsScreen from '../screens/TaskAnalyticsScreen';
 
@@ -85,7 +84,7 @@ export default function RootNavigator() {
       />
       <Stack.Screen
         name="ViewMember"
-        component={ViewMemberScreen}
+        component={ProfileScreen}
         options={{ title: 'Profile' }}
       />
       <Stack.Screen

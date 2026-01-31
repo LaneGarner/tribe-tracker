@@ -10,10 +10,12 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useSelector } from 'react-redux';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { clearAllAppData } from '../utils/storage';
 import { RootStackParamList } from '../types';
+import { RootState } from '../redux/store';
 import Toggle from '../components/Toggle';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
@@ -31,6 +33,7 @@ export default function MenuScreen() {
   const { colorScheme, setThemeMode } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, signOut } = useAuth();
+  const profile = useSelector((state: RootState) => state.profile.data);
 
   const featureItems: MenuItem[] = [
     { id: 'chat', label: 'Chat', icon: 'chatbubble-outline', screen: 'Chat' },
@@ -96,16 +99,18 @@ export default function MenuScreen() {
             style={[styles.avatar, { backgroundColor: colors.surfaceSecondary }]}
           >
             <Text style={[styles.avatarText, { color: colors.primary }]}>
-              {(user?.email || '?')[0].toUpperCase()}
+              {(profile?.fullName || user?.email || '?')[0].toUpperCase()}
             </Text>
           </View>
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: colors.text }]}>
-              {user?.email?.split('@')[0] || 'Guest'}
+              {profile?.fullName || user?.email?.split('@')[0] || 'Guest'}
             </Text>
-            <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-              {user?.email || 'Not signed in'}
-            </Text>
+            {user && (
+              <Text style={[styles.viewProfileText, { color: colors.textSecondary }]}>
+                View Profile
+              </Text>
+            )}
           </View>
           {user && (
             <Ionicons
@@ -287,7 +292,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 2,
   },
-  userEmail: {
+  viewProfileText: {
     fontSize: 13,
   },
   section: {
