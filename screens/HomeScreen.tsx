@@ -90,6 +90,8 @@ export default function HomeScreen() {
   const [showHelpTooltip, setShowHelpTooltip] = useState(false);
   const [helpButtonPosition, setHelpButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const helpButtonRef = useRef<View>(null);
+  const scrollOffsetRef = useRef(0);
+  const carouselLayoutYRef = useRef(0);
 
   // Ref for swipeable animations
   const swipeableRef = useRef<SwipeableViewRef>(null);
@@ -516,21 +518,32 @@ export default function HomeScreen() {
         }
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
+          {
+            useNativeDriver: true,
+            listener: (event: any) => {
+              scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+            },
+          }
         )}
         scrollEventThrottle={16}
+        stickyHeaderIndices={orderedChallenges.length > 1 ? [2] : undefined}
       >
         {/* TribeTracker text - scrolls away and fades */}
         <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity }]}>
           TribeTracker
         </Animated.Text>
         <Animated.Text style={[styles.logoSubtitle, { color: colors.textSecondary, opacity: textOpacity }]}>
-          Build your streak today
+          Build your streak today.
         </Animated.Text>
 
-        {/* Challenge selector */}
+        {/* Challenge selector - sticks to top when scrolling */}
         {orderedChallenges.length > 1 && (
-          <>
+          <View
+            style={[styles.stickyCarouselContainer, { backgroundColor: colors.background }]}
+            onLayout={(event) => {
+              carouselLayoutYRef.current = event.nativeEvent.layout.y;
+            }}
+          >
             <View style={styles.selectorHeader}>
               <Text style={[styles.selectorTitle, { color: colors.text }]}>
                 Active Challenges
@@ -541,8 +554,14 @@ export default function HomeScreen() {
                     if (showHelpTooltip) {
                       setShowHelpTooltip(false);
                     } else {
-                      helpButtonRef.current?.measureInWindow((x, y, width, height) => {
-                        setHelpButtonPosition({ x, y, width, height });
+                      helpButtonRef.current?.measureInWindow((buttonX, buttonY, buttonWidth, buttonHeight) => {
+                        // When sticky, measureInWindow can return incorrect Y values
+                        // Use a minimum Y based on where the sticky header actually appears
+                        const isSticky = scrollOffsetRef.current > carouselLayoutYRef.current;
+                        // When sticky: safe area + collapsed header (70) + selectorHeader marginTop (16)
+                        const minStickyY = insets.top + 70 + 16;
+                        const correctedY = isSticky ? Math.max(buttonY, minStickyY) : buttonY;
+                        setHelpButtonPosition({ x: buttonX, y: correctedY, width: buttonWidth, height: buttonHeight });
                         setShowHelpTooltip(true);
                       });
                     }
@@ -589,7 +608,7 @@ export default function HomeScreen() {
                 ))}
               </ScrollView>
             ) : (
-            // Production build: draggable with long press
+              // Production build: draggable with long press
               <View style={styles.challengeSelector}>
                 <DraggableFlatList
                   ref={pillsScrollRef}
@@ -624,7 +643,7 @@ export default function HomeScreen() {
                 />
               </View>
             )}
-          </>
+          </View>
         )}
 
         {/* Selected challenge card */}
@@ -886,6 +905,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     zIndex: 10,
+  },
+  stickyCarouselContainer: {
+    paddingBottom: 8,
+    zIndex: 5,
   },
   logo: {
     width: 56,
