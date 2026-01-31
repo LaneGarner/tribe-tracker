@@ -10,7 +10,7 @@ import {
   Image,
   Share,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
@@ -18,26 +18,52 @@ import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
 import { updateProfile } from '../redux/slices/profileSlice';
-import { removeParticipant } from '../redux/slices/participantsSlice';
+import { removeParticipant, makeSelectParticipantsByUserId } from '../redux/slices/participantsSlice';
 import { deleteChallenge } from '../redux/slices/challengesSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge } from '../types';
 
+type ProfileRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 type ProfileNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
-  'Main'
+  'Profile'
 >;
 
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNavigationProp>();
+  const route = useRoute<ProfileRouteProp>();
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user } = useAuth();
 
+  // Determine if viewing own profile or another user's
+  const { userId } = route.params ?? {};
+  const isOwnProfile = !userId || userId === user?.id;
+  const targetUserId = userId || user?.id;
+
   const profile = useSelector((state: RootState) => state.profile.data);
-  const participants = useSelector((state: RootState) => state.participants.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
+
+  // For viewing other users, use memoized selector
+  const selectParticipantsByUserId = useMemo(makeSelectParticipantsByUserId, []);
+  const participants = useSelector((state: RootState) =>
+    isOwnProfile
+      ? state.participants.data
+      : selectParticipantsByUserId(state, targetUserId || '')
+  );
+
+  // Get user info for display (from profile for own, from participant for others)
+  const otherUserInfo = useMemo(() => {
+    if (isOwnProfile) return null;
+    const firstParticipant = participants.find(p => p.userId === targetUserId);
+    return firstParticipant
+      ? {
+          userName: firstParticipant.userName,
+          userPhotoUrl: firstParticipant.userPhotoUrl,
+        }
+      : { userName: 'Unknown User', userPhotoUrl: null };
+  }, [isOwnProfile, participants, targetUserId]);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -50,24 +76,26 @@ export default function ProfileScreen() {
     state: profile?.state || '',
   });
 
-  // Set up header with Edit button
+  // Set up header with Edit button (only for own profile)
   useLayoutEffect(() => {
     navigation.setOptions({
       title: 'Profile',
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => setIsEditing(!isEditing)}
-          style={{ paddingHorizontal: 16, paddingVertical: 8 }}
-        >
-          <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '500' }}>
-            {isEditing ? 'Cancel' : 'Edit'}
-          </Text>
-        </TouchableOpacity>
-      ),
+      headerRight: isOwnProfile
+        ? () => (
+            <TouchableOpacity
+              onPress={() => setIsEditing(!isEditing)}
+              style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+            >
+              <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '500' }}>
+                {isEditing ? 'Cancel' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          )
+        : undefined,
     });
-  }, [navigation, colors.primary, isEditing]);
+  }, [navigation, colors.primary, isEditing, isOwnProfile]);
 
-  const userParticipations = participants.filter(p => p.userId === user?.id);
+  const userParticipations = participants.filter(p => p.userId === targetUserId);
   const totalPoints = userParticipations.reduce(
     (sum, p) => sum + p.totalPoints,
     0
@@ -86,7 +114,7 @@ export default function ProfileScreen() {
   const enrichedParticipations = useMemo(() => {
     return userParticipations.map(participation => {
       const challenge = challenges.find(c => c.id === participation.challengeId);
-      const isCreator = challenge?.creatorId === user?.id;
+      const isCreator = challenge?.creatorId === targetUserId;
       const daysLeft = challenge?.endDate
         ? Math.max(0, dayjs(challenge.endDate).diff(dayjs(), 'day'))
         : 0;
@@ -99,7 +127,7 @@ export default function ProfileScreen() {
         status,
       };
     });
-  }, [userParticipations, challenges, user?.id]);
+  }, [userParticipations, challenges, targetUserId]);
 
   const handleSave = () => {
     dispatch(updateProfile({
@@ -145,14 +173,12 @@ export default function ProfileScreen() {
   };
 
   const handleShareInvite = async (challenge: Challenge | undefined) => {
-    if (!challenge?.inviteCode) {
-      Alert.alert('No Invite Code', 'This challenge does not have an invite code.');
-      return;
-    }
+    if (!challenge) return;
     try {
-      await Share.share({
-        message: `Join my challenge "${challenge.name}" on Tribe Tracker! Use invite code: ${challenge.inviteCode}`,
-      });
+      const message = challenge.isPublic
+        ? `Join my challenge "${challenge.name}" on Tribe Tracker!`
+        : `Join my private challenge "${challenge.name}" on Tribe Tracker! Use invite code: ${challenge.inviteCode}`;
+      await Share.share({ message });
     } catch {
       // User cancelled share
     }
@@ -169,30 +195,40 @@ export default function ProfileScreen() {
           <View
             style={[styles.avatar, { backgroundColor: colors.surfaceSecondary }]}
           >
-            {profile?.profilePhotoUrl ? (
+            {isOwnProfile ? (
+              profile?.profilePhotoUrl ? (
+                <Image
+                  source={{ uri: profile.profilePhotoUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={[styles.avatarText, { color: colors.primary }]}>
+                  {(profile?.fullName || user?.email || '?')[0].toUpperCase()}
+                </Text>
+              )
+            ) : otherUserInfo?.userPhotoUrl ? (
               <Image
-                source={{ uri: profile.profilePhotoUrl }}
+                source={{ uri: otherUserInfo.userPhotoUrl }}
                 style={styles.avatarImage}
               />
             ) : (
               <Text style={[styles.avatarText, { color: colors.primary }]}>
-                {(profile?.fullName || user?.email || '?')[0].toUpperCase()}
+                {(otherUserInfo?.userName || '?')[0].toUpperCase()}
               </Text>
             )}
           </View>
           {!isEditing && (
             <>
               <Text style={[styles.userName, { color: colors.text }]}>
-                {profile?.fullName || user?.email?.split('@')[0] || 'User'}
-              </Text>
-              <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-                {user?.email}
+                {isOwnProfile
+                  ? profile?.fullName || user?.email?.split('@')[0] || 'User'
+                  : otherUserInfo?.userName || 'User'}
               </Text>
             </>
           )}
         </View>
 
-        {isEditing ? (
+        {isEditing && isOwnProfile ? (
           /* Edit Form */
           <View style={styles.form}>
             <Text style={[styles.label, { color: colors.text }]}>Full Name</Text>
@@ -411,15 +447,17 @@ export default function ProfileScreen() {
               <View style={styles.challengesHeader}>
                 <Ionicons name="trophy-outline" size={20} color={colors.primary} />
                 <Text style={[styles.challengesTitle, { color: colors.text }]}>
-                  My Challenges ({enrichedParticipations.length})
+                  {isOwnProfile ? 'My Challenges' : 'Challenges'} ({enrichedParticipations.length})
                 </Text>
               </View>
 
               {enrichedParticipations.length > 0 ? (
                 <>
-                  <Text style={[styles.challengesSubheader, { color: colors.textSecondary }]}>
-                    Active Challenges
-                  </Text>
+                  {isOwnProfile && (
+                    <Text style={[styles.challengesSubheader, { color: colors.textSecondary }]}>
+                      Active Challenges
+                    </Text>
+                  )}
                   {enrichedParticipations.map(participation => (
                     <TouchableOpacity
                       key={participation.id}
@@ -476,77 +514,79 @@ export default function ProfileScreen() {
                         </View>
                       </View>
 
-                      {/* Action buttons */}
-                      <View style={styles.actionButtonsRow}>
-                        <TouchableOpacity
-                          style={[styles.actionButton, { borderColor: colors.primary }]}
-                          onPress={() =>
-                            navigation.navigate('TaskAnalytics', {
-                              challengeId: participation.challengeId,
-                            })
-                          }
-                        >
-                          <Ionicons name="bar-chart-outline" size={20} color={colors.primary} />
-                        </TouchableOpacity>
+                      {/* Action buttons - only for own profile */}
+                      {isOwnProfile && (
+                        <View style={styles.actionButtonsRow}>
+                          <TouchableOpacity
+                            style={[styles.actionButton, { borderColor: colors.primary }]}
+                            onPress={() =>
+                              navigation.navigate('TaskAnalytics', {
+                                challengeId: participation.challengeId,
+                              })
+                            }
+                          >
+                            <Ionicons name="bar-chart-outline" size={20} color={colors.primary} />
+                          </TouchableOpacity>
 
-                        {participation.isCreator ? (
-                          <>
+                          {participation.isCreator ? (
+                            <>
+                              <TouchableOpacity
+                                style={[styles.actionButton, { borderColor: '#c084fc' }]}
+                                onPress={() =>
+                                  navigation.navigate('CreateChallenge', {
+                                    mode: 'create',
+                                    challengeId: participation.challengeId,
+                                  })
+                                }
+                              >
+                                <Ionicons name="pencil-outline" size={20} color="#a855f7" />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.actionButton, { borderColor: '#4ade80' }]}
+                                onPress={() =>
+                                  navigation.navigate('ChallengeDetail', {
+                                    challengeId: participation.challengeId,
+                                  })
+                                }
+                              >
+                                <Ionicons name="sync-outline" size={20} color="#22c55e" />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.actionButton, { borderColor: colors.primary }]}
+                                onPress={() => handleShareInvite(participation.challenge)}
+                              >
+                                <Ionicons name="mail-outline" size={20} color={colors.primary} />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.actionButton, styles.deleteButton]}
+                                onPress={() =>
+                                  handleDeleteChallenge(
+                                    participation.challengeId,
+                                    participation.challengeName || 'this challenge'
+                                  )
+                                }
+                              >
+                                <Ionicons name="trash-outline" size={20} color="#fff" />
+                              </TouchableOpacity>
+                            </>
+                          ) : (
                             <TouchableOpacity
-                              style={[styles.actionButton, { borderColor: '#c084fc' }]}
+                              style={[styles.leaveButtonLarge, { borderColor: colors.error }]}
                               onPress={() =>
-                                navigation.navigate('CreateChallenge', {
-                                  mode: 'create',
-                                  challengeId: participation.challengeId,
-                                })
-                              }
-                            >
-                              <Ionicons name="pencil-outline" size={20} color="#a855f7" />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.actionButton, { borderColor: '#4ade80' }]}
-                              onPress={() =>
-                                navigation.navigate('ChallengeDetail', {
-                                  challengeId: participation.challengeId,
-                                })
-                              }
-                            >
-                              <Ionicons name="sync-outline" size={20} color="#22c55e" />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.actionButton, { borderColor: colors.primary }]}
-                              onPress={() => handleShareInvite(participation.challenge)}
-                            >
-                              <Ionicons name="mail-outline" size={20} color={colors.primary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.actionButton, styles.deleteButton]}
-                              onPress={() =>
-                                handleDeleteChallenge(
-                                  participation.challengeId,
+                                handleLeaveChallenge(
+                                  participation.id,
                                   participation.challengeName || 'this challenge'
                                 )
                               }
                             >
-                              <Ionicons name="trash-outline" size={20} color="#fff" />
+                              <Ionicons name="close" size={18} color={colors.error} />
+                              <Text style={[styles.leaveButtonLargeText, { color: colors.error }]}>
+                                Leave Challenge
+                              </Text>
                             </TouchableOpacity>
-                          </>
-                        ) : (
-                          <TouchableOpacity
-                            style={[styles.leaveButtonLarge, { borderColor: colors.error }]}
-                            onPress={() =>
-                              handleLeaveChallenge(
-                                participation.id,
-                                participation.challengeName || 'this challenge'
-                              )
-                            }
-                          >
-                            <Ionicons name="close" size={18} color={colors.error} />
-                            <Text style={[styles.leaveButtonLargeText, { color: colors.error }]}>
-                              Leave Challenge
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
+                          )}
+                        </View>
+                      )}
                     </TouchableOpacity>
                   ))}
                 </>
@@ -601,10 +641,6 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
   },
   statsGrid: {
     flexDirection: 'row',

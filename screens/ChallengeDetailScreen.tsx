@@ -53,9 +53,10 @@ export default function ChallengeDetailScreen() {
   const handleShare = async () => {
     if (!challenge) return;
     try {
-      await Share.share({
-        message: `Join my challenge "${challenge.name}" on Tribe Tracker! Use code: ${challenge.inviteCode}`,
-      });
+      const message = challenge.isPublic
+        ? `Join my challenge "${challenge.name}" on Tribe Tracker!`
+        : `Join my private challenge "${challenge.name}" on Tribe Tracker! Use code: ${challenge.inviteCode}`;
+      await Share.share({ message });
     } catch (error) {
       console.error('Error sharing:', error);
     }
@@ -332,8 +333,8 @@ export default function ChallengeDetailScreen() {
           ))}
         </View>
 
-        {/* Invite Code */}
-        {challenge.inviteCode && (
+        {/* Invite Code - only show for private challenges */}
+        {!challenge.isPublic && challenge.inviteCode && (
           <View style={[styles.inviteCard, { backgroundColor: colors.surface }]}>
             <Text style={[styles.inviteLabel, { color: colors.textSecondary }]}>
               Invite Code

@@ -149,6 +149,10 @@ export default function CreateChallengeScreen() {
         description: description.trim() || undefined,
         habits: validHabits,
         isPublic,
+        // Public challenges don't need invite codes; private ones do
+        inviteCode: isPublic
+          ? undefined
+          : (existingChallenge.inviteCode || generateInviteCode()),
         // Only update duration if challenge hasn't started yet
         ...(existingChallenge.status === 'upcoming' && {
           durationDays: parseInt(durationDays) || existingChallenge.durationDays,
@@ -179,7 +183,7 @@ export default function CreateChallengeScreen() {
       endDate: getChallengeEndDate(getToday(), parseInt(durationDays) || 30),
       habits: validHabits,
       isPublic,
-      inviteCode: generateInviteCode(),
+      inviteCode: isPublic ? undefined : generateInviteCode(),
       status: 'active',
       participantCount: 0,
       updatedAt: new Date().toISOString(),
@@ -250,6 +254,12 @@ export default function CreateChallengeScreen() {
 
     if (!challenge) {
       Alert.alert('Error', 'Invalid invite code');
+      return;
+    }
+
+    // Public challenges don't use invite codes
+    if (challenge.isPublic) {
+      Alert.alert('Public Challenge', 'This is a public challenge. Join from the Browse tab instead.');
       return;
     }
 
