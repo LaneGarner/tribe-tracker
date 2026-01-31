@@ -100,11 +100,21 @@ export default function ChallengeCard({
           )}
         </View>
         {participation && (
-          <View style={styles.streakBadge}>
-            <Ionicons name="flame" size={16} color="#fff" />
-            <Text style={styles.streakBadgeText}>
-              {activeStreak} day{'\n'}streak
-            </Text>
+          <View style={styles.badgeRow}>
+            {userRank !== null && (
+              <View style={styles.rankBadge}>
+                <Ionicons name="trophy" size={16} color="#fff" />
+                <Text style={styles.rankBadgeText}>
+                  {getOrdinal(userRank)}{'\n'}place
+                </Text>
+              </View>
+            )}
+            <View style={styles.streakBadge}>
+              <Ionicons name="flame" size={16} color="#fff" />
+              <Text style={styles.streakBadgeText}>
+                {activeStreak} day{'\n'}streak
+              </Text>
+            </View>
           </View>
         )}
       </View>
@@ -124,12 +134,6 @@ export default function ChallengeCard({
             <Text style={styles.statLabel}>Days Active</Text>
             <Text style={styles.statValue}>{participation.daysParticipated}</Text>
           </View>
-          {userRank !== null && (
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>My Rank</Text>
-              <Text style={styles.statValue}>{getOrdinal(userRank)}</Text>
-            </View>
-          )}
         </View>
       )}
 
@@ -180,6 +184,26 @@ const styles = StyleSheet.create({
   daysRemaining: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  rankBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+  },
+  rankBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    lineHeight: 14,
   },
   streakBadge: {
     flexDirection: 'row',
