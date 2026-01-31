@@ -11,7 +11,7 @@ import { addCheckin, updateHabitCompletion } from '../../redux/slices/checkinsSl
 import { updateParticipantStats } from '../../redux/slices/participantsSlice';
 import { useAuth } from '../../context/AuthContext';
 import { Challenge, HabitCheckin, ChallengeParticipant } from '../../types';
-import { getToday, isToday } from '../../utils/dateUtils';
+import { getToday, isToday, isPast } from '../../utils/dateUtils';
 
 interface HabitChecklistProps {
   challenge: Challenge;
@@ -31,7 +31,8 @@ export default function HabitChecklist({
 
   // Use provided date or default to today
   const checkinDate = date || getToday();
-  const canEdit = isToday(checkinDate);
+  // Allow editing for today and past days (not future)
+  const canEdit = isToday(checkinDate) || isPast(checkinDate);
 
   // Memoized selectors to prevent unnecessary rerenders
   const selectCheckins = useMemo(
@@ -121,7 +122,7 @@ export default function HabitChecklist({
   );
 
   const handleToggle = (habitIndex: number) => {
-    // Only allow editing for today's habits
+    // Only allow editing for today and past days (not future)
     if (!canEdit) return;
 
     if (checkin) {
