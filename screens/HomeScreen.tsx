@@ -421,15 +421,22 @@ export default function HomeScreen() {
   const canSwipeNextChallenge = currentChallengeIndex < orderedChallenges.length - 1;
   const canSwipePrevChallenge = currentChallengeIndex > 0;
 
-  const scrollPillIntoView = useCallback((challengeId: string) => {
-    const pos = pillPositions.current[challengeId];
-    if (pos && pillsScrollRef.current) {
-      const offset = Math.max(0, pos.x - 100);
-      // Handle both ScrollView (scrollTo) and FlatList (scrollToOffset)
-      if (pillsScrollRef.current.scrollTo) {
+  const scrollPillIntoView = useCallback((challengeId: string, index: number) => {
+    if (!pillsScrollRef.current) return;
+
+    // For DraggableFlatList (production builds), use scrollToIndex
+    if (pillsScrollRef.current.scrollToIndex) {
+      pillsScrollRef.current.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0.5 // Center the item
+      });
+    } else if (pillsScrollRef.current.scrollTo) {
+      // For ScrollView (Expo Go), use pixel-based scrolling
+      const pos = pillPositions.current[challengeId];
+      if (pos) {
+        const offset = Math.max(0, pos.x - 100);
         pillsScrollRef.current.scrollTo({ x: offset, animated: true });
-      } else if (pillsScrollRef.current.scrollToOffset) {
-        pillsScrollRef.current.scrollToOffset({ offset, animated: true });
       }
     }
   }, []);
@@ -437,18 +444,20 @@ export default function HomeScreen() {
   const handleChallengeSwipeLeft = useCallback(() => {
     // Swipe left = go to next challenge
     if (canSwipeNextChallenge) {
-      const nextChallenge = orderedChallenges[currentChallengeIndex + 1];
+      const nextIndex = currentChallengeIndex + 1;
+      const nextChallenge = orderedChallenges[nextIndex];
       setSelectedChallengeId(nextChallenge.id);
-      scrollPillIntoView(nextChallenge.id);
+      scrollPillIntoView(nextChallenge.id, nextIndex);
     }
   }, [canSwipeNextChallenge, currentChallengeIndex, orderedChallenges, scrollPillIntoView]);
 
   const handleChallengeSwipeRight = useCallback(() => {
     // Swipe right = go to previous challenge
     if (canSwipePrevChallenge) {
-      const prevChallenge = orderedChallenges[currentChallengeIndex - 1];
+      const prevIndex = currentChallengeIndex - 1;
+      const prevChallenge = orderedChallenges[prevIndex];
       setSelectedChallengeId(prevChallenge.id);
-      scrollPillIntoView(prevChallenge.id);
+      scrollPillIntoView(prevChallenge.id, prevIndex);
     }
   }, [canSwipePrevChallenge, currentChallengeIndex, orderedChallenges, scrollPillIntoView]);
 
@@ -573,7 +582,7 @@ export default function HomeScreen() {
                     <TouchableOpacity
                       onPress={() => {
                         setSelectedChallengeId(challenge.id);
-                        scrollPillIntoView(challenge.id);
+                        scrollPillIntoView(challenge.id, index);
                       }}
                       style={styles.tabTextContainer}
                     >
@@ -614,7 +623,7 @@ export default function HomeScreen() {
                 onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.challengeSelectorContent}
-                renderItem={({ item: challenge, drag, isActive }: any) => {
+                renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
                   const isSelected = selectedChallengeId === challenge.id;
                   const content = (
                     <TouchableOpacity
@@ -639,7 +648,7 @@ export default function HomeScreen() {
                       ]}
                       onPress={() => {
                         setSelectedChallengeId(challenge.id);
-                        scrollPillIntoView(challenge.id);
+                        scrollPillIntoView(challenge.id, getIndex() ?? 0);
                       }}
                     >
                       <Text
