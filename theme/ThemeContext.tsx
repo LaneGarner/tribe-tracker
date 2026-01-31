@@ -68,6 +68,7 @@ export const colors = {
     error: '#EF4444',
     tabBar: '#E0E0E0',
     tabBarBorder: '#E5E7EB',
+    tabBarInactive: '#4B5563',
   },
   dark: {
     background: '#000000',
@@ -84,6 +85,7 @@ export const colors = {
     error: '#EF4444',
     tabBar: '#18181B',
     tabBarBorder: '#27272A',
+    tabBarInactive: '#A3A3A3',
   },
 };
 

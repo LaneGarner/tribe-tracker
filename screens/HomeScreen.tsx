@@ -16,11 +16,10 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import dayjs from 'dayjs';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 // Check if running in Expo Go vs a build
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -48,6 +47,7 @@ import { RootStackParamList, TabParamList, Challenge, HabitCheckin } from '../ty
 import { getToday, formatDate, getChallengeStatus, isToday, addDays, subtractDays } from '../utils/dateUtils';
 import ChallengeCard from '../components/challenge/ChallengeCard';
 import ChallengeCardSkeleton from '../components/challenge/ChallengeCardSkeleton';
+import ChallengeChip from '../components/challenge/ChallengeChip';
 import HabitChecklist from '../components/challenge/HabitChecklist';
 import DateCarousel from '../components/ui/DateCarousel';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
@@ -67,6 +67,7 @@ export default function HomeScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const checkins = useSelector((state: RootState) => state.checkins.data);
@@ -86,6 +87,9 @@ export default function HomeScreen() {
     dayjs(getToday()).format('YYYY-MM')
   );
   const [challengeOrder, setChallengeOrder] = useState<string[]>([]);
+  const [showHelpTooltip, setShowHelpTooltip] = useState(false);
+  const [helpButtonPosition, setHelpButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const helpButtonRef = useRef<View>(null);
 
   // Ref for swipeable animations
   const swipeableRef = useRef<SwipeableViewRef>(null);
@@ -520,154 +524,105 @@ export default function HomeScreen() {
         <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity }]}>
           TribeTracker
         </Animated.Text>
+        <Animated.Text style={[styles.logoSubtitle, { color: colors.textSecondary, opacity: textOpacity }]}>
+          Build your streak today
+        </Animated.Text>
 
         {/* Challenge selector */}
         {orderedChallenges.length > 1 && (
           <>
-            <Text style={[styles.selectorTitle, { color: colors.text }]}>
-              Active Challenges
-            </Text>
-            <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
-              {isExpoGo || !DraggableFlatList
-                ? 'Use arrows to reorder'
-                : 'Hold and drag to reorder'}
-            </Text>
+            <View style={styles.selectorHeader}>
+              <Text style={[styles.selectorTitle, { color: colors.text }]}>
+                Active Challenges
+              </Text>
+              <View ref={helpButtonRef}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (showHelpTooltip) {
+                      setShowHelpTooltip(false);
+                    } else {
+                      helpButtonRef.current?.measureInWindow((x, y, width, height) => {
+                        setHelpButtonPosition({ x, y, width, height });
+                        setShowHelpTooltip(true);
+                      });
+                    }
+                  }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={styles.helpButton}
+                  accessibilityLabel="Help"
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="help-circle-outline" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            </View>
             {isExpoGo || !DraggableFlatList ? (
-              // Expo Go: arrows inside tabs for reordering
+              // Expo Go: arrows inside chips for reordering
               <ScrollView
-              ref={pillsScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.challengeSelector}
-              contentContainerStyle={styles.challengeSelectorContent}
-            >
-              {orderedChallenges.map((challenge, index) => {
-                const isSelected = selectedChallengeId === challenge.id;
-                const isFirst = index === 0;
-                const isLast = index === orderedChallenges.length - 1;
-                const arrowColor = isSelected ? 'rgba(255,255,255,0.7)' : colors.textSecondary;
-                const disabledColor = isSelected ? 'rgba(255,255,255,0.25)' : colors.border;
-
-                return (
-                  <View
+                ref={pillsScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.challengeSelector}
+                contentContainerStyle={styles.challengeSelectorContent}
+              >
+                {orderedChallenges.map((challenge, index) => (
+                  <ChallengeChip
                     key={challenge.id}
+                    name={challenge.name}
+                    isSelected={selectedChallengeId === challenge.id}
+                    onPress={() => {
+                      setSelectedChallengeId(challenge.id);
+                      scrollPillIntoView(challenge.id, index);
+                    }}
                     onLayout={(e) => {
                       pillPositions.current[challenge.id] = {
                         x: e.nativeEvent.layout.x,
                         width: e.nativeEvent.layout.width,
                       };
                     }}
-                    style={[
-                      styles.challengeTab,
-                      {
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: isSelected
-                          ? colors.primary
-                          : colors.surface,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                  >
-                    <TouchableOpacity
-                      onPress={() => !isFirst && moveChallengeLeft(challenge.id)}
-                      disabled={isFirst}
-                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                    >
-                      <ChevronLeft
-                        size={14}
-                        color={isFirst ? disabledColor : arrowColor}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setSelectedChallengeId(challenge.id);
-                        scrollPillIntoView(challenge.id, index);
-                      }}
-                      style={styles.tabTextContainer}
-                    >
-                      <Text
-                        style={[
-                          styles.challengeTabText,
-                          {
-                            color: isSelected ? '#fff' : colors.text,
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {challenge.name}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => !isLast && moveChallengeRight(challenge.id)}
-                      disabled={isLast}
-                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                    >
-                      <ChevronRight
-                        size={14}
-                        color={isLast ? disabledColor : arrowColor}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          ) : (
+                    showArrows
+                    onMoveLeft={() => moveChallengeLeft(challenge.id)}
+                    onMoveRight={() => moveChallengeRight(challenge.id)}
+                    isFirst={index === 0}
+                    isLast={index === orderedChallenges.length - 1}
+                  />
+                ))}
+              </ScrollView>
+            ) : (
             // Production build: draggable with long press
-            <View style={styles.challengeSelector}>
-              <DraggableFlatList
-                ref={pillsScrollRef}
-                horizontal
-                data={orderedChallenges}
-                keyExtractor={(item: Challenge) => item.id}
-                onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.challengeSelectorContent}
-                renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
-                  const isSelected = selectedChallengeId === challenge.id;
-                  const content = (
-                    <TouchableOpacity
-                      onLayout={(e) => {
-                        pillPositions.current[challenge.id] = {
-                          x: e.nativeEvent.layout.x,
-                          width: e.nativeEvent.layout.width,
-                        };
-                      }}
-                      onLongPress={drag}
-                      delayLongPress={150}
-                      disabled={isActive}
-                      style={[
-                        styles.challengeTab,
-                        {
-                          backgroundColor: isSelected
-                            ? colors.primary
-                            : colors.surface,
-                          borderColor: colors.border,
-                          opacity: isActive ? 0.9 : 1,
-                        },
-                      ]}
-                      onPress={() => {
-                        setSelectedChallengeId(challenge.id);
-                        scrollPillIntoView(challenge.id, getIndex() ?? 0);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.challengeTabText,
-                          {
-                            color: isSelected ? '#fff' : colors.text,
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {challenge.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                  return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
-                }}
-              />
-            </View>
+              <View style={styles.challengeSelector}>
+                <DraggableFlatList
+                  ref={pillsScrollRef}
+                  horizontal
+                  data={orderedChallenges}
+                  keyExtractor={(item: Challenge) => item.id}
+                  onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.challengeSelectorContent}
+                  renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
+                    const isSelected = selectedChallengeId === challenge.id;
+                    const content = (
+                      <ChallengeChip
+                        name={challenge.name}
+                        isSelected={isSelected}
+                        onPress={() => {
+                          setSelectedChallengeId(challenge.id);
+                          scrollPillIntoView(challenge.id, getIndex() ?? 0);
+                        }}
+                        onLongPress={drag}
+                        disabled={isActive}
+                        onLayout={(e) => {
+                          pillPositions.current[challenge.id] = {
+                            x: e.nativeEvent.layout.x,
+                            width: e.nativeEvent.layout.width,
+                          };
+                        }}
+                      />
+                    );
+                    return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
+                  }}
+                />
+              </View>
             )}
           </>
         )}
@@ -868,6 +823,57 @@ export default function HomeScreen() {
           </Animated.View>
         </>
       )}
+
+      {/* Help Tooltip - positioned based on help button */}
+      {showHelpTooltip && helpButtonPosition && (() => {
+        const tooltipWidth = 260;
+        const arrowSize = 10;
+        const buttonCenterX = helpButtonPosition.x + helpButtonPosition.width / 2;
+        const tooltipLeft = Math.max(16, Math.min(buttonCenterX - 40, 400 - tooltipWidth - 16));
+        const arrowLeft = buttonCenterX - tooltipLeft - arrowSize;
+        const tooltipTop = helpButtonPosition.y + helpButtonPosition.height + arrowSize;
+
+        return (
+        <>
+          <TouchableOpacity
+            style={styles.tooltipBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowHelpTooltip(false)}
+          />
+          <View
+            style={[
+              styles.helpTooltip,
+              {
+                top: tooltipTop,
+                left: tooltipLeft,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.helpTooltipArrow,
+                { left: arrowLeft },
+              ]}
+            />
+            <Text style={styles.helpTooltipText}>
+              Tap a challenge to select it, then check off habits below. Tap the card for details or swipe to switch.{' '}
+              {isExpoGo || !DraggableFlatList
+                ? 'Use arrows to reorder challenges.'
+                : 'Hold and drag to reorder challenges.'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowHelpTooltip(false)}
+              style={styles.helpTooltipClose}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Close tooltip"
+              accessibilityRole="button"
+            >
+              <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+          </View>
+        </>
+        );
+      })()}
     </SafeAreaView>
   );
 }
@@ -890,6 +896,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Kanit_700Bold',
     letterSpacing: 0.5,
     textAlign: 'center',
+  },
+  logoSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 4,
   },
   scrollView: {
     flex: 1,
@@ -917,38 +929,70 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  selectorTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+  selectorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
     marginTop: 16,
     marginBottom: 2,
   },
-  selectorLabel: {
-    fontSize: 12,
-    paddingHorizontal: 20,
-    marginBottom: 8,
+  selectorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  helpButton: {
+    marginLeft: 6,
+    padding: 2,
+  },
+  tooltipBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 99,
+  },
+  helpTooltip: {
+    position: 'absolute',
+    zIndex: 100,
+    backgroundColor: '#1F2937',
+    padding: 14,
+    paddingRight: 36,
+    borderRadius: 10,
+    width: 260,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  helpTooltipText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#F3F4F6',
+  },
+  helpTooltipClose: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+  },
+  helpTooltipArrow: {
+    position: 'absolute',
+    top: -10,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#1F2937',
   },
   challengeSelector: {
+    marginTop: 8,
   },
   challengeSelectorContent: {
     paddingHorizontal: 20,
-    gap: 4,
-  },
-  challengeTab: {
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 2,
-    gap: 2,
-  },
-  tabTextContainer: {
-    paddingHorizontal: 4,
-  },
-  challengeTabText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   dateSection: {
     marginTop: 10,

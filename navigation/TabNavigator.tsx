@@ -80,7 +80,7 @@ export default function TabNavigator() {
           height: 80,
         },
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarInactiveTintColor: colors.tabBarInactive,
       }}
     >
       <Tab.Screen
