@@ -11,7 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { ChallengeListSkeleton } from '../components/challenge/ChallengeItemSkeleton';
+import { PublicChallengeListSkeleton } from '../components/challenge/PublicChallengeCardSkeleton';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,8 @@ import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
 import { getToday, getChallengeEndDate } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
+import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
+import { TAB_BAR_HEIGHT } from '../navigation/TabNavigator';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -320,7 +322,7 @@ export default function CreateChallengeScreen() {
       </Text>
 
       {challengesLoading ? (
-        <ChallengeListSkeleton count={3} />
+        <PublicChallengeListSkeleton count={3} />
       ) : publicChallenges.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons
@@ -333,28 +335,17 @@ export default function CreateChallengeScreen() {
           </Text>
         </View>
       ) : (
-        publicChallenges.map(challenge => (
-          <TouchableOpacity
+        publicChallenges.map((challenge, index) => (
+          <PublicChallengeCard
             key={challenge.id}
-            style={[styles.challengeItem, { backgroundColor: colors.surface }]}
+            challenge={challenge}
+            gradientColors={getGradientForIndex(index)}
             onPress={() =>
               navigation.navigate('ChallengeDetail', {
                 challengeId: challenge.id,
               })
             }
-          >
-            <View style={styles.challengeInfo}>
-              <Text style={[styles.challengeName, { color: colors.text }]}>
-                {challenge.name}
-              </Text>
-              <Text
-                style={[styles.challengeMeta, { color: colors.textSecondary }]}
-              >
-                {challenge.durationDays} days • {challenge.habits.length} habits
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+          />
         ))
       )}
     </>
@@ -623,7 +614,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: TAB_BAR_HEIGHT,
   },
   header: {
     flexDirection: 'row',
@@ -671,24 +662,6 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 12,
     fontSize: 14,
-  },
-  challengeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  challengeInfo: {
-    flex: 1,
-  },
-  challengeName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  challengeMeta: {
-    fontSize: 13,
   },
   form: {
     flex: 1,

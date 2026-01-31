@@ -53,6 +53,7 @@ import DateCarousel from '../components/ui/DateCarousel';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import Skeleton from '../components/ui/Skeleton';
 import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCalendar';
+import { TAB_BAR_HEIGHT } from '../navigation/TabNavigator';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 
@@ -1102,7 +1103,7 @@ const styles = StyleSheet.create({
   },
   pointsBadgeContainer: {
     position: 'absolute',
-    bottom: 20,
+    bottom: TAB_BAR_HEIGHT + 10,
     right: 20,
   },
   pointsBadge: {
@@ -1129,7 +1130,7 @@ const styles = StyleSheet.create({
   },
   badgeIndicator: {
     position: 'absolute',
-    bottom: 40 - 32,
+    bottom: TAB_BAR_HEIGHT + 40 - 32,
     right: -32,
     padding: 32,
     zIndex: 10,

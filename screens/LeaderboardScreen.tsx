@@ -41,6 +41,7 @@ import { getChallengeStatus } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import ChallengeChip from '../components/challenge/ChallengeChip';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
+import { TAB_BAR_HEIGHT } from '../navigation/TabNavigator';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
 
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: TAB_BAR_HEIGHT,
   },
   selectorTitle: {
     fontSize: 16,

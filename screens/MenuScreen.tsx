@@ -17,6 +17,7 @@ import { clearAllAppData } from '../utils/storage';
 import { RootStackParamList } from '../types';
 import { RootState } from '../redux/store';
 import Toggle from '../components/Toggle';
+import { TAB_BAR_HEIGHT } from '../navigation/TabNavigator';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 24,
+    paddingBottom: TAB_BAR_HEIGHT + 16,
   },
   userCard: {
     flexDirection: 'row',
