@@ -191,8 +191,9 @@ export default function HomeScreen() {
     extrapolate: 'clamp',
   });
 
-  // Scroll animation
+  // Scroll animation - separate values for native (transform/opacity) and JS (layout) animations
   const scrollY = useRef(new Animated.Value(0)).current;
+  const scrollYLayout = useRef(new Animated.Value(0)).current;
 
   // Text fades out over first 40px of scroll
   const textOpacity = scrollY.interpolate({
@@ -208,12 +209,13 @@ export default function HomeScreen() {
     extrapolate: 'clamp',
   });
 
-  // Header height shrinks
-  const headerHeight = scrollY.interpolate({
+  // Header height shrinks as logo shrinks (uses JS driver since height can't use native)
+  const headerHeight = scrollYLayout.interpolate({
     inputRange: [0, 80],
-    outputRange: [140, 70],
+    outputRange: [72, 30],
     extrapolate: 'clamp',
   });
+
 
   // Load data on mount
   useEffect(() => {
@@ -502,11 +504,11 @@ export default function HomeScreen() {
       edges={['top']}
     >
       {/* Sticky logo header */}
-      <Animated.View style={[styles.stickyHeader, { backgroundColor: colors.background }]}>
+      <Animated.View style={[styles.stickyHeader, { backgroundColor: colors.background, height: headerHeight }]}>
         <Animated.Image
           source={require('../assets/images/TT-logo.png')}
           style={[styles.logo, { transform: [{ scale: logoScale }] }]}
-          resizeMode="contain"
+          // resizeMode="contain"
         />
       </Animated.View>
 
@@ -516,15 +518,13 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          {
-            useNativeDriver: true,
-            listener: (event: any) => {
-              scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
-            },
-          }
-        )}
+        onScroll={(event: any) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          scrollOffsetRef.current = offsetY;
+          // Update both animated values - scrollY uses native driver, scrollYLayout uses JS
+          scrollY.setValue(offsetY);
+          scrollYLayout.setValue(offsetY);
+        }}
         scrollEventThrottle={16}
         stickyHeaderIndices={orderedChallenges.length > 1 ? [2] : undefined}
       >
@@ -910,12 +910,12 @@ const styles = StyleSheet.create({
   },
   stickyHeader: {
     alignItems: 'center',
-    paddingVertical: 8,
+    justifyContent: 'center',
     zIndex: 10,
   },
   stickyCarouselContainer: {
     paddingBottom: 8,
-    zIndex: 5,
+    zIndex: 11,
   },
   logo: {
     width: 56,
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginTop: 16,
+    marginTop: 0,
     marginBottom: 2,
   },
   selectorTitle: {
