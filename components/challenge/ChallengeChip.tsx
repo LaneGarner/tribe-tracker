@@ -68,6 +68,7 @@ export default function ChallengeChip({
         delayLongPress={150}
         disabled={disabled}
         style={showArrows ? styles.textContainer : undefined}
+        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
       >
