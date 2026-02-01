@@ -973,7 +973,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   helpButton: {
-    marginRight: 6,
+    marginRight: 2,
     padding: 2,
   },
   tooltipBackdrop: {
