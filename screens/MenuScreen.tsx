@@ -37,6 +37,7 @@ export default function MenuScreen() {
   const profile = useSelector((state: RootState) => state.profile.data);
 
   const featureItems: MenuItem[] = [
+    { id: 'badges', label: 'Badges', icon: 'ribbon-outline', screen: 'Badges' },
     { id: 'chat', label: 'Chat', icon: 'chatbubble-outline', screen: 'Chat' },
     { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching' },
   ];

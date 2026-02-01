@@ -3,6 +3,7 @@ import challengesReducer from './slices/challengesSlice';
 import participantsReducer from './slices/participantsSlice';
 import checkinsReducer from './slices/checkinsSlice';
 import profileReducer from './slices/profileSlice';
+import badgesReducer from './slices/badgesSlice';
 import { syncMiddleware } from './syncMiddleware';
 
 export const store = configureStore({
@@ -11,6 +12,7 @@ export const store = configureStore({
     participants: participantsReducer,
     checkins: checkinsReducer,
     profile: profileReducer,
+    badges: badgesReducer,
   },
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware().concat(syncMiddleware),

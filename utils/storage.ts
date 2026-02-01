@@ -4,6 +4,8 @@ import {
   ChallengeParticipant,
   HabitCheckin,
   UserProfile,
+  BadgeDefinition,
+  UserBadge,
 } from '../types';
 
 // Storage keys
@@ -16,6 +18,8 @@ const KEYS = {
   LAST_SYNC: 'tribe_last_sync',
   PENDING_SYNC: 'tribe_pending_sync',
   THEME_MODE: 'tribe_theme_mode',
+  BADGE_DEFINITIONS: 'tribe_badge_definitions',
+  BADGES: 'tribe_badges',
 };
 
 // Challenge storage functions
@@ -201,6 +205,8 @@ export const clearUserData = async (): Promise<void> => {
       AsyncStorage.removeItem(KEYS.CHALLENGE_ORDER),
       AsyncStorage.removeItem(KEYS.LAST_SYNC),
       AsyncStorage.removeItem(KEYS.PENDING_SYNC),
+      AsyncStorage.removeItem(KEYS.BADGE_DEFINITIONS),
+      AsyncStorage.removeItem(KEYS.BADGES),
     ]);
   } catch (error) {
     console.error('Error clearing user data:', error);
@@ -214,5 +220,43 @@ export const clearAllAppData = async (): Promise<void> => {
     await AsyncStorage.removeItem(KEYS.THEME_MODE);
   } catch (error) {
     console.error('Error clearing all app data:', error);
+  }
+};
+
+// Badge definitions storage functions
+export const saveBadgeDefinitions = async (definitions: BadgeDefinition[]) => {
+  try {
+    await AsyncStorage.setItem(KEYS.BADGE_DEFINITIONS, JSON.stringify(definitions));
+  } catch (error) {
+    console.error('Error saving badge definitions:', error);
+  }
+};
+
+export const loadBadgeDefinitions = async (): Promise<BadgeDefinition[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.BADGE_DEFINITIONS);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error loading badge definitions:', error);
+    return [];
+  }
+};
+
+// User badges storage functions
+export const saveBadges = async (badges: UserBadge[]) => {
+  try {
+    await AsyncStorage.setItem(KEYS.BADGES, JSON.stringify(badges));
+  } catch (error) {
+    console.error('Error saving badges:', error);
+  }
+};
+
+export const loadBadges = async (): Promise<UserBadge[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.BADGES);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error loading badges:', error);
+    return [];
   }
 };

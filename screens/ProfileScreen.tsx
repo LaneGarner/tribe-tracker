@@ -25,6 +25,9 @@ import { isBackendConfigured } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge } from '../types';
 import { calculateActiveStreak } from '../utils/streakUtils';
+import { loadBadgesFromStorage, fetchBadgesFromServer } from '../redux/slices/badgesSlice';
+import LevelBadge from '../components/badges/LevelBadge';
+import HexBadge from '../components/badges/HexBadge';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 type ProfileNavigationProp = NativeStackNavigationProp<
@@ -48,6 +51,9 @@ export default function ProfileScreen() {
   const profile = useSelector((state: RootState) => state.profile.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const checkins = useSelector((state: RootState) => state.checkins.data);
+  const { definitions: badgeDefinitions, earned: earnedBadges, totalPoints: badgePoints, level: badgeLevel } = useSelector(
+    (state: RootState) => state.badges
+  );
 
   // For viewing other users, use memoized selector
   const selectParticipantsByUserId = useMemo(makeSelectParticipantsByUserId, []);
@@ -87,12 +93,14 @@ export default function ProfileScreen() {
       dispatch(loadProfileFromStorage()),
       dispatch(loadChallengesFromStorage()),
       dispatch(loadParticipantsFromStorage()),
+      dispatch(loadBadgesFromStorage()),
     ]);
     if (session?.access_token && isBackendConfigured()) {
       await Promise.all([
         dispatch(fetchProfileFromServer(session.access_token)),
         dispatch(fetchChallengesFromServer(session.access_token)),
         dispatch(fetchParticipantsFromServer(session.access_token)),
+        dispatch(fetchBadgesFromServer(session.access_token)),
       ]);
     }
     setRefreshing(false);
@@ -479,6 +487,65 @@ export default function ProfileScreen() {
               </View>
             </View>
 
+            {/* Achievements Section - only show for own profile */}
+            {isOwnProfile && (
+              <View style={[styles.achievementsCard, { backgroundColor: colors.surface }]}>
+                <View style={styles.achievementsHeader}>
+                  <View style={styles.achievementsTitleRow}>
+                    <Ionicons name="ribbon-outline" size={20} color={colors.warning} />
+                    <Text style={[styles.achievementsTitle, { color: colors.text }]}>
+                      Achievements
+                    </Text>
+                  </View>
+                  <LevelBadge level={badgeLevel} totalPoints={badgePoints} size="sm" showTitle={false} />
+                </View>
+                {earnedBadges.length > 0 ? (
+                  <>
+                    <View style={styles.recentBadgesRow}>
+                      {earnedBadges
+                        .slice()
+                        .sort((a, b) => new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime())
+                        .slice(0, 4)
+                        .map(userBadge => {
+                          const definition = badgeDefinitions.find(d => d.id === userBadge.badgeId);
+                          if (!definition) return null;
+                          return (
+                            <HexBadge
+                              key={userBadge.id}
+                              badge={definition}
+                              earned
+                              size="sm"
+                              showName={false}
+                            />
+                          );
+                        })}
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.seeAllButton, { borderColor: colors.border }]}
+                      onPress={() => navigation.navigate('Badges')}
+                    >
+                      <Text style={[styles.seeAllText, { color: colors.primary }]}>
+                        See All Badges ({earnedBadges.length})
+                      </Text>
+                      <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.noBadgesContainer}
+                    onPress={() => navigation.navigate('Badges')}
+                  >
+                    <Text style={[styles.noBadgesText, { color: colors.textSecondary }]}>
+                      No badges earned yet. Keep checking in!
+                    </Text>
+                    <Text style={[styles.viewBadgesLink, { color: colors.primary }]}>
+                      View available badges
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
             {/* Challenges */}
             <View style={[styles.challengesCard, { backgroundColor: colors.surface }]}>
               {/* Header */}
@@ -707,6 +774,55 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
+  },
+  achievementsCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  achievementsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  achievementsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  achievementsTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  recentBadgesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    gap: 4,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  noBadgesContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  noBadgesText: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  viewBadgesLink: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   challengesCard: {
     borderRadius: 12,

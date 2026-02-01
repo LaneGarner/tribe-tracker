@@ -33,6 +33,9 @@ import StaffManagementScreen from '../screens/StaffManagementScreen';
 import SystemAdminScreen from '../screens/SystemAdminScreen';
 import FeatureTogglesScreen from '../screens/FeatureTogglesScreen';
 
+// Badges screen
+import BadgesScreen from '../screens/BadgesScreen';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
@@ -171,6 +174,13 @@ export default function RootNavigator() {
             name="FeatureToggles"
             component={FeatureTogglesScreen}
             options={{ title: 'Feature Toggles' }}
+          />
+
+          {/* Badges */}
+          <Stack.Screen
+            name="Badges"
+            component={BadgesScreen}
+            options={{ title: 'Badges' }}
           />
         </>
       )}

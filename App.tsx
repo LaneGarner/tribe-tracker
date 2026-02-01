@@ -27,6 +27,10 @@ import {
   loadProfileFromStorage,
   fetchProfileFromServer,
 } from './redux/slices/profileSlice';
+import {
+  loadBadgesFromStorage,
+  fetchBadgesFromServer,
+} from './redux/slices/badgesSlice';
 import { AppDispatch, store } from './redux/store';
 import { ThemeContext, ThemeProvider, getColors } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -47,6 +51,7 @@ function AppContent() {
         dispatch(loadCheckinsFromStorage()),
         dispatch(loadParticipantsFromStorage()),
         dispatch(loadProfileFromStorage()),
+        dispatch(loadBadgesFromStorage()),
       ]);
       setIsInitializing(false);
     };
@@ -65,6 +70,7 @@ function AppContent() {
       dispatch(fetchParticipantsFromServer(token));
       dispatch(fetchCheckinsFromServer(token));
       dispatch(fetchProfileFromServer(token));
+      dispatch(fetchBadgesFromServer(token));
     }
   }, [user, session, dispatch]);
 

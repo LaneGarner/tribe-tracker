@@ -111,6 +111,34 @@ export interface FeatureToggle {
   description?: string;
 }
 
+// Badge types
+export type BadgeCategory = 'streak' | 'volume' | 'challenge' | 'social' | 'onboarding';
+
+export interface BadgeDefinition {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: BadgeCategory;
+  iconName: string;
+  iconColor: string;
+  iconColorEnd?: string;
+  borderColor: string;
+  points: number;
+  requirementType: string;
+  requirementValue?: number;
+  sortOrder: number;
+}
+
+export interface UserBadge {
+  id: string;
+  badgeId: string;
+  earnedAt: string;
+  challengeId?: string;
+  metadata?: Record<string, unknown>;
+  badge?: BadgeDefinition;
+}
+
 // Navigation types
 export type RootStackParamList = {
   Auth: undefined;
@@ -133,6 +161,7 @@ export type RootStackParamList = {
   StaffManagement: undefined;
   SystemAdmin: undefined;
   FeatureToggles: undefined;
+  Badges: undefined;
 };
 
 export type TabParamList = {
