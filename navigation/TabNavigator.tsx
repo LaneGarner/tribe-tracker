@@ -9,6 +9,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withSpring,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
@@ -23,12 +24,12 @@ import { TAB_BAR_HEIGHT } from '../constants/layout';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
-// Tab icon configuration
-const TAB_ICONS: Record<string, { focused: keyof typeof Ionicons.glyphMap; unfocused: keyof typeof Ionicons.glyphMap; size: number }> = {
-  Home: { focused: 'home', unfocused: 'home-outline', size: 22 },
-  Challenges: { focused: 'flag', unfocused: 'flag-outline', size: 22 },
-  Leaderboard: { focused: 'trophy', unfocused: 'trophy-outline', size: 22 },
-  Menu: { focused: 'menu', unfocused: 'menu-outline', size: 26 },
+// Tab icon configuration - all filled icons, color changes on focus
+const TAB_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; size: number }> = {
+  Home: { icon: 'home', size: 22 },
+  Challenges: { icon: 'flag', size: 22 },
+  Leaderboard: { icon: 'trophy', size: 22 },
+  Menu: { icon: 'menu', size: 26 },
 };
 
 const TIMING_CONFIG = {
@@ -36,13 +37,19 @@ const TIMING_CONFIG = {
   easing: Easing.out(Easing.cubic),
 };
 
+const EXPAND_SPRING_CONFIG = {
+  damping: 7,
+  stiffness: 300,
+  mass: 0.4,
+};
+
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 500;
 
-const HORIZONTAL_MARGIN = 32;
 const TAB_BAR_PADDING = 0;
 const SELECTION_PILL_PADDING = 6;
-const SELECTION_PILL_HORIZONTAL_INSET = 4;
+const SELECTION_PILL_HORIZONTAL_INSET = 4;  // Original default inset from tab edges
+const MIN_CONTENT_PADDING = 20;              // Minimum padding around content
 
 
 // Selection indicator component for the floating pill
@@ -55,22 +62,18 @@ const SelectionIndicator = ({
   colors: ReturnType<typeof getColors>;
   colorScheme: 'light' | 'dark';
 }) => {
-  const useLiquidGlass = Platform.OS === 'ios' && isLiquidGlassAvailable();
-
   return (
     <Animated.View style={[styles.selectionIndicatorWrapper, indicatorStyle]}>
-      {useLiquidGlass ? (
-        <GlassView style={styles.selectionPill} isInteractive />
-      ) : (
-        <View
-          style={[
-            styles.selectionPill,
-            {
-              backgroundColor: 'rgba(120, 120, 128, 0.12)', // iOS system grey
-            },
-          ]}
-        />
-      )}
+      <View
+        style={[
+          styles.selectionPill,
+          {
+            backgroundColor: colorScheme === 'dark'
+              ? 'rgba(60, 60, 60, 0.8)'
+              : 'rgba(120, 120, 128, 0.12)',
+          },
+        ]}
+      />
     </Animated.View>
   );
 };
@@ -84,6 +87,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   // Track tab widths and positions for the sliding indicator
   const tabWidths = useRef<number[]>([]);
   const tabPositions = useRef<number[]>([]);
+  const contentWidths = useRef<number[]>([]);
   const [indicatorReady, setIndicatorReady] = useState(false);
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
@@ -96,16 +100,56 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
     }
   };
 
-  // Calculate and animate indicator position when tab changes
-  useEffect(() => {
-    if (tabPositions.current.length > state.index && tabWidths.current.length > state.index) {
-      const targetX = tabPositions.current[state.index] + SELECTION_PILL_HORIZONTAL_INSET;
-      const targetWidth = tabWidths.current[state.index] - SELECTION_PILL_HORIZONTAL_INSET * 2;
+  // Calculate indicator position - uses default size, expands if content too tight
+  const calculateIndicatorPosition = (index: number, animate: boolean) => {
+    const tabX = tabPositions.current[index];
+    const tabWidth = tabWidths.current[index];
+    const contentWidth = contentWidths.current[index];
 
-      indicatorX.value = withTiming(targetX, TIMING_CONFIG);
-      indicatorWidth.value = withTiming(targetWidth, TIMING_CONFIG);
+    if (tabX === undefined || tabWidth === undefined) return;
+
+    // Default pill size (original behavior - minimum size)
+    const defaultPillX = tabX + SELECTION_PILL_HORIZONTAL_INSET;
+    const defaultPillWidth = tabWidth - SELECTION_PILL_HORIZONTAL_INSET * 2;
+
+    // Check if content needs more room
+    let finalPillX = defaultPillX;
+    let finalPillWidth = defaultPillWidth;
+
+    if (contentWidth !== undefined) {
+      const currentPadding = (defaultPillWidth - contentWidth) / 2;
+
+      if (currentPadding < MIN_CONTENT_PADDING) {
+        // Content too tight - expand pill
+        finalPillWidth = contentWidth + MIN_CONTENT_PADDING * 2;
+        const contentX = tabX + (tabWidth - contentWidth) / 2;
+        finalPillX = contentX - MIN_CONTENT_PADDING;
+      }
     }
-  }, [state.index, indicatorX, indicatorWidth]);
+
+    if (animate) {
+      // Animate to default first
+      indicatorX.value = withTiming(defaultPillX, TIMING_CONFIG);
+      indicatorWidth.value = withTiming(defaultPillWidth, TIMING_CONFIG);
+
+      // If expansion needed, animate after landing with bounce
+      if (finalPillX !== defaultPillX || finalPillWidth !== defaultPillWidth) {
+        setTimeout(() => {
+          indicatorX.value = withSpring(finalPillX, EXPAND_SPRING_CONFIG);
+          indicatorWidth.value = withSpring(finalPillWidth, EXPAND_SPRING_CONFIG);
+        }, TIMING_CONFIG.duration);
+      }
+    } else {
+      // Initial render - set final values immediately (no two-phase on load)
+      indicatorX.value = finalPillX;
+      indicatorWidth.value = finalPillWidth;
+    }
+  };
+
+  // Animate indicator position when tab changes
+  useEffect(() => {
+    calculateIndicatorPosition(state.index, true);
+  }, [state.index]);
 
   // Swipe gesture to change tabs
   const panGesture = Gesture.Pan()
@@ -133,12 +177,26 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const handleTabLayout = (index: number, x: number, width: number) => {
     tabPositions.current[index] = x;
     tabWidths.current[index] = width;
+    maybeInitializeIndicator(index);
+  };
 
-    // Initialize indicator position for the initial selected tab (only once)
-    // Set values immediately, then show indicator on next frame to ensure layout is settled
-    if (index === state.index && !indicatorReady) {
-      indicatorX.value = x + SELECTION_PILL_HORIZONTAL_INSET;
-      indicatorWidth.value = width - SELECTION_PILL_HORIZONTAL_INSET * 2;
+  const handleContentLayout = (index: number, width: number) => {
+    contentWidths.current[index] = width;
+    maybeInitializeIndicator(index);
+  };
+
+  // Initialize indicator once we have all measurements for the selected tab
+  const maybeInitializeIndicator = (index: number) => {
+    if (indicatorReady) return;
+    if (index !== state.index) return;
+
+    const hasAllMeasurements =
+      tabPositions.current[index] !== undefined &&
+      tabWidths.current[index] !== undefined &&
+      contentWidths.current[index] !== undefined;
+
+    if (hasAllMeasurements) {
+      calculateIndicatorPosition(index, false);
       requestAnimationFrame(() => {
         setIndicatorReady(true);
       });
@@ -190,19 +248,26 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
             accessibilityLabel={options.tabBarAccessibilityLabel}
             onPress={onPress}
             onLongPress={onLongPress}
-            hitSlop={14}
+            hitSlop={{ top: 20, bottom: 20, left: 8, right: 8 }}
             style={styles.tabButton}
             onLayout={(e) => {
               const { x, width } = e.nativeEvent.layout;
               handleTabLayout(index, x, width);
             }}
           >
-            <View style={styles.tabButtonContent}>
-              <Ionicons
-                name={isFocused ? iconConfig.focused : iconConfig.unfocused}
-                size={iconConfig.size}
-                color={isFocused ? colors.primary : colors.tabBarInactive}
-              />
+            <View
+              style={styles.tabButtonContent}
+              onLayout={(e) => {
+                handleContentLayout(index, e.nativeEvent.layout.width);
+              }}
+            >
+              <View style={styles.iconContainer}>
+                <Ionicons
+                  name={iconConfig.icon}
+                  size={iconConfig.size}
+                  color={isFocused ? colors.primary : colors.tabBarInactive}
+                />
+              </View>
               <Text
                 style={[
                   styles.tabLabel,
@@ -227,8 +292,18 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   if (Platform.OS === 'ios' && isLiquidGlassAvailable()) {
     return (
       <GestureDetector gesture={panGesture}>
-        <View style={containerStyle}>
-          <GlassView style={styles.tabBar}>
+        <View
+          style={[
+            containerStyle,
+            {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
+              shadowRadius: colorScheme === 'dark' ? 12 : 8,
+            },
+          ]}
+        >
+          <GlassView key={colorScheme} style={styles.tabBar}>
             <TabBarContent />
           </GlassView>
         </View>
@@ -242,22 +317,40 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
       <GestureDetector gesture={panGesture}>
         <View style={containerStyle}>
           <BlurView
-            intensity={80}
-            tint={colorScheme === 'dark' ? 'dark' : 'light'}
+            intensity={50}
+            tint="default"
             style={styles.tabBar}
           >
-            <TabBarContent />
+            <View style={[
+              styles.frostedOverlay,
+              {
+                backgroundColor: colorScheme === 'dark'
+                  ? 'rgba(30, 30, 30, 0.8)'
+                  : 'rgba(255, 255, 255, 0.75)'
+              }
+            ]}>
+              <TabBarContent />
+            </View>
           </BlurView>
         </View>
       </GestureDetector>
     );
   }
 
-  // Android solid fallback
+  // Android translucent fallback
   return (
     <GestureDetector gesture={panGesture}>
       <View style={containerStyle}>
-        <View style={[styles.tabBar, { backgroundColor: colors.tabBar }]}>
+        <View style={[
+          styles.tabBar,
+          {
+            backgroundColor: colorScheme === 'dark'
+              ? 'rgba(24, 24, 27, 0.95)'
+              : 'rgba(255, 255, 255, 0.92)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(0, 0, 0, 0.1)',
+          }
+        ]}>
           <TabBarContent />
         </View>
       </View>
@@ -269,15 +362,17 @@ const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: HORIZONTAL_MARGIN,
+    left: '5%',
+    right: '5%',
   },
   tabBar: {
     borderRadius: 100,
     overflow: 'hidden',
     paddingVertical: TAB_BAR_PADDING,
     paddingHorizontal: 4,
+  },
+  frostedOverlay: {
+    borderRadius: 100,
   },
   tabBarContent: {
     flexDirection: 'row',
@@ -302,6 +397,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   tabButtonContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconContainer: {
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },

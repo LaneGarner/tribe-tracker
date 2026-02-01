@@ -68,7 +68,7 @@ export const colors = {
     error: '#EF4444',
     tabBar: '#E0E0E0',
     tabBarBorder: '#E5E7EB',
-    tabBarInactive: '#4B5563',
+    tabBarInactive: '#374151',
   },
   dark: {
     background: '#000000',
@@ -78,14 +78,14 @@ export const colors = {
     textSecondary: '#A3A3A3',
     textTertiary: '#71717A',
     border: '#27272A',
-    primary: '#3B82F6',
+    primary: '#60A5FA',
     primaryDark: '#60A5FA',
     success: '#10B981',
     warning: '#F59E0B',
     error: '#EF4444',
     tabBar: '#18181B',
     tabBarBorder: '#27272A',
-    tabBarInactive: '#A3A3A3',
+    tabBarInactive: '#FFFFFF',
   },
 };
 
