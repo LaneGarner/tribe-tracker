@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -77,8 +78,12 @@ export default function AuthScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.content}>
+          <Image
+            source={require('../assets/images/TT-logo.png')}
+            style={styles.logo}
+          />
           <Text style={[styles.title, { color: colors.text }]}>
-            Tribe Tracker
+            TribeTracker
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Backend not configured. Please set up Supabase credentials.
@@ -100,65 +105,109 @@ export default function AuthScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text }]}>Tribe Tracker</Text>
+        <Image
+          source={require('../assets/images/TT-logo.png')}
+          style={styles.logo}
+        />
+        <Text style={[styles.title, { color: colors.text }]}>TribeTracker</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          {isLogin ? 'Welcome back!' : 'Create your account'}
+          Build your streak today.
         </Text>
 
-        {!isLogin && (
-          <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: colors.surface,
-                color: colors.text,
-                borderColor: colors.border,
-              },
-            ]}
-            placeholder="Full Name"
-            placeholderTextColor={colors.textTertiary}
-            value={fullName}
-            onChangeText={setFullName}
-            autoCapitalize="words"
-          />
+        {isLogin ? (
+          <>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              placeholder="Email"
+              placeholderTextColor={colors.textTertiary}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              textContentType="username"
+            />
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              placeholder="Password"
+              placeholderTextColor={colors.textTertiary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="current-password"
+              textContentType="password"
+            />
+          </>
+        ) : (
+          <>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              placeholder="Full Name"
+              placeholderTextColor={colors.textTertiary}
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+              autoComplete="name"
+              textContentType="name"
+            />
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              placeholder="Email"
+              placeholderTextColor={colors.textTertiary}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
+            />
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              placeholder="Password"
+              placeholderTextColor={colors.textTertiary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
+            />
+          </>
         )}
-
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.surface,
-              color: colors.text,
-              borderColor: colors.border,
-            },
-          ]}
-          placeholder="Email"
-          placeholderTextColor={colors.textTertiary}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-        />
-
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.surface,
-              color: colors.text,
-              borderColor: colors.border,
-            },
-          ]}
-          placeholder="Password"
-          placeholderTextColor={colors.textTertiary}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete={isLogin ? 'current-password' : 'new-password'}
-          textContentType={isLogin ? 'password' : 'newPassword'}
-        />
 
         <TouchableOpacity
           style={[
@@ -200,19 +249,27 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontFamily: 'Kanit_700Bold',
+    letterSpacing: 0.5,
     textAlign: 'center',
-    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
+    marginTop: 2,
     marginBottom: 32,
   },
   input: {
+    width: '100%',
     height: 50,
     borderWidth: 1,
     borderRadius: 12,
@@ -221,6 +278,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   button: {
+    width: '100%',
     height: 50,
     borderRadius: 12,
     justifyContent: 'center',

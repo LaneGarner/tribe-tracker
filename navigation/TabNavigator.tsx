@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -91,6 +92,21 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const [indicatorReady, setIndicatorReady] = useState(false);
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
+
+  // Track focus to force GlassView refresh on navigation return
+  const isInitialMount = useRef(true);
+  const [focusCount, setFocusCount] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+      }
+      // Trigger GlassView remount to refresh liquid glass effect
+      setFocusCount(prev => prev + 1);
+    }, [])
+  );
 
   // Navigate to tab by index (called from gesture handler)
   const navigateToIndex = (index: number) => {
@@ -303,7 +319,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
             },
           ]}
         >
-          <GlassView key={colorScheme} style={styles.tabBar}>
+          <GlassView key={`${colorScheme}-${focusCount}`} style={styles.tabBar}>
             <TabBarContent />
           </GlassView>
         </View>
