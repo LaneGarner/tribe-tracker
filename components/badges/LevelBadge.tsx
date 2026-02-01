@@ -1,8 +1,11 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import Svg, { Defs, LinearGradient, Stop, Polygon } from 'react-native-svg';
+import { useSelector } from 'react-redux';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { getLevelTitle } from '../../redux/slices/badgesSlice';
+import { RootState } from '../../redux/store';
 
 interface LevelBadgeProps {
   level: number;
@@ -19,7 +22,7 @@ const SIZES = {
 };
 
 // Level gradient colors (bronze to diamond progression)
-const LEVEL_COLORS: Record<number, { start: string; end: string; glow: string }> = {
+export const LEVEL_COLORS: Record<number, { start: string; end: string; glow: string }> = {
   1: { start: '#CD7F32', end: '#8B4513', glow: '#CD7F32' }, // Bronze
   2: { start: '#D4D4D4', end: '#A0A0A0', glow: '#C0C0C0' }, // Silver
   3: { start: '#FFD700', end: '#DAA520', glow: '#FFD700' }, // Gold
@@ -61,6 +64,15 @@ export default function LevelBadge({
   const levelColors = getLevelColors(level);
   const title = getLevelTitle(level);
   const uniqueId = `level-${level}-${size}`;
+  const [imageError, setImageError] = useState(false);
+
+  // Look up the level badge definition from Redux
+  const levelBadge = useSelector((state: RootState) =>
+    state.badges.definitions.find(d => d.slug === `level_${level}`)
+  );
+
+  const imageUrl = levelBadge?.imageUrl;
+  const useImage = imageUrl && !imageError;
 
   // Metallic frame colors
   const frameHighlight = '#E8E8E8';
@@ -68,70 +80,105 @@ export default function LevelBadge({
   const frameShadow = '#808080';
   const frameEdge = '#606060';
 
-  return (
-    <View style={styles.container}>
-      <View
-        style={[
-          styles.hexContainer,
-          {
-            width: dim.hex,
-            height: dim.hex,
-            shadowColor: levelColors.glow,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.7,
-            shadowRadius: 10,
-          },
-        ]}
-      >
-        <Svg width={dim.hex} height={dim.hex} viewBox={`0 0 ${dim.hex} ${dim.hex}`}>
-          <Defs>
-            {/* Metallic frame gradient */}
-            <LinearGradient id={`${uniqueId}-frame`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={frameHighlight} />
-              <Stop offset="30%" stopColor={frameMid} />
-              <Stop offset="70%" stopColor={frameShadow} />
-              <Stop offset="100%" stopColor={frameEdge} />
-            </LinearGradient>
+  // Scale for image to compensate for transparent padding
+  const imageScale = 1.35;
 
-            {/* Inner bevel */}
-            <LinearGradient id={`${uniqueId}-bevel`} x1="100%" y1="100%" x2="0%" y2="0%">
-              <Stop offset="0%" stopColor={frameHighlight} />
-              <Stop offset="50%" stopColor={frameMid} />
-              <Stop offset="100%" stopColor={frameShadow} />
-            </LinearGradient>
+  // Render with custom image
+  const renderImageBadge = () => (
+    <View
+      style={[
+        styles.hexContainer,
+        {
+          width: dim.hex,
+          height: dim.hex,
+          overflow: 'visible',
+          shadowColor: levelColors.glow,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: 12,
+        },
+      ]}
+    >
+      <Image
+        source={{ uri: imageUrl }}
+        style={{ width: dim.hex * imageScale, height: dim.hex * imageScale }}
+        contentFit="contain"
+        transition={200}
+        cachePolicy="disk"
+        onError={() => setImageError(true)}
+      />
+    </View>
+  );
 
-            {/* Level color gradient */}
-            <LinearGradient id={`${uniqueId}-fill`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={levelColors.start} />
-              <Stop offset="100%" stopColor={levelColors.end} />
-            </LinearGradient>
-
-            {/* Dark background */}
-            <LinearGradient id={`${uniqueId}-bg`} x1="0%" y1="0%" x2="0%" y2="100%">
-              <Stop offset="0%" stopColor="#3A3A3A" />
-              <Stop offset="100%" stopColor="#1A1A1A" />
-            </LinearGradient>
-          </Defs>
-
-          {/* Outer edge */}
-          <Polygon points={getHexPoints(dim.hex, 0)} fill={frameEdge} />
-
-          {/* Main metallic frame */}
-          <Polygon points={getHexPoints(dim.hex, 1)} fill={`url(#${uniqueId}-frame)`} />
+  // Render with SVG fallback (number display)
+  const renderFallbackBadge = () => (
+    <View
+      style={[
+        styles.hexContainer,
+        {
+          width: dim.hex,
+          height: dim.hex,
+          shadowColor: levelColors.glow,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.7,
+          shadowRadius: 10,
+        },
+      ]}
+    >
+      <Svg width={dim.hex} height={dim.hex} viewBox={`0 0 ${dim.hex} ${dim.hex}`}>
+        <Defs>
+          {/* Metallic frame gradient */}
+          <LinearGradient id={`${uniqueId}-frame`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor={frameHighlight} />
+            <Stop offset="30%" stopColor={frameMid} />
+            <Stop offset="70%" stopColor={frameShadow} />
+            <Stop offset="100%" stopColor={frameEdge} />
+          </LinearGradient>
 
           {/* Inner bevel */}
-          <Polygon points={getHexPoints(dim.hex, dim.frameWidth - 1)} fill={`url(#${uniqueId}-bevel)`} />
+          <LinearGradient id={`${uniqueId}-bevel`} x1="100%" y1="100%" x2="0%" y2="0%">
+            <Stop offset="0%" stopColor={frameHighlight} />
+            <Stop offset="50%" stopColor={frameMid} />
+            <Stop offset="100%" stopColor={frameShadow} />
+          </LinearGradient>
+
+          {/* Level color gradient */}
+          <LinearGradient id={`${uniqueId}-fill`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor={levelColors.start} />
+            <Stop offset="100%" stopColor={levelColors.end} />
+          </LinearGradient>
 
           {/* Dark background */}
-          <Polygon points={getHexPoints(dim.hex, dim.frameWidth + 1)} fill={`url(#${uniqueId}-bg)`} />
+          <LinearGradient id={`${uniqueId}-bg`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <Stop offset="0%" stopColor="#3A3A3A" />
+            <Stop offset="100%" stopColor="#1A1A1A" />
+          </LinearGradient>
+        </Defs>
 
-          {/* Level color fill */}
-          <Polygon points={getHexPoints(dim.hex, dim.frameWidth + 2)} fill={`url(#${uniqueId}-fill)`} />
-        </Svg>
+        {/* Outer edge */}
+        <Polygon points={getHexPoints(dim.hex, 0)} fill={frameEdge} />
 
-        {/* Level number overlay */}
-        <Text style={[styles.levelText, { fontSize: dim.fontSize }]}>{level}</Text>
-      </View>
+        {/* Main metallic frame */}
+        <Polygon points={getHexPoints(dim.hex, 1)} fill={`url(#${uniqueId}-frame)`} />
+
+        {/* Inner bevel */}
+        <Polygon points={getHexPoints(dim.hex, dim.frameWidth - 1)} fill={`url(#${uniqueId}-bevel)`} />
+
+        {/* Dark background */}
+        <Polygon points={getHexPoints(dim.hex, dim.frameWidth + 1)} fill={`url(#${uniqueId}-bg)`} />
+
+        {/* Level color fill */}
+        <Polygon points={getHexPoints(dim.hex, dim.frameWidth + 2)} fill={`url(#${uniqueId}-fill)`} />
+      </Svg>
+
+      {/* Level number overlay */}
+      <Text style={[styles.levelText, { fontSize: dim.fontSize }]}>{level}</Text>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      {useImage ? renderImageBadge() : renderFallbackBadge()}
 
       {showTitle && (
         <Text style={[styles.titleText, { color: colors.text, fontSize: dim.titleSize }]}>

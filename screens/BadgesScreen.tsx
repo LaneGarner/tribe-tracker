@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import dayjs from 'dayjs';
@@ -17,12 +19,13 @@ import {
   loadBadgesFromStorage,
   fetchBadgesFromServer,
   getPointsForNextLevel,
+  LEVEL_TITLES,
 } from '../redux/slices/badgesSlice';
 import { useAuth } from '../context/AuthContext';
 import { isBackendConfigured } from '../config/api';
 import { BadgeDefinition, UserBadge } from '../types';
 import BadgeGrid from '../components/badges/BadgeGrid';
-import LevelBadge from '../components/badges/LevelBadge';
+import LevelBadge, { LEVEL_COLORS } from '../components/badges/LevelBadge';
 import HexBadge from '../components/badges/HexBadge';
 
 type TabType = 'earned' | 'available';
@@ -39,6 +42,8 @@ export default function BadgesScreen() {
 
   const [activeTab, setActiveTab] = useState<TabType | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showLevelInfo, setShowLevelInfo] = useState(false);
+  const [imagesReady, setImagesReady] = useState(false);
 
   // Set initial tab based on earned badges (once loaded)
   useEffect(() => {
@@ -46,6 +51,24 @@ export default function BadgesScreen() {
       setActiveTab(earned.length > 0 ? 'earned' : 'available');
     }
   }, [activeTab, definitions.length, earned.length]);
+
+  // Prefetch all badge images at once using Promise.all
+  useEffect(() => {
+    if (definitions.length > 0 && !imagesReady) {
+      const imageUrls = definitions
+        .filter(d => d.imageUrl)
+        .map(d => d.imageUrl as string);
+
+      if (imageUrls.length === 0) {
+        setImagesReady(true);
+        return;
+      }
+
+      Promise.all(imageUrls.map(url => ExpoImage.prefetch(url)))
+        .then(() => setImagesReady(true))
+        .catch(() => setImagesReady(true)); // Show badges even if prefetch fails
+    }
+  }, [definitions, imagesReady]);
   const [selectedBadge, setSelectedBadge] = useState<{
     definition: BadgeDefinition;
     userBadge?: UserBadge;
@@ -60,6 +83,7 @@ export default function BadgesScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setImagesReady(false);
     await dispatch(loadBadgesFromStorage());
     if (session?.access_token && isBackendConfigured()) {
       await dispatch(fetchBadgesFromServer(session.access_token));
@@ -107,6 +131,16 @@ export default function BadgesScreen() {
       >
         {/* Level & Progress Section */}
         <View style={[styles.levelSection, { backgroundColor: colors.surface }]}>
+          <TouchableOpacity
+            style={styles.levelInfoButton}
+            onPress={() => setShowLevelInfo(true)}
+            hitSlop={14}
+            accessibilityLabel="Learn about the level system"
+            accessibilityRole="button"
+            accessibilityHint="Opens a modal explaining how levels and points work"
+          >
+            <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
           <LevelBadge
             level={level}
             totalPoints={totalPoints}
@@ -168,7 +202,14 @@ export default function BadgesScreen() {
         </View>
 
         {/* Badge Grid */}
-        {filteredDefinitions.length > 0 ? (
+        {!imagesReady && definitions.length > 0 ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading badges...
+            </Text>
+          </View>
+        ) : filteredDefinitions.length > 0 ? (
           <BadgeGrid
             definitions={filteredDefinitions}
             earned={earned}
@@ -259,6 +300,107 @@ export default function BadgesScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Level Info Modal */}
+      <Modal
+        visible={showLevelInfo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLevelInfo(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLevelInfo(false)}
+        >
+          <View
+            style={[styles.modalContent, { backgroundColor: colors.surface }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              Level System
+            </Text>
+
+            <View style={styles.levelInfoSection}>
+              <Text style={[styles.levelInfoHeader, { color: colors.text }]}>
+                How Points Work
+              </Text>
+              <Text style={[styles.levelInfoText, { color: colors.textSecondary }]}>
+                Earn points by unlocking badges. Each badge awards 1-5 points based on its difficulty.
+              </Text>
+            </View>
+
+            <View style={styles.levelInfoSection}>
+              <Text style={[styles.levelInfoHeader, { color: colors.text }]}>
+                How Levels Work
+              </Text>
+              <Text style={[styles.levelInfoText, { color: colors.textSecondary }]}>
+                Every 10 points you earn advances you to the next level, unlocking a new title and color.
+              </Text>
+            </View>
+
+            <View style={styles.levelInfoSection}>
+              <Text style={[styles.levelInfoHeader, { color: colors.text }]}>
+                Level Progression
+              </Text>
+              <View style={styles.levelProgressionList}>
+                {[1, 2, 3, 4, 5, 6, 7].map(lvl => (
+                  <LevelInfoRow
+                    key={lvl}
+                    level={lvl}
+                    currentLevel={level}
+                    colors={colors}
+                  />
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.closeButton, { backgroundColor: colors.primary }]}
+              onPress={() => setShowLevelInfo(false)}
+            >
+              <Text style={styles.closeButtonText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+}
+
+function LevelInfoRow({
+  level,
+  currentLevel,
+  colors,
+}: {
+  level: number;
+  currentLevel: number;
+  colors: ReturnType<typeof getColors>;
+}) {
+  const levelColor = LEVEL_COLORS[level];
+  const isCurrent = level === currentLevel;
+  const pointsThreshold = (level - 1) * 10;
+
+  return (
+    <View
+      style={[
+        styles.levelRow,
+        isCurrent && { backgroundColor: `${colors.primary}20` },
+      ]}
+    >
+      <View style={[styles.levelDot, { backgroundColor: levelColor.start }]} />
+      <Text style={[styles.levelRowNumber, { color: colors.text }]}>
+        Level {level}
+      </Text>
+      <Text style={[styles.levelRowTitle, { color: colors.text }]}>
+        {LEVEL_TITLES[level]}
+      </Text>
+      <Text style={[styles.levelRowPoints, { color: colors.textSecondary }]}>
+        {pointsThreshold}+ pts
+      </Text>
+      {isCurrent && (
+        <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+      )}
     </View>
   );
 }
@@ -323,6 +465,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
+  loadingState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    marginTop: 8,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -371,5 +523,59 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  levelInfoButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  levelInfoSection: {
+    width: '100%',
+    marginTop: 16,
+  },
+  levelInfoHeader: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  levelInfoText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  levelProgressionList: {
+    marginTop: 8,
+    gap: 6,
+  },
+  levelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 10,
+  },
+  levelDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  levelRowNumber: {
+    fontSize: 13,
+    fontWeight: '600',
+    width: 52,
+  },
+  levelRowTitle: {
+    fontSize: 13,
+    flex: 1,
+  },
+  levelRowPoints: {
+    fontSize: 12,
+    width: 48,
+    textAlign: 'right',
   },
 });

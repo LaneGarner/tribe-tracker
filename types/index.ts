@@ -128,6 +128,7 @@ export interface BadgeDefinition {
   requirementType: string;
   requirementValue?: number;
   sortOrder: number;
+  imageUrl?: string;
 }
 
 export interface UserBadge {
