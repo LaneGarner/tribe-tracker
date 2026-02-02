@@ -1,9 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -92,21 +90,6 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const [indicatorReady, setIndicatorReady] = useState(false);
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
-
-  // Track focus to force GlassView refresh on navigation return
-  const isInitialMount = useRef(true);
-  const [focusCount, setFocusCount] = useState(0);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (isInitialMount.current) {
-        isInitialMount.current = false;
-        return;
-      }
-      // Trigger GlassView remount to refresh liquid glass effect
-      setFocusCount(prev => prev + 1);
-    }, [])
-  );
 
   // Navigate to tab by index (called from gesture handler)
   const navigateToIndex = (index: number) => {
@@ -304,8 +287,8 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
     { paddingBottom: insets.bottom > 0 ? insets.bottom - 16 : 4 },
   ];
 
-  // Use liquid glass container on iOS 26+
-  if (Platform.OS === 'ios' && isLiquidGlassAvailable()) {
+  // iOS with blur
+  if (Platform.OS === 'ios') {
     return (
       <GestureDetector gesture={panGesture}>
         <View
@@ -313,25 +296,12 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
             containerStyle,
             {
               shadowColor: '#000',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
-              shadowRadius: colorScheme === 'dark' ? 12 : 8,
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.15,
+              shadowRadius: 12,
             },
           ]}
         >
-          <GlassView key={`${colorScheme}-${focusCount}`} style={styles.tabBar}>
-            <TabBarContent />
-          </GlassView>
-        </View>
-      </GestureDetector>
-    );
-  }
-
-  // Fallback for older iOS with blur
-  if (Platform.OS === 'ios') {
-    return (
-      <GestureDetector gesture={panGesture}>
-        <View style={containerStyle}>
           <BlurView
             intensity={50}
             tint="default"
@@ -356,7 +326,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   // Android translucent fallback
   return (
     <GestureDetector gesture={panGesture}>
-      <View style={containerStyle}>
+      <View style={[containerStyle, { elevation: 8 }]}>
         <View style={[
           styles.tabBar,
           {
