@@ -52,8 +52,6 @@ export default function AuthScreen() {
         const { error } = await signIn(email, password);
         if (error) {
           Alert.alert('Login Failed', error.message);
-        } else {
-          navigation.replace('Main');
         }
       } else {
         const { error } = await signUp(email, password, fullName);
