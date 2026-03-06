@@ -73,11 +73,7 @@ export default function HomeScreen() {
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const checkins = useSelector((state: RootState) => state.checkins.data);
   const participants = useSelector((state: RootState) => state.participants.data);
-  const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
-  const participantsLoading = useSelector((state: RootState) => state.participants.loading);
-
-  // Show skeleton until both challenges and participants have loaded
-  const isInitialLoad = (challengesLoading || participantsLoading) && participants.length === 0;
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(
@@ -218,11 +214,24 @@ export default function HomeScreen() {
   });
 
 
-  // Load data on mount
+  // Load data on mount - storage first, then server
   useEffect(() => {
-    dispatch(loadChallengesFromStorage());
-    dispatch(loadCheckinsFromStorage());
-    dispatch(loadParticipantsFromStorage());
+    const loadData = async () => {
+      await Promise.all([
+        dispatch(loadChallengesFromStorage()),
+        dispatch(loadCheckinsFromStorage()),
+        dispatch(loadParticipantsFromStorage()),
+      ]);
+      if (session?.access_token && isBackendConfigured()) {
+        await Promise.all([
+          dispatch(fetchChallengesFromServer(session.access_token)),
+          dispatch(fetchCheckinsFromServer(session.access_token)),
+          dispatch(fetchParticipantsFromServer(session.access_token)),
+        ]);
+      }
+      setInitialFetchDone(true);
+    };
+    loadData();
   }, [dispatch]);
 
   // Load challenge order from AsyncStorage
@@ -261,6 +270,9 @@ export default function HomeScreen() {
       userChallengeIds.has(c.id) &&
       getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
   );
+
+  // Show skeleton until initial fetch completes when there's no data
+  const isInitialLoad = !initialFetchDone && activeChallenges.length === 0;
 
   // Sort active challenges by saved order
   const orderedChallenges = [...activeChallenges].sort((a, b) => {
