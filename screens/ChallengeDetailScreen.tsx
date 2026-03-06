@@ -347,25 +347,6 @@ export default function ChallengeDetailScreen() {
           ))}
         </View>
 
-        {/* Invite Code - only show for private challenges */}
-        {!challenge.isPublic && challenge.inviteCode && (
-          <View style={[styles.inviteCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.inviteLabel, { color: colors.textSecondary }]}>
-              Invite Code
-            </Text>
-            <Text style={[styles.inviteCode, { color: colors.text }]}>
-              {challenge.inviteCode}
-            </Text>
-            <TouchableOpacity
-              style={[styles.shareButton, { backgroundColor: colors.primary }]}
-              onPress={handleShare}
-            >
-              <Ionicons name="share-outline" size={16} color="#fff" />
-              <Text style={styles.shareButtonText}>Share</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* Leaderboard */}
         <View style={styles.leaderboardSection}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -536,35 +517,6 @@ const styles = StyleSheet.create({
   habitText: {
     fontSize: 14,
     flex: 1,
-  },
-  inviteCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  inviteLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  inviteCode: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-    marginBottom: 12,
-  },
-  shareButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 6,
-  },
-  shareButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
   },
   leaderboardSection: {
     marginTop: 8,
