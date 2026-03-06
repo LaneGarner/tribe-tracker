@@ -18,7 +18,7 @@ import * as Crypto from 'expo-crypto';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
 import { deleteChallenge } from '../redux/slices/challengesSlice';
-import { addParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
+import { addParticipant, removeParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, ChallengeParticipant } from '../types';
 import {
@@ -52,6 +52,16 @@ export default function ChallengeDetailScreen() {
 
   const isCreator = challenge?.creatorId === user?.id;
 
+  const selectParticipantsByChallengeId = useMemo(makeSelectParticipantsByChallengeId, []);
+  const participants = useSelector((state: RootState) =>
+    selectParticipantsByChallengeId(state, challengeId)
+  );
+
+  const userParticipation = participants.find(p => p.userId === user?.id);
+  const isJoined = Boolean(userParticipation);
+  const [isJoining, setIsJoining] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
   const handleShare = async () => {
     if (!challenge) return;
     try {
@@ -64,45 +74,73 @@ export default function ChallengeDetailScreen() {
     }
   };
 
-  const handleCreatorMenu = () => {
-    if (!challenge) return;
+  const handleLeaveChallenge = () => {
+    if (!userParticipation) return;
     Alert.alert(
-      'Challenge Options',
-      undefined,
+      'Leave Challenge',
+      `Are you sure you want to leave "${challenge?.name}"? Your progress will be lost.`,
       [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Edit Challenge',
-          onPress: () => navigation.navigate('CreateChallenge', { mode: 'create', challengeId: challenge.id }),
-        },
-        {
-          text: 'Delete Challenge',
+          text: 'Leave',
           style: 'destructive',
           onPress: () => {
-            const participantCount = participants.length;
-            const warningMessage = participantCount > 0
-              ? `This challenge has ${participantCount} participant${participantCount !== 1 ? 's' : ''}. Are you sure you want to delete it?`
-              : 'Are you sure you want to delete this challenge?';
-
-            Alert.alert(
-              'Delete Challenge',
-              warningMessage,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: () => {
-                    dispatch(deleteChallenge(challenge.id));
-                    navigation.goBack();
-                  },
-                },
-              ]
-            );
+            dispatch(removeParticipant(userParticipation.id));
+            navigation.goBack();
           },
         },
-        { text: 'Cancel', style: 'cancel' },
       ]
     );
+  };
+
+  const handleOptionsMenu = () => {
+    if (!challenge) return;
+    const options: { text: string; style?: 'destructive' | 'cancel'; onPress?: () => void }[] = [];
+
+    if (isCreator) {
+      options.push({
+        text: 'Edit Challenge',
+        onPress: () => navigation.navigate('CreateChallenge', { mode: 'create', challengeId: challenge.id }),
+      });
+      options.push({
+        text: 'Delete Challenge',
+        style: 'destructive',
+        onPress: () => {
+          const participantCount = participants.length;
+          const warningMessage = participantCount > 0
+            ? `This challenge has ${participantCount} participant${participantCount !== 1 ? 's' : ''}. Are you sure you want to delete it?`
+            : 'Are you sure you want to delete this challenge?';
+
+          Alert.alert(
+            'Delete Challenge',
+            warningMessage,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: () => {
+                  dispatch(deleteChallenge(challenge.id));
+                  navigation.goBack();
+                },
+              },
+            ]
+          );
+        },
+      });
+    }
+
+    if (isJoined) {
+      options.push({
+        text: 'Leave Challenge',
+        style: 'destructive',
+        onPress: handleLeaveChallenge,
+      });
+    }
+
+    options.push({ text: 'Cancel', style: 'cancel' });
+
+    Alert.alert('Challenge Options', undefined, options);
   };
 
   // Set up header with share, analytics, and creator menu buttons
@@ -125,9 +163,9 @@ export default function ChallengeDetailScreen() {
           >
             <Ionicons name="stats-chart" size={22} color={colors.text} />
           </TouchableOpacity>
-          {isCreator && (
+          {(isCreator || isJoined) && (
             <TouchableOpacity
-              onPress={handleCreatorMenu}
+              onPress={handleOptionsMenu}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
@@ -136,7 +174,7 @@ export default function ChallengeDetailScreen() {
         </View>
       ),
     });
-  }, [navigation, colors.text, challenge?.name, challengeId, isCreator]);
+  }, [navigation, colors.text, challenge?.name, challengeId, isCreator, isJoined]);
 
   // Fetch fresh participant data when screen gains focus
   useFocusEffect(
@@ -146,16 +184,6 @@ export default function ChallengeDetailScreen() {
       }
     }, [dispatch, session?.access_token])
   );
-
-  const selectParticipantsByChallengeId = useMemo(makeSelectParticipantsByChallengeId, []);
-  const participants = useSelector((state: RootState) =>
-    selectParticipantsByChallengeId(state, challengeId)
-  );
-
-  const userParticipation = participants.find(p => p.userId === user?.id);
-  const isJoined = Boolean(userParticipation);
-  const [isJoining, setIsJoining] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
     setRefreshing(true);
