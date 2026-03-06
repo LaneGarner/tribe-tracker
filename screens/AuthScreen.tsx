@@ -25,7 +25,7 @@ type AuthScreenNavigationProp = NativeStackNavigationProp<
 
 export default function AuthScreen() {
   const navigation = useNavigation<AuthScreenNavigationProp>();
-  const { signIn, signUp, isConfigured } = useAuth();
+  const { signIn, signUp, resetPassword, isConfigured } = useAuth();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
 
@@ -35,6 +35,35 @@ export default function AuthScreen() {
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleForgotPassword = () => {
+    Alert.prompt(
+      'Reset Password',
+      'Enter your email address and we\'ll send you a link to reset your password.',
+      async (inputEmail) => {
+        if (!inputEmail) return;
+        setIsLoading(true);
+        try {
+          const { error } = await resetPassword(inputEmail);
+          if (error) {
+            Alert.alert('Error', error.message);
+          } else {
+            Alert.alert(
+              'Check Your Email',
+              'If an account exists with that email, you\'ll receive a password reset link.'
+            );
+          }
+        } catch {
+          Alert.alert('Error', 'Something went wrong. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      'plain-text',
+      email,
+      'email-address'
+    );
+  };
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -269,6 +298,19 @@ export default function AuthScreen() {
               : 'Already have an account? Sign in'}
           </Text>
         </TouchableOpacity>
+
+        {isLogin && (
+          <TouchableOpacity
+            style={styles.forgotButton}
+            onPress={handleForgotPassword}
+            accessibilityRole="button"
+            accessibilityLabel="Forgot password"
+          >
+            <Text style={[styles.forgotText, { color: colors.textSecondary }]}>
+              Forgot password?
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -320,6 +362,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 14,
     top: 14,
+  },
+  forgotButton: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  forgotText: {
+    fontSize: 14,
   },
   button: {
     width: '100%',
