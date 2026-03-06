@@ -332,7 +332,7 @@ export default function ChallengeDetailScreen() {
             <Ionicons name="calendar-outline" size={20} color={colors.primary} />
             <View style={styles.dateInfo}>
               <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                Starts
+                {status === 'completed' ? 'Started' : 'Starts'}
               </Text>
               <Text style={[styles.dateValue, { color: colors.text }]}>
                 {formatDate(challenge.startDate)}
@@ -344,7 +344,7 @@ export default function ChallengeDetailScreen() {
             <Ionicons name="flag-outline" size={20} color={colors.success} />
             <View style={styles.dateInfo}>
               <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                Ends
+                {status === 'completed' ? 'Ended' : 'Ends'}
               </Text>
               <Text style={[styles.dateValue, { color: colors.text }]}>
                 {formatDate(challenge.endDate || challenge.startDate)}
