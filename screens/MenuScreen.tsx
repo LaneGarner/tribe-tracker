@@ -11,12 +11,12 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
-import { ThemeContext, getColors } from '../theme/ThemeContext';
+import { ThemeContext, ThemePreference, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { clearAllAppData } from '../utils/storage';
 import { RootStackParamList } from '../types';
 import { RootState } from '../redux/store';
-import Toggle from '../components/Toggle';
+import SegmentedControl from '../components/SegmentedControl';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
@@ -31,7 +31,7 @@ interface MenuItem {
 
 export default function MenuScreen() {
   const navigation = useNavigation<MenuNavigationProp>();
-  const { colorScheme, setThemeMode } = useContext(ThemeContext);
+  const { colorScheme, themePreference, setThemePreference } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, signOut } = useAuth();
   const profile = useSelector((state: RootState) => state.profile.data);
@@ -81,9 +81,18 @@ export default function MenuScreen() {
     }
   };
 
-  const toggleTheme = () => {
-    setThemeMode(colorScheme === 'dark' ? 'light' : 'dark');
-  };
+  const appearanceOptions: { value: ThemePreference; label: string; icon: any }[] = [
+    { value: 'system', label: 'System', icon: 'phone-portrait-outline' },
+    { value: 'light', label: 'Light', icon: 'sunny-outline' },
+    { value: 'dark', label: 'Dark', icon: 'moon-outline' },
+  ];
+
+  const appearanceSubtitle =
+    themePreference === 'system'
+      ? 'Matches device settings'
+      : themePreference === 'light'
+        ? 'Always light'
+        : 'Always dark';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -123,26 +132,22 @@ export default function MenuScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Theme toggle */}
+        {/* Appearance */}
         <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.menuItem, { backgroundColor: colors.surface }]}
-            onPress={toggleTheme}
-          >
-            <Ionicons
-              name={colorScheme === 'dark' ? 'moon' : 'sunny-outline'}
-              size={22}
-              color={colors.text}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            Appearance
+          </Text>
+          <View style={[styles.appearanceCard, { backgroundColor: colors.surface }]}>
+            <SegmentedControl
+              options={appearanceOptions}
+              value={themePreference}
+              onValueChange={setThemePreference}
+              accessibilityLabel="Appearance mode"
             />
-            <Text style={[styles.menuItemText, { color: colors.text }]}>
-              Dark Mode
+            <Text style={[styles.appearanceSubtitle, { color: colors.textSecondary }]}>
+              {appearanceSubtitle}
             </Text>
-            <Toggle
-              value={colorScheme === 'dark'}
-              onValueChange={toggleTheme}
-              accessibilityLabel="Toggle dark mode"
-            />
-          </TouchableOpacity>
+          </View>
         </View>
 
         {/* Features */}
@@ -307,6 +312,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
     paddingLeft: 4,
+  },
+  appearanceCard: {
+    padding: 12,
+    borderRadius: 12,
+  },
+  appearanceSubtitle: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
   },
   menuItem: {
     flexDirection: 'row',

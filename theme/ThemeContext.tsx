@@ -1,49 +1,64 @@
 import React, { createContext, useEffect, useState } from 'react';
+import { useColorScheme } from 'react-native';
 import { loadThemeMode, saveThemeMode } from '../utils/storage';
 
 export type ThemeMode = 'light' | 'dark';
+export type ThemePreference = 'system' | 'light' | 'dark';
 
 interface ThemeContextProps {
-  themeMode: ThemeMode;
-  setThemeMode: (mode: ThemeMode) => void;
+  themePreference: ThemePreference;
+  setThemePreference: (pref: ThemePreference) => void;
   colorScheme: 'light' | 'dark';
+  /** @deprecated Use setThemePreference instead */
+  setThemeMode: (mode: ThemeMode) => void;
 }
 
 export const ThemeContext = createContext<ThemeContextProps>({
-  themeMode: 'light',
-  setThemeMode: () => {},
+  themePreference: 'system',
+  setThemePreference: () => {},
   colorScheme: 'light',
+  setThemeMode: () => {},
 });
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  const [themePreference, setThemePreference] = useState<ThemePreference>('system');
+  const systemColorScheme = useColorScheme();
 
-  // Load saved theme mode on app start
+  const resolvedColorScheme: 'light' | 'dark' =
+    themePreference === 'system'
+      ? (systemColorScheme ?? 'light')
+      : themePreference;
+
+  // Load saved theme preference on app start
   useEffect(() => {
     const loadSavedTheme = async () => {
-      const savedTheme = await loadThemeMode();
-      // Only use saved theme if it's 'light' or 'dark', otherwise default to 'light'
-      if (savedTheme === 'light' || savedTheme === 'dark') {
-        setThemeMode(savedTheme as ThemeMode);
+      const saved = await loadThemeMode();
+      if (saved === 'system' || saved === 'light' || saved === 'dark') {
+        setThemePreference(saved as ThemePreference);
       }
     };
     loadSavedTheme();
   }, []);
 
-  // Save theme mode when it changes
+  const handleSetThemePreference = (pref: ThemePreference) => {
+    setThemePreference(pref);
+    saveThemeMode(pref);
+  };
+
+  // Backward compat wrapper
   const handleSetThemeMode = (mode: ThemeMode) => {
-    setThemeMode(mode);
-    saveThemeMode(mode);
+    handleSetThemePreference(mode);
   };
 
   return (
     <ThemeContext.Provider
       value={{
-        themeMode,
+        themePreference,
+        setThemePreference: handleSetThemePreference,
+        colorScheme: resolvedColorScheme,
         setThemeMode: handleSetThemeMode,
-        colorScheme: themeMode,
       }}
     >
       {children}

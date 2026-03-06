@@ -129,10 +129,10 @@ export const saveThemeMode = async (themeMode: string) => {
 export const loadThemeMode = async (): Promise<string> => {
   try {
     const data = await AsyncStorage.getItem(KEYS.THEME_MODE);
-    return data || 'light';
+    return data || 'system';
   } catch (error) {
     console.error('Error loading theme mode:', error);
-    return 'light';
+    return 'system';
   }
 };
 
