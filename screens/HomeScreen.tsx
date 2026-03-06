@@ -5,10 +5,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  ScrollView,
   Animated,
   PanResponder,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp } from '@react-navigation/native';
