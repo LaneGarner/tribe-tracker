@@ -22,6 +22,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let NestableScrollContainer: any = null;
+let NestableDraggableFlatList: any = null;
+let ScaleDecorator: any = null;
+if (!isExpoGo) {
+  try {
+    const draggableModule = require('react-native-draggable-flatlist');
+    NestableScrollContainer = draggableModule.NestableScrollContainer;
+    NestableDraggableFlatList = draggableModule.NestableDraggableFlatList;
+    ScaleDecorator = draggableModule.ScaleDecorator;
+  } catch (e) {
+    // Not available in Expo Go
+  }
+}
+
+const FormScrollView = (!isExpoGo && NestableScrollContainer) ? NestableScrollContainer : ScrollView;
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { AppDispatch, RootState } from '../redux/store';
 import { addChallenge, updateChallenge, fetchPublicChallenges, loadChallengesFromStorage } from '../redux/slices/challengesSlice';
@@ -75,7 +94,12 @@ export default function CreateChallengeScreen() {
   const [endDate, setEndDate] = useState(getChallengeEndDate(getToday(), 30));
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
-  const [habits, setHabits] = useState<string[]>(['']);
+  type HabitItem = { id: string; text: string };
+  const makeHabitItem = (text: string = ''): HabitItem => ({
+    id: Crypto.randomUUID(),
+    text,
+  });
+  const [habits, setHabits] = useState<HabitItem[]>([makeHabitItem()]);
   const [isPublic, setIsPublic] = useState(true);
   const [inviteCode, setInviteCode] = useState('');
 
@@ -87,7 +111,11 @@ export default function CreateChallengeScreen() {
       setDurationDays(String(existingChallenge.durationDays));
       setStartDate(existingChallenge.startDate);
       setEndDate(existingChallenge.endDate || getChallengeEndDate(existingChallenge.startDate, existingChallenge.durationDays));
-      setHabits(existingChallenge.habits.length > 0 ? existingChallenge.habits : ['']);
+      setHabits(
+        existingChallenge.habits.length > 0
+          ? existingChallenge.habits.map(h => makeHabitItem(h))
+          : [makeHabitItem()]
+      );
       setIsPublic(existingChallenge.isPublic);
     }
   }, [isEditMode, existingChallenge]);
@@ -124,23 +152,31 @@ export default function CreateChallengeScreen() {
   );
 
   const addHabit = () => {
-    const newIndex = habits.length;
-    setHabits([...habits, '']);
+    const newItem = makeHabitItem();
+    const newHabits = [...habits, newItem];
+    setHabits(newHabits);
+    const newIndex = newHabits.length - 1;
     setTimeout(() => {
       habitInputRefs.current[newIndex]?.focus();
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
   };
 
-  const removeHabit = (index: number) => {
+  const removeHabit = (id: string) => {
     if (habits.length > 1) {
-      setHabits(habits.filter((_, i) => i !== index));
+      setHabits(habits.filter(h => h.id !== id));
     }
   };
 
-  const updateHabit = (index: number, value: string) => {
+  const updateHabit = (id: string, value: string) => {
+    setHabits(habits.map(h => h.id === id ? { ...h, text: value } : h));
+  };
+
+  const moveHabit = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= habits.length) return;
     const newHabits = [...habits];
-    newHabits[index] = value;
+    [newHabits[index], newHabits[newIndex]] = [newHabits[newIndex], newHabits[index]];
     setHabits(newHabits);
   };
 
@@ -180,7 +216,7 @@ export default function CreateChallengeScreen() {
   };
 
   const handleCreate = () => {
-    const validHabits = habits.filter(h => h.trim());
+    const validHabits = habits.map(h => h.text.trim()).filter(Boolean);
     const newErrors: typeof errors = {};
 
     if (!name.trim()) {
@@ -261,7 +297,7 @@ export default function CreateChallengeScreen() {
       setDurationDays('30');
       setStartDate(getToday());
       setEndDate(getChallengeEndDate(getToday(), 30));
-      setHabits(['']);
+      setHabits([makeHabitItem()]);
       setErrors({});
     };
 
@@ -449,7 +485,7 @@ export default function CreateChallengeScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView ref={scrollViewRef} style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <FormScrollView ref={scrollViewRef} style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Text style={[styles.label, { color: colors.text }]}>
           Challenge Name <Text style={{ color: colors.error }}>*</Text>
         </Text>
@@ -652,37 +688,113 @@ export default function CreateChallengeScreen() {
         <Text style={[styles.label, { color: colors.text }]}>
           Daily Habits <Text style={{ color: colors.error }}>*</Text>
         </Text>
-        {habits.map((habit, index) => (
-          <View key={index} style={styles.habitRow}>
-            <TextInput
-              ref={(el) => { habitInputRefs.current[index] = el; }}
-              style={[
-                styles.input,
-                styles.habitInput,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  borderColor: errors.habits ? colors.error : colors.border,
-                },
-              ]}
-              value={habit}
-              onChangeText={text => {
-                updateHabit(index, text);
-                if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
-              }}
-              placeholder={`Habit ${index + 1}`}
-              placeholderTextColor={colors.textTertiary}
-            />
-            {habits.length > 1 && (
-              <TouchableOpacity
-                style={styles.removeHabitButton}
-                onPress={() => removeHabit(index)}
-              >
-                <Ionicons name="close-circle" size={24} color={colors.error} />
-              </TouchableOpacity>
-            )}
-          </View>
-        ))}
+        {(isExpoGo || !NestableDraggableFlatList) ? (
+          habits.map((habit, index) => (
+            <View key={habit.id} style={styles.habitRow}>
+              {habits.length > 1 && (
+                <View style={styles.reorderButtons}>
+                  <TouchableOpacity
+                    onPress={() => moveHabit(index, 'up')}
+                    hitSlop={14}
+                    disabled={index === 0}
+                    style={{ opacity: index === 0 ? 0.3 : 1 }}
+                  >
+                    <Ionicons name="chevron-up" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => moveHabit(index, 'down')}
+                    hitSlop={14}
+                    disabled={index === habits.length - 1}
+                    style={{ opacity: index === habits.length - 1 ? 0.3 : 1 }}
+                  >
+                    <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+              <TextInput
+                ref={(el) => { habitInputRefs.current[index] = el; }}
+                style={[
+                  styles.input,
+                  styles.habitInput,
+                  {
+                    backgroundColor: colors.surface,
+                    color: colors.text,
+                    borderColor: errors.habits ? colors.error : colors.border,
+                  },
+                ]}
+                value={habit.text}
+                onChangeText={text => {
+                  updateHabit(habit.id, text);
+                  if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
+                }}
+                placeholder={`Habit ${index + 1}`}
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="words"
+              />
+              {habits.length > 1 && (
+                <TouchableOpacity
+                  style={styles.removeHabitButton}
+                  onPress={() => removeHabit(habit.id)}
+                >
+                  <Ionicons name="close-circle" size={24} color={colors.error} />
+                </TouchableOpacity>
+              )}
+            </View>
+          ))
+        ) : (
+          <NestableDraggableFlatList
+            data={habits}
+            keyExtractor={(item: HabitItem) => item.id}
+            onDragEnd={({ data }: { data: HabitItem[] }) => setHabits(data)}
+            scrollEnabled={false}
+            renderItem={({ item: habit, drag, isActive, getIndex }: any) => {
+              const index = getIndex() ?? 0;
+              const content = (
+                <View style={[styles.habitRow, isActive && styles.habitRowDragging]}>
+                  {habits.length > 1 && (
+                    <TouchableOpacity
+                      onPressIn={drag}
+                      disabled={isActive}
+                      style={styles.dragHandle}
+                      hitSlop={14}
+                    >
+                      <Ionicons name="reorder-three" size={22} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                  <TextInput
+                    ref={(el: TextInput | null) => { habitInputRefs.current[index] = el; }}
+                    style={[
+                      styles.input,
+                      styles.habitInput,
+                      {
+                        backgroundColor: colors.surface,
+                        color: colors.text,
+                        borderColor: errors.habits ? colors.error : colors.border,
+                      },
+                    ]}
+                    value={habit.text}
+                    onChangeText={(text: string) => {
+                      updateHabit(habit.id, text);
+                      if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
+                    }}
+                    placeholder={`Habit ${index + 1}`}
+                    placeholderTextColor={colors.textTertiary}
+                    autoCapitalize="words"
+                  />
+                  {habits.length > 1 && (
+                    <TouchableOpacity
+                      style={styles.removeHabitButton}
+                      onPress={() => removeHabit(habit.id)}
+                    >
+                      <Ionicons name="close-circle" size={24} color={colors.error} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+              return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
+            }}
+          />
+        )}
         {errors.habits && (
           <Text style={[styles.errorText, { color: colors.error }]}>
             {errors.habits}
@@ -697,7 +809,7 @@ export default function CreateChallengeScreen() {
 
         <View style={styles.toggleRow}>
           <Text style={[styles.toggleLabel, { color: colors.text }]}>
-            Make challenge public
+            Public challenge
           </Text>
           <Toggle
             value={isPublic}
@@ -705,7 +817,7 @@ export default function CreateChallengeScreen() {
             accessibilityLabel="Toggle challenge visibility"
           />
         </View>
-      </ScrollView>
+      </FormScrollView>
 
       <View style={[styles.fixedButtonContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <TouchableOpacity
@@ -904,6 +1016,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  reorderButtons: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    gap: 2,
+  },
+  dragHandle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    paddingVertical: 4,
+  },
+  habitRowDragging: {
+    opacity: 0.9,
   },
   habitInput: {
     flex: 1,
