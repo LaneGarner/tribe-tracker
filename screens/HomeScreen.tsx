@@ -546,6 +546,9 @@ export default function HomeScreen() {
             }}
           >
             <View style={styles.selectorHeader}>
+              <Text style={[styles.selectorTitle, { color: colors.text }]}>
+                Challenges
+              </Text>
               <View ref={helpButtonRef}>
                 <TouchableOpacity
                   onPress={() => {
@@ -572,9 +575,6 @@ export default function HomeScreen() {
                   <Ionicons name="help-circle-outline" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
-              <Text style={[styles.selectorTitle, { color: colors.text }]}>
-                Challenges
-              </Text>
             </View>
             {isExpoGo || !DraggableFlatList ? (
               // Expo Go: arrows inside chips for reordering
@@ -973,7 +973,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   helpButton: {
-    marginRight: 2,
+    marginLeft: 2,
     padding: 2,
   },
   tooltipBackdrop: {
