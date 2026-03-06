@@ -58,6 +58,7 @@ export default function Toggle({
     <Pressable
       onPress={handlePress}
       disabled={disabled}
+      hitSlop={14}
       accessibilityRole="switch"
       accessibilityState={{ checked: value, disabled }}
       accessibilityLabel={accessibilityLabel}

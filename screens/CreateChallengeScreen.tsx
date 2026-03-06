@@ -11,7 +11,10 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
+  Modal,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import dayjs from 'dayjs';
 import { PublicChallengeListSkeleton } from '../components/challenge/PublicChallengeCardSkeleton';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,7 +29,7 @@ import { isBackendConfigured } from '../config/api';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
-import { getToday, getChallengeEndDate } from '../utils/dateUtils';
+import { getToday, getChallengeEndDate, formatDate } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
 import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
@@ -68,6 +71,10 @@ export default function CreateChallengeScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [durationDays, setDurationDays] = useState('30');
+  const [startDate, setStartDate] = useState(getToday());
+  const [endDate, setEndDate] = useState(getChallengeEndDate(getToday(), 30));
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
   const [habits, setHabits] = useState<string[]>(['']);
   const [isPublic, setIsPublic] = useState(true);
   const [inviteCode, setInviteCode] = useState('');
@@ -78,6 +85,8 @@ export default function CreateChallengeScreen() {
       setName(existingChallenge.name);
       setDescription(existingChallenge.description || '');
       setDurationDays(String(existingChallenge.durationDays));
+      setStartDate(existingChallenge.startDate);
+      setEndDate(existingChallenge.endDate || getChallengeEndDate(existingChallenge.startDate, existingChallenge.durationDays));
       setHabits(existingChallenge.habits.length > 0 ? existingChallenge.habits : ['']);
       setIsPublic(existingChallenge.isPublic);
     }
@@ -130,6 +139,37 @@ export default function CreateChallengeScreen() {
     setHabits(newHabits);
   };
 
+  const isScheduleLocked = isEditMode && isActiveChallenge;
+
+  const handleStartDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowStartPicker(false);
+    if (!selectedDate) return;
+    const newStart = dayjs(selectedDate).format('YYYY-MM-DD');
+    const duration = parseInt(durationDays) || 30;
+    setStartDate(newStart);
+    setEndDate(getChallengeEndDate(newStart, duration));
+  };
+
+  const handleEndDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowEndPicker(false);
+    if (!selectedDate) return;
+    const newEnd = dayjs(selectedDate).format('YYYY-MM-DD');
+    const newDuration = dayjs(newEnd).diff(dayjs(startDate), 'day') + 1;
+    if (newDuration >= 1) {
+      setEndDate(newEnd);
+      setDurationDays(String(newDuration));
+    }
+  };
+
+  const handleDurationChange = (text: string) => {
+    setDurationDays(text);
+    if (errors.duration) setErrors(e => ({ ...e, duration: undefined }));
+    const parsed = parseInt(text);
+    if (parsed > 0) {
+      setEndDate(getChallengeEndDate(startDate, parsed));
+    }
+  };
+
   const generateInviteCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
@@ -164,14 +204,14 @@ export default function CreateChallengeScreen() {
         description: description.trim() || undefined,
         habits: validHabits,
         isPublic,
-        // Public challenges don't need invite codes; private ones do
         inviteCode: isPublic
           ? undefined
           : (existingChallenge.inviteCode || generateInviteCode()),
-        // Only update duration if challenge hasn't started yet
+        // Only update schedule if challenge hasn't started yet
         ...(existingChallenge.status === 'upcoming' && {
+          startDate,
           durationDays: parseInt(durationDays) || existingChallenge.durationDays,
-          endDate: getChallengeEndDate(existingChallenge.startDate, parseInt(durationDays) || existingChallenge.durationDays),
+          endDate,
         }),
         updatedAt: new Date().toISOString(),
       };
@@ -187,6 +227,8 @@ export default function CreateChallengeScreen() {
 
     // Handle create mode
     const challengeId = Crypto.randomUUID();
+    const today = getToday();
+    const isFutureStart = dayjs(startDate).isAfter(dayjs(today), 'day');
     const newChallenge: Challenge = {
       id: challengeId,
       name: name.trim(),
@@ -194,12 +236,12 @@ export default function CreateChallengeScreen() {
       creatorId: user?.id || 'anonymous',
       creatorName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
       durationDays: parseInt(durationDays) || 30,
-      startDate: getToday(),
-      endDate: getChallengeEndDate(getToday(), parseInt(durationDays) || 30),
+      startDate,
+      endDate,
       habits: validHabits,
       isPublic,
       inviteCode: isPublic ? undefined : generateInviteCode(),
-      status: 'active',
+      status: isFutureStart ? 'upcoming' : 'active',
       participantCount: 0,
       updatedAt: new Date().toISOString(),
     };
@@ -212,6 +254,8 @@ export default function CreateChallengeScreen() {
       setName('');
       setDescription('');
       setDurationDays('30');
+      setStartDate(getToday());
+      setEndDate(getChallengeEndDate(getToday(), 30));
       setHabits(['']);
       setErrors({});
     };
@@ -427,6 +471,36 @@ export default function CreateChallengeScreen() {
           numberOfLines={3}
         />
 
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          Schedule
+        </Text>
+
+        <Text style={[styles.label, { color: colors.text }]}>Start Date</Text>
+        <TouchableOpacity
+          style={[
+            styles.dateRow,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+          onPress={() => !isScheduleLocked && setShowStartPicker(true)}
+          disabled={isScheduleLocked}
+          accessibilityRole="button"
+          accessibilityLabel={`Start date: ${formatDate(startDate)}`}
+          accessibilityState={{ disabled: isScheduleLocked }}
+          accessibilityHint={isScheduleLocked ? 'Cannot change start date for active challenges' : 'Tap to change start date'}
+        >
+          <Text style={[styles.dateText, { color: isScheduleLocked ? colors.textTertiary : colors.text }]}>
+            {formatDate(startDate)}
+          </Text>
+          <Ionicons
+            name={isScheduleLocked ? 'lock-closed' : 'chevron-forward'}
+            size={18}
+            color={isScheduleLocked ? colors.textTertiary : colors.textSecondary}
+          />
+        </TouchableOpacity>
+
         <Text style={[styles.label, { color: colors.text }]}>
           Duration (days) <Text style={{ color: colors.error }}>*</Text>
         </Text>
@@ -435,29 +509,119 @@ export default function CreateChallengeScreen() {
             styles.input,
             {
               backgroundColor: colors.surface,
-              color: isEditMode && isActiveChallenge ? colors.textTertiary : colors.text,
+              color: isScheduleLocked ? colors.textTertiary : colors.text,
               borderColor: errors.duration ? colors.error : colors.border,
             },
           ]}
           value={durationDays}
-          onChangeText={(text) => {
-            setDurationDays(text);
-            if (errors.duration) setErrors(e => ({ ...e, duration: undefined }));
-          }}
+          onChangeText={handleDurationChange}
           placeholder="30"
           placeholderTextColor={colors.textTertiary}
           keyboardType="number-pad"
-          editable={!(isEditMode && isActiveChallenge)}
+          editable={!isScheduleLocked}
         />
-        {isEditMode && isActiveChallenge && (
-          <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-            Duration cannot be changed for active challenges
-          </Text>
-        )}
         {errors.duration && (
           <Text style={[styles.errorText, { color: colors.error }]}>
             {errors.duration}
           </Text>
+        )}
+
+        <Text style={[styles.label, { color: colors.text }]}>End Date</Text>
+        <TouchableOpacity
+          style={[
+            styles.dateRow,
+            {
+              backgroundColor: isScheduleLocked ? colors.surface : colors.background,
+              borderColor: colors.border,
+            },
+          ]}
+          onPress={() => !isScheduleLocked && setShowEndPicker(true)}
+          disabled={isScheduleLocked}
+          accessibilityRole="button"
+          accessibilityLabel={`End date: ${formatDate(endDate)}`}
+          accessibilityState={{ disabled: isScheduleLocked }}
+          accessibilityHint={isScheduleLocked ? 'Cannot change end date for active challenges' : 'Tap to change end date'}
+        >
+          <Text style={[styles.dateText, { color: isScheduleLocked ? colors.textTertiary : colors.text }]}>
+            {formatDate(endDate)}
+          </Text>
+          <Ionicons
+            name={isScheduleLocked ? 'lock-closed' : 'chevron-forward'}
+            size={18}
+            color={isScheduleLocked ? colors.textTertiary : colors.textSecondary}
+          />
+        </TouchableOpacity>
+        {!isScheduleLocked && (
+          <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+            Calculated from start + duration
+          </Text>
+        )}
+        {isScheduleLocked && (
+          <Text style={[styles.helperText, { color: colors.textSecondary }]}>
+            Schedule cannot be changed for active challenges
+          </Text>
+        )}
+
+        {showStartPicker && Platform.OS === 'ios' && (
+          <Modal transparent animationType="slide">
+            <View style={styles.pickerModalOverlay}>
+              <View style={[styles.pickerModalContent, { backgroundColor: colors.surface }]}>
+                <View style={styles.pickerModalHeader}>
+                  <TouchableOpacity onPress={() => setShowStartPicker(false)}>
+                    <Text style={[styles.pickerDoneText, { color: colors.primary }]}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={dayjs(startDate).toDate()}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={new Date()}
+                  onChange={handleStartDateChange}
+                  themeVariant={colorScheme}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
+        {showStartPicker && Platform.OS === 'android' && (
+          <DateTimePicker
+            value={dayjs(startDate).toDate()}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            onChange={handleStartDateChange}
+          />
+        )}
+
+        {showEndPicker && Platform.OS === 'ios' && (
+          <Modal transparent animationType="slide">
+            <View style={styles.pickerModalOverlay}>
+              <View style={[styles.pickerModalContent, { backgroundColor: colors.surface }]}>
+                <View style={styles.pickerModalHeader}>
+                  <TouchableOpacity onPress={() => setShowEndPicker(false)}>
+                    <Text style={[styles.pickerDoneText, { color: colors.primary }]}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={dayjs(endDate).toDate()}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={dayjs(startDate).add(1, 'day').toDate()}
+                  onChange={handleEndDateChange}
+                  themeVariant={colorScheme}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
+        {showEndPicker && Platform.OS === 'android' && (
+          <DateTimePicker
+            value={dayjs(endDate).toDate()}
+            mode="date"
+            display="default"
+            minimumDate={dayjs(startDate).add(1, 'day').toDate()}
+            onChange={handleEndDateChange}
+          />
         )}
 
         <Text style={[styles.label, { color: colors.text }]}>
@@ -734,6 +898,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginLeft: 4,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  dateText: {
+    fontSize: 16,
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerModalContent: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 24,
+  },
+  pickerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  pickerDoneText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   toggleRow: {
     flexDirection: 'row',
