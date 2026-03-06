@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -33,6 +34,7 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async () => {
     if (!email || !password) {
@@ -132,23 +134,39 @@ export default function AuthScreen() {
               autoComplete="email"
               textContentType="username"
             />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              placeholder="Password"
-              placeholderTextColor={colors.textTertiary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="current-password"
-              textContentType="password"
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    backgroundColor: colors.surface,
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
+                ]}
+                placeholder="Password"
+                placeholderTextColor={colors.textTertiary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoComplete="current-password"
+                textContentType="password"
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={14}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={22}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
+            </View>
           </>
         ) : (
           <>
@@ -187,23 +205,39 @@ export default function AuthScreen() {
               autoComplete="email"
               textContentType="emailAddress"
             />
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-              placeholder="Password"
-              placeholderTextColor={colors.textTertiary}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="new-password"
-              textContentType="newPassword"
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.passwordInput,
+                  {
+                    backgroundColor: colors.surface,
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
+                ]}
+                placeholder="Password"
+                placeholderTextColor={colors.textTertiary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoComplete="new-password"
+                textContentType="newPassword"
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={14}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={22}
+                  color={colors.textTertiary}
+                />
+              </TouchableOpacity>
+            </View>
           </>
         )}
 
@@ -274,6 +308,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     marginBottom: 16,
+  },
+  passwordContainer: {
+    width: '100%',
+    position: 'relative',
+  },
+  passwordInput: {
+    paddingRight: 50,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
   },
   button: {
     width: '100%',
