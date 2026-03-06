@@ -896,7 +896,8 @@ export default function HomeScreen() {
               ]}
             />
             <Text style={styles.helpTooltipText}>
-              Tap a challenge to select it, then check off habits below. Tap the card for details or swipe to switch.{' '}
+              Tap a challenge to select it, then check off habits below.{'\n\n'}
+              Tap the card for details or swipe to switch.{'\n\n'}
               {isExpoGo || !DraggableFlatList
                 ? 'Use arrows to reorder challenges.'
                 : 'Hold and drag to reorder challenges.'}
