@@ -66,23 +66,24 @@ export default function DateCarousel({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      <TouchableOpacity
-        style={[
-          styles.arrowButton,
-          { borderColor: colors.border },
-          !canGoBack && styles.arrowButtonDisabled,
-        ]}
-        onPress={handlePrevious}
-        disabled={!canGoBack}
-      >
-        <Ionicons
-          name="chevron-back"
-          size={20}
-          color={canGoBack ? colors.text : colors.textTertiary}
-        />
-      </TouchableOpacity>
+      {canGoBack ? (
+        <TouchableOpacity
+          style={[styles.arrowButton, { borderColor: colors.border }]}
+          onPress={handlePrevious}
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.text} />
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.arrowPlaceholder} />
+      )}
 
-      <View style={styles.dateInfo}>
+      <TouchableOpacity
+        style={styles.dateInfo}
+        onPress={() => onDateChange(today)}
+        disabled={isSelectedToday}
+        accessibilityRole="button"
+        accessibilityLabel="Go to today"
+      >
         <View style={styles.dateLabelRow}>
           <Ionicons
             name="calendar-outline"
@@ -97,23 +98,18 @@ export default function DateCarousel({
         <Text style={[styles.dayOfWeek, { color: colors.textSecondary }]}>
           {formatDate(selectedDate, 'dddd')}
         </Text>
-      </View>
-
-      <TouchableOpacity
-        style={[
-          styles.arrowButton,
-          { borderColor: colors.border },
-          !canGoForward && styles.arrowButtonDisabled,
-        ]}
-        onPress={handleNext}
-        disabled={!canGoForward}
-      >
-        <Ionicons
-          name="chevron-forward"
-          size={20}
-          color={canGoForward ? colors.text : colors.textTertiary}
-        />
       </TouchableOpacity>
+
+      {canGoForward ? (
+        <TouchableOpacity
+          style={[styles.arrowButton, { borderColor: colors.border }]}
+          onPress={handleNext}
+        >
+          <Ionicons name="chevron-forward" size={20} color={colors.text} />
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.arrowPlaceholder} />
+      )}
     </View>
   );
 }
@@ -137,8 +133,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  arrowButtonDisabled: {
-    opacity: 0.4,
+  arrowPlaceholder: {
+    width: 40,
+    height: 40,
   },
   dateInfo: {
     alignItems: 'center',

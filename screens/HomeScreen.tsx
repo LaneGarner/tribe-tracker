@@ -713,13 +713,15 @@ export default function HomeScreen() {
             <View style={styles.dateSection}>
               {/* Habits header and date - fixed above swipeable content */}
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
-                </Text>
-                <View style={styles.dateRow}>
-                  <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-                    {formatDate(selectedDate, 'dddd, MMMM D')}
-                  </Text>
+                <View style={styles.sectionTitleRow}>
+                  <View>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
+                    </Text>
+                    <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+                      {formatDate(selectedDate, 'dddd, MMMM D')}
+                    </Text>
+                  </View>
                   {!isToday(selectedDate) && (
                     <View style={[styles.pastDayBadge, { borderColor: colors.primary }]}>
                       <Text style={[styles.pastDayBadgeText, { color: colors.primary }]}>
@@ -954,15 +956,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: TAB_BAR_HEIGHT + 32, // Extra padding for floating badge
   },
-  dateRow: {
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: -8,
-    marginBottom: 4,
-    gap: 8,
+    justifyContent: 'space-between',
   },
   dateText: {
     fontSize: 14,
+    marginTop: -8,
   },
   pastDayBadge: {
     borderWidth: 1,
