@@ -29,7 +29,7 @@ import { isBackendConfigured } from '../config/api';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
-import { getToday, getChallengeEndDate, formatDate } from '../utils/dateUtils';
+import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
 import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
@@ -116,7 +116,12 @@ export default function CreateChallengeScreen() {
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
-  const publicChallenges = challenges.filter(c => c.isPublic);
+  const activePublicChallenges = challenges.filter(
+    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
+  );
+  const completedPublicChallenges = challenges.filter(
+    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'completed'
+  );
 
   const addHabit = () => {
     const newIndex = habits.length;
@@ -380,7 +385,7 @@ export default function CreateChallengeScreen() {
 
       {challengesLoading ? (
         <PublicChallengeListSkeleton count={3} />
-      ) : publicChallenges.length === 0 ? (
+      ) : activePublicChallenges.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons
             name="globe-outline"
@@ -388,11 +393,11 @@ export default function CreateChallengeScreen() {
             color={colors.textTertiary}
           />
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No public challenges yet
+            No active public challenges
           </Text>
         </View>
       ) : (
-        publicChallenges.map((challenge, index) => (
+        activePublicChallenges.map((challenge, index) => (
           <PublicChallengeCard
             key={challenge.id}
             challenge={challenge}
@@ -404,6 +409,26 @@ export default function CreateChallengeScreen() {
             }
           />
         ))
+      )}
+
+      {!challengesLoading && completedPublicChallenges.length > 0 && (
+        <>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
+            Completed Challenges
+          </Text>
+          {completedPublicChallenges.map((challenge, index) => (
+            <PublicChallengeCard
+              key={challenge.id}
+              challenge={challenge}
+              gradientColors={getGradientForIndex(activePublicChallenges.length + index)}
+              onPress={() =>
+                navigation.navigate('ChallengeDetail', {
+                  challengeId: challenge.id,
+                })
+              }
+            />
+          ))}
+        </>
       )}
     </>
   );
