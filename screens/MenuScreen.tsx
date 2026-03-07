@@ -17,6 +17,7 @@ import { clearAllAppData } from '../utils/storage';
 import { RootStackParamList } from '../types';
 import { RootState } from '../redux/store';
 import SegmentedControl from '../components/SegmentedControl';
+import Avatar from '../components/Avatar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
@@ -106,13 +107,13 @@ export default function MenuScreen() {
           onPress={() => navigation.navigate('Profile')}
           disabled={!user}
         >
-          <View
-            style={[styles.avatar, { backgroundColor: colors.surfaceSecondary }]}
-          >
-            <Text style={[styles.avatarText, { color: colors.primary }]}>
-              {(profile?.fullName || user?.email || '?')[0].toUpperCase()}
-            </Text>
-          </View>
+          <Avatar
+            imageUrl={profile?.profilePhotoUrl}
+            name={profile?.fullName}
+            email={user?.email ?? undefined}
+            size={48}
+            style={{ marginRight: 12 }}
+          />
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: colors.text }]}>
               {profile?.fullName || user?.email?.split('@')[0] || 'Guest'}
@@ -278,18 +279,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 24,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: 'bold',
   },
   userInfo: {
     flex: 1,

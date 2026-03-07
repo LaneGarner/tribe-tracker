@@ -1,12 +1,13 @@
 import React, { useContext, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Crown, Medal, Award, Trophy, Flame } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector } from 'react-redux';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { RootState } from '../../redux/store';
-import { ChallengeParticipant, HabitCheckin } from '../../types';
+import { ChallengeParticipant } from '../../types';
 import { calculateActiveStreak } from '../../utils/streakUtils';
+import Avatar from '../Avatar';
 
 interface LeaderboardProps {
   participants: ChallengeParticipant[];
@@ -34,8 +35,6 @@ const PODIUM_COLORS = {
     border: '#FB923C',
   },
 };
-
-const AVATAR_GRADIENT = ['#60A5FA', '#A855F7'] as [string, string];
 
 export default function Leaderboard({
   participants,
@@ -137,39 +136,11 @@ export default function Leaderboard({
               },
             ]}
           >
-            {participant.userPhotoUrl ? (
-              <Image
-                source={{ uri: participant.userPhotoUrl }}
-                style={[
-                  styles.podiumAvatarImage,
-                  {
-                    width: avatarSize,
-                    height: avatarSize,
-                    borderRadius: avatarSize / 2,
-                    borderWidth,
-                    borderColor: podiumConfig.border,
-                  },
-                ]}
-              />
-            ) : (
-              <LinearGradient
-                colors={podiumConfig.gradient}
-                style={[
-                  styles.podiumAvatar,
-                  {
-                    width: avatarSize,
-                    height: avatarSize,
-                    borderRadius: avatarSize / 2,
-                    borderWidth,
-                    borderColor: podiumConfig.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.podiumAvatarText, { fontSize: avatarSize * 0.4 }]}>
-                  {participant.userName[0].toUpperCase()}
-                </Text>
-              </LinearGradient>
-            )}
+            <Avatar
+              imageUrl={participant.userPhotoUrl}
+              name={participant.userName}
+              size={avatarSize}
+            />
           </View>
 
           {/* Badge */}
@@ -304,23 +275,11 @@ export default function Leaderboard({
               {getRankBadge(rank)}
 
               <View style={styles.avatarShadow}>
-                {participant.userPhotoUrl ? (
-                  <Image
-                    source={{ uri: participant.userPhotoUrl }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <LinearGradient
-                    colors={AVATAR_GRADIENT}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.avatar}
-                  >
-                    <Text style={styles.avatarText}>
-                      {participant.userName[0].toUpperCase()}
-                    </Text>
-                  </LinearGradient>
-                )}
+                <Avatar
+                  imageUrl={participant.userPhotoUrl}
+                  name={participant.userName}
+                  size={44}
+                />
               </View>
 
               <View style={styles.info}>
@@ -448,17 +407,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  podiumAvatar: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  podiumAvatarImage: {
-    backgroundColor: '#f0f0f0',
-  },
-  podiumAvatarText: {
-    fontWeight: 'bold',
-    color: '#fff',
-  },
   podiumBadgeShadow: {
     position: 'absolute',
     shadowColor: '#000',
@@ -561,20 +509,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
     backgroundColor: '#A855F7',
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
   },
   info: {
     flex: 1,

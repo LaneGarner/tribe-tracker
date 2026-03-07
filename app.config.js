@@ -44,6 +44,16 @@ export default {
         projectId: 'bad1c5ce-dff4-4872-ab46-8f3eb486ed1f',
       },
     },
-    plugins: ['expo-font', '@react-native-community/datetimepicker'],
+    plugins: [
+      'expo-font',
+      '@react-native-community/datetimepicker',
+      [
+        'expo-image-picker',
+        {
+          cameraPermission: 'Tribe Tracker needs camera access so you can take a profile photo.',
+          photosPermission: 'Tribe Tracker needs photo library access so you can choose a profile photo.',
+        },
+      ],
+    ],
   },
 };

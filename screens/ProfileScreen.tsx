@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Image,
   Share,
   RefreshControl,
 } from 'react-native';
@@ -28,6 +27,8 @@ import { calculateActiveStreak } from '../utils/streakUtils';
 import { loadBadgesFromStorage, fetchBadgesFromServer } from '../redux/slices/badgesSlice';
 import LevelBadge from '../components/badges/LevelBadge';
 import HexBadge from '../components/badges/HexBadge';
+import Avatar from '../components/Avatar';
+import { useAvatarPicker } from '../hooks/useAvatarPicker';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 type ProfileNavigationProp = NativeStackNavigationProp<
@@ -74,6 +75,8 @@ export default function ProfileScreen() {
         }
       : { userName: 'Unknown User', userPhotoUrl: null };
   }, [isOwnProfile, participants, targetUserId]);
+
+  const { isUploading, localPreviewUri, showAvatarOptions } = useAvatarPicker(profile?.profilePhotoUrl);
 
   const [isEditing, setIsEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -248,31 +251,20 @@ export default function ProfileScreen() {
       >
         {/* Avatar */}
         <View style={styles.avatarSection}>
-          <View
-            style={[styles.avatar, { backgroundColor: colors.surfaceSecondary }]}
-          >
-            {isOwnProfile ? (
-              profile?.profilePhotoUrl ? (
-                <Image
-                  source={{ uri: profile.profilePhotoUrl }}
-                  style={styles.avatarImage}
-                />
-              ) : (
-                <Text style={[styles.avatarText, { color: colors.primary }]}>
-                  {(profile?.fullName || user?.email || '?')[0].toUpperCase()}
-                </Text>
-              )
-            ) : otherUserInfo?.userPhotoUrl ? (
-              <Image
-                source={{ uri: otherUserInfo.userPhotoUrl }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <Text style={[styles.avatarText, { color: colors.primary }]}>
-                {(otherUserInfo?.userName || '?')[0].toUpperCase()}
-              </Text>
-            )}
-          </View>
+          <Avatar
+            imageUrl={
+              isOwnProfile
+                ? localPreviewUri || profile?.profilePhotoUrl
+                : otherUserInfo?.userPhotoUrl
+            }
+            name={isOwnProfile ? profile?.fullName : otherUserInfo?.userName}
+            email={isOwnProfile ? user?.email ?? undefined : undefined}
+            size={100}
+            onPress={isOwnProfile ? showAvatarOptions : undefined}
+            showCameraBadge={isOwnProfile}
+            isUploading={isUploading}
+            style={{ marginBottom: 12 }}
+          />
           {!isEditing && (
             <>
               <Text style={[styles.userName, { color: colors.text }]}>
@@ -740,23 +732,6 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: 'center',
     marginBottom: 24,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  avatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  avatarText: {
-    fontSize: 40,
-    fontWeight: 'bold',
   },
   userName: {
     fontSize: 22,
