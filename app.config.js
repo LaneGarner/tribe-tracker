@@ -4,6 +4,7 @@ export default {
   expo: {
     name: 'Tribe Tracker',
     slug: 'tribe-tracker',
+    scheme: 'tribetracker',
     owner: 'lanegarner',
     version: '1.0.0',
     orientation: 'portrait',

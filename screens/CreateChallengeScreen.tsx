@@ -44,7 +44,7 @@ const FormScrollView = (!isExpoGo && NestableScrollContainer) ? NestableScrollCo
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { AppDispatch, RootState } from '../redux/store';
 import { addChallenge, updateChallenge, fetchPublicChallenges, loadChallengesFromStorage } from '../redux/slices/challengesSlice';
-import { isBackendConfigured } from '../config/api';
+import { API_URL, isBackendConfigured } from '../config/api';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
@@ -101,7 +101,15 @@ export default function CreateChallengeScreen() {
   });
   const [habits, setHabits] = useState<HabitItem[]>([makeHabitItem()]);
   const [isPublic, setIsPublic] = useState(true);
-  const [inviteCode, setInviteCode] = useState('');
+  const [inviteCode, setInviteCode] = useState(route.params?.inviteCode || '');
+
+  // Pre-fill invite code from deep link
+  useEffect(() => {
+    if (route.params?.inviteCode) {
+      setMode('join');
+      setInviteCode(route.params.inviteCode);
+    }
+  }, [route.params?.inviteCode]);
 
   // Pre-populate form when editing
   useEffect(() => {
@@ -342,29 +350,46 @@ export default function CreateChallengeScreen() {
     );
   };
 
-  const handleJoinByCode = () => {
+  const handleJoinByCode = async () => {
     if (!inviteCode.trim()) {
       Alert.alert('Error', 'Please enter an invite code');
       return;
     }
 
-    const challenge = challenges.find(
+    setIsJoining(true);
+
+    // Try local lookup first
+    let challenge = challenges.find(
       c => c.inviteCode?.toUpperCase() === inviteCode.toUpperCase()
     );
 
+    // If not found locally, try the backend
+    if (!challenge && isBackendConfigured()) {
+      try {
+        const token = await getAccessToken();
+        if (token) {
+          const response = await fetch(
+            `${API_URL}/api/invite?code=${encodeURIComponent(inviteCode.trim())}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.challenge) {
+              challenge = data.challenge;
+              dispatch(addChallenge(data.challenge));
+            }
+          }
+        }
+      } catch {
+        // Backend unavailable, continue with local-only result
+      }
+    }
+
     if (!challenge) {
-      Alert.alert('Error', 'Invalid invite code');
+      setIsJoining(false);
+      Alert.alert('Error', 'Invalid invite code. Please check and try again.');
       return;
     }
-
-    // Public challenges don't use invite codes
-    if (challenge.isPublic) {
-      Alert.alert('Public Challenge', 'This is a public challenge. Join from the Browse tab instead.');
-      return;
-    }
-
-    // Check if already joined
-    // TODO: Check participants
 
     const participation: ChallengeParticipant = {
       id: Crypto.randomUUID(),
@@ -381,7 +406,6 @@ export default function CreateChallengeScreen() {
       updatedAt: new Date().toISOString(),
     };
 
-    setIsJoining(true);
     dispatch(addParticipant(participation));
 
     setIsJoining(false);

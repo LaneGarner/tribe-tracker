@@ -2,7 +2,9 @@ import {
   NavigationContainer,
   DefaultTheme,
   DarkTheme,
+  createNavigationContainerRef,
 } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Kanit_700Bold } from '@expo-google-fonts/kanit';
@@ -35,6 +37,19 @@ import { AppDispatch, store } from './redux/store';
 import { ThemeContext, ThemeProvider, getColors } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { isBackendConfigured } from './config/api';
+import { RootStackParamList } from './types';
+import { setPendingInviteCode, consumePendingInviteCode } from './utils/pendingInvite';
+
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+const linking = {
+  prefixes: [Linking.createURL('/'), 'https://tribe-tracker-backend.vercel.app'],
+  config: {
+    screens: {
+      CreateChallenge: 'invite/:inviteCode',
+    },
+  },
+};
 
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
@@ -73,6 +88,46 @@ function AppContent() {
       dispatch(fetchBadgesFromServer(token));
     }
   }, [user, session, dispatch]);
+
+  // Handle pending invite after login
+  useEffect(() => {
+    if (user && !isInitializing) {
+      const code = consumePendingInviteCode();
+      if (code && navigationRef.isReady()) {
+        setTimeout(() => {
+          navigationRef.navigate('CreateChallenge', { mode: 'join', inviteCode: code });
+        }, 500);
+      }
+    }
+  }, [user, isInitializing]);
+
+  // Store deep link invite code if user is not authenticated
+  useEffect(() => {
+    const parseInviteCode = (url: string) => {
+      const match = url.match(/invite\/([A-Za-z0-9]+)/);
+      return match ? match[1] : null;
+    };
+
+    const handleUrl = ({ url }: { url: string }) => {
+      const code = parseInviteCode(url);
+      if (code && !user) {
+        setPendingInviteCode(code);
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleUrl);
+
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        const code = parseInviteCode(url);
+        if (code && !user) {
+          setPendingInviteCode(code);
+        }
+      }
+    });
+
+    return () => subscription.remove();
+  }, [user]);
 
   // Lock orientation to portrait
   useEffect(() => {
@@ -128,7 +183,7 @@ function AppContent() {
   return (
     <>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      <NavigationContainer theme={navTheme}>
+      <NavigationContainer ref={navigationRef} linking={linking} theme={navTheme}>
         <RootNavigator />
       </NavigationContainer>
     </>

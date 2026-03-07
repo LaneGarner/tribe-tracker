@@ -145,7 +145,7 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
   ChallengeDetail: { challengeId: string };
-  CreateChallenge: { mode?: 'browse' | 'create' | 'join'; challengeId?: string } | undefined;
+  CreateChallenge: { mode?: 'browse' | 'create' | 'join'; challengeId?: string; inviteCode?: string } | undefined;
   ViewMember: { userId: string };
   ManageChild: { childId: string };
   TaskAnalytics: { challengeId: string };
