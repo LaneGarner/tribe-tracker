@@ -48,7 +48,7 @@ export default function HelpScreen() {
             Need more help?
           </Text>
           <Text style={[styles.contactText, { color: colors.textSecondary }]}>
-            Contact us at support@tribetracker.app
+            Contact us at InfoTribeTracker@gmail.com
           </Text>
         </View>
 
