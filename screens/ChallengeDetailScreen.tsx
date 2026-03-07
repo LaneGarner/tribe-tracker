@@ -149,7 +149,7 @@ export default function ChallengeDetailScreen() {
   // Set up header with share, analytics, and creator menu buttons
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: challenge?.name || 'Challenge',
+      title: '',
       headerRight: () => (
         <View style={{ flexDirection: 'row', gap: 20, paddingHorizontal: 8 }}>
           <TouchableOpacity
