@@ -73,9 +73,14 @@ export default function LeaderboardScreen() {
   const pillsScrollRef = useRef<ScrollView | any>(null);
   const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
 
-  // Filter active challenges
+  // Filter to only show active challenges the user has joined
+  const userChallengeIds = new Set(
+    participants.filter(p => p.userId === user?.id).map(p => p.challengeId)
+  );
   const activeChallenges = challenges.filter(
-    c => getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
+    c =>
+      userChallengeIds.has(c.id) &&
+      getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
   );
 
   // Sort active challenges by saved order
@@ -289,6 +294,7 @@ export default function LeaderboardScreen() {
                   ref={pillsScrollRef}
                   horizontal
                   data={orderedChallenges}
+                  extraData={selectedChallengeId}
                   keyExtractor={(item: Challenge) => item.id}
                   onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
                   showsHorizontalScrollIndicator={false}

@@ -11,7 +11,10 @@ import {
   Platform,
   ActivityIndicator,
   RefreshControl,
+  Modal,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import dayjs from 'dayjs';
 import { PublicChallengeListSkeleton } from '../components/challenge/PublicChallengeCardSkeleton';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,6 +22,25 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let NestableScrollContainer: any = null;
+let NestableDraggableFlatList: any = null;
+let ScaleDecorator: any = null;
+if (!isExpoGo) {
+  try {
+    const draggableModule = require('react-native-draggable-flatlist');
+    NestableScrollContainer = draggableModule.NestableScrollContainer;
+    NestableDraggableFlatList = draggableModule.NestableDraggableFlatList;
+    ScaleDecorator = draggableModule.ScaleDecorator;
+  } catch (e) {
+    // Not available in Expo Go
+  }
+}
+
+const FormScrollView = (!isExpoGo && NestableScrollContainer) ? NestableScrollContainer : ScrollView;
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { AppDispatch, RootState } from '../redux/store';
 import { addChallenge, updateChallenge, fetchPublicChallenges, loadChallengesFromStorage } from '../redux/slices/challengesSlice';
@@ -26,7 +48,7 @@ import { isBackendConfigured } from '../config/api';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
-import { getToday, getChallengeEndDate } from '../utils/dateUtils';
+import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
 import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
@@ -68,7 +90,16 @@ export default function CreateChallengeScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [durationDays, setDurationDays] = useState('30');
-  const [habits, setHabits] = useState<string[]>(['']);
+  const [startDate, setStartDate] = useState(getToday());
+  const [endDate, setEndDate] = useState(getChallengeEndDate(getToday(), 30));
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  type HabitItem = { id: string; text: string };
+  const makeHabitItem = (text: string = ''): HabitItem => ({
+    id: Crypto.randomUUID(),
+    text,
+  });
+  const [habits, setHabits] = useState<HabitItem[]>([makeHabitItem()]);
   const [isPublic, setIsPublic] = useState(true);
   const [inviteCode, setInviteCode] = useState('');
 
@@ -78,7 +109,13 @@ export default function CreateChallengeScreen() {
       setName(existingChallenge.name);
       setDescription(existingChallenge.description || '');
       setDurationDays(String(existingChallenge.durationDays));
-      setHabits(existingChallenge.habits.length > 0 ? existingChallenge.habits : ['']);
+      setStartDate(existingChallenge.startDate);
+      setEndDate(existingChallenge.endDate || getChallengeEndDate(existingChallenge.startDate, existingChallenge.durationDays));
+      setHabits(
+        existingChallenge.habits.length > 0
+          ? existingChallenge.habits.map(h => makeHabitItem(h))
+          : [makeHabitItem()]
+      );
       setIsPublic(existingChallenge.isPublic);
     }
   }, [isEditMode, existingChallenge]);
@@ -107,27 +144,71 @@ export default function CreateChallengeScreen() {
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
-  const publicChallenges = challenges.filter(c => c.isPublic);
+  const activePublicChallenges = challenges.filter(
+    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
+  );
+  const completedPublicChallenges = challenges.filter(
+    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'completed'
+  );
 
   const addHabit = () => {
-    const newIndex = habits.length;
-    setHabits([...habits, '']);
+    const newItem = makeHabitItem();
+    const newHabits = [...habits, newItem];
+    setHabits(newHabits);
+    const newIndex = newHabits.length - 1;
     setTimeout(() => {
       habitInputRefs.current[newIndex]?.focus();
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
   };
 
-  const removeHabit = (index: number) => {
+  const removeHabit = (id: string) => {
     if (habits.length > 1) {
-      setHabits(habits.filter((_, i) => i !== index));
+      setHabits(habits.filter(h => h.id !== id));
     }
   };
 
-  const updateHabit = (index: number, value: string) => {
+  const updateHabit = (id: string, value: string) => {
+    setHabits(habits.map(h => h.id === id ? { ...h, text: value } : h));
+  };
+
+  const moveHabit = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= habits.length) return;
     const newHabits = [...habits];
-    newHabits[index] = value;
+    [newHabits[index], newHabits[newIndex]] = [newHabits[newIndex], newHabits[index]];
     setHabits(newHabits);
+  };
+
+  const isScheduleLocked = isEditMode && isActiveChallenge;
+
+  const handleStartDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowStartPicker(false);
+    if (!selectedDate) return;
+    const newStart = dayjs(selectedDate).format('YYYY-MM-DD');
+    const duration = parseInt(durationDays) || 30;
+    setStartDate(newStart);
+    setEndDate(getChallengeEndDate(newStart, duration));
+  };
+
+  const handleEndDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowEndPicker(false);
+    if (!selectedDate) return;
+    const newEnd = dayjs(selectedDate).format('YYYY-MM-DD');
+    const newDuration = dayjs(newEnd).diff(dayjs(startDate), 'day') + 1;
+    if (newDuration >= 1) {
+      setEndDate(newEnd);
+      setDurationDays(String(newDuration));
+    }
+  };
+
+  const handleDurationChange = (text: string) => {
+    setDurationDays(text);
+    if (errors.duration) setErrors(e => ({ ...e, duration: undefined }));
+    const parsed = parseInt(text);
+    if (parsed > 0) {
+      setEndDate(getChallengeEndDate(startDate, parsed));
+    }
   };
 
   const generateInviteCode = () => {
@@ -135,7 +216,7 @@ export default function CreateChallengeScreen() {
   };
 
   const handleCreate = () => {
-    const validHabits = habits.filter(h => h.trim());
+    const validHabits = habits.map(h => h.text.trim()).filter(Boolean);
     const newErrors: typeof errors = {};
 
     if (!name.trim()) {
@@ -164,14 +245,14 @@ export default function CreateChallengeScreen() {
         description: description.trim() || undefined,
         habits: validHabits,
         isPublic,
-        // Public challenges don't need invite codes; private ones do
         inviteCode: isPublic
           ? undefined
           : (existingChallenge.inviteCode || generateInviteCode()),
-        // Only update duration if challenge hasn't started yet
+        // Only update schedule if challenge hasn't started yet
         ...(existingChallenge.status === 'upcoming' && {
+          startDate,
           durationDays: parseInt(durationDays) || existingChallenge.durationDays,
-          endDate: getChallengeEndDate(existingChallenge.startDate, parseInt(durationDays) || existingChallenge.durationDays),
+          endDate,
         }),
         updatedAt: new Date().toISOString(),
       };
@@ -187,6 +268,8 @@ export default function CreateChallengeScreen() {
 
     // Handle create mode
     const challengeId = Crypto.randomUUID();
+    const today = getToday();
+    const isFutureStart = dayjs(startDate).isAfter(dayjs(today), 'day');
     const newChallenge: Challenge = {
       id: challengeId,
       name: name.trim(),
@@ -194,12 +277,12 @@ export default function CreateChallengeScreen() {
       creatorId: user?.id || 'anonymous',
       creatorName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
       durationDays: parseInt(durationDays) || 30,
-      startDate: getToday(),
-      endDate: getChallengeEndDate(getToday(), parseInt(durationDays) || 30),
+      startDate,
+      endDate,
       habits: validHabits,
       isPublic,
       inviteCode: isPublic ? undefined : generateInviteCode(),
-      status: 'active',
+      status: isFutureStart ? 'upcoming' : 'active',
       participantCount: 0,
       updatedAt: new Date().toISOString(),
     };
@@ -212,7 +295,9 @@ export default function CreateChallengeScreen() {
       setName('');
       setDescription('');
       setDurationDays('30');
-      setHabits(['']);
+      setStartDate(getToday());
+      setEndDate(getChallengeEndDate(getToday(), 30));
+      setHabits([makeHabitItem()]);
       setErrors({});
     };
 
@@ -336,7 +421,7 @@ export default function CreateChallengeScreen() {
 
       {challengesLoading ? (
         <PublicChallengeListSkeleton count={3} />
-      ) : publicChallenges.length === 0 ? (
+      ) : activePublicChallenges.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons
             name="globe-outline"
@@ -344,11 +429,11 @@ export default function CreateChallengeScreen() {
             color={colors.textTertiary}
           />
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No public challenges yet
+            No active public challenges
           </Text>
         </View>
       ) : (
-        publicChallenges.map((challenge, index) => (
+        activePublicChallenges.map((challenge, index) => (
           <PublicChallengeCard
             key={challenge.id}
             challenge={challenge}
@@ -360,6 +445,26 @@ export default function CreateChallengeScreen() {
             }
           />
         ))
+      )}
+
+      {!challengesLoading && completedPublicChallenges.length > 0 && (
+        <>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
+            Completed Challenges
+          </Text>
+          {completedPublicChallenges.map((challenge, index) => (
+            <PublicChallengeCard
+              key={challenge.id}
+              challenge={challenge}
+              gradientColors={getGradientForIndex(activePublicChallenges.length + index)}
+              onPress={() =>
+                navigation.navigate('ChallengeDetail', {
+                  challengeId: challenge.id,
+                })
+              }
+            />
+          ))}
+        </>
       )}
     </>
   );
@@ -380,7 +485,7 @@ export default function CreateChallengeScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView ref={scrollViewRef} style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <FormScrollView ref={scrollViewRef} style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Text style={[styles.label, { color: colors.text }]}>
           Challenge Name <Text style={{ color: colors.error }}>*</Text>
         </Text>
@@ -427,6 +532,36 @@ export default function CreateChallengeScreen() {
           numberOfLines={3}
         />
 
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          Schedule
+        </Text>
+
+        <Text style={[styles.label, { color: colors.text }]}>Start Date</Text>
+        <TouchableOpacity
+          style={[
+            styles.dateRow,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+          onPress={() => !isScheduleLocked && setShowStartPicker(true)}
+          disabled={isScheduleLocked}
+          accessibilityRole="button"
+          accessibilityLabel={`Start date: ${formatDate(startDate)}`}
+          accessibilityState={{ disabled: isScheduleLocked }}
+          accessibilityHint={isScheduleLocked ? 'Cannot change start date for active challenges' : 'Tap to change start date'}
+        >
+          <Text style={[styles.dateText, { color: isScheduleLocked ? colors.textTertiary : colors.text }]}>
+            {formatDate(startDate)}
+          </Text>
+          <Ionicons
+            name={isScheduleLocked ? 'lock-closed' : 'chevron-forward'}
+            size={18}
+            color={isScheduleLocked ? colors.textTertiary : colors.textSecondary}
+          />
+        </TouchableOpacity>
+
         <Text style={[styles.label, { color: colors.text }]}>
           Duration (days) <Text style={{ color: colors.error }}>*</Text>
         </Text>
@@ -435,65 +570,231 @@ export default function CreateChallengeScreen() {
             styles.input,
             {
               backgroundColor: colors.surface,
-              color: isEditMode && isActiveChallenge ? colors.textTertiary : colors.text,
+              color: isScheduleLocked ? colors.textTertiary : colors.text,
               borderColor: errors.duration ? colors.error : colors.border,
             },
           ]}
           value={durationDays}
-          onChangeText={(text) => {
-            setDurationDays(text);
-            if (errors.duration) setErrors(e => ({ ...e, duration: undefined }));
-          }}
+          onChangeText={handleDurationChange}
           placeholder="30"
           placeholderTextColor={colors.textTertiary}
           keyboardType="number-pad"
-          editable={!(isEditMode && isActiveChallenge)}
+          editable={!isScheduleLocked}
         />
-        {isEditMode && isActiveChallenge && (
-          <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-            Duration cannot be changed for active challenges
-          </Text>
-        )}
         {errors.duration && (
           <Text style={[styles.errorText, { color: colors.error }]}>
             {errors.duration}
           </Text>
         )}
 
+        <Text style={[styles.label, { color: colors.text }]}>End Date</Text>
+        <TouchableOpacity
+          style={[
+            styles.dateRow,
+            {
+              backgroundColor: isScheduleLocked ? colors.surface : colors.background,
+              borderColor: colors.border,
+            },
+          ]}
+          onPress={() => !isScheduleLocked && setShowEndPicker(true)}
+          disabled={isScheduleLocked}
+          accessibilityRole="button"
+          accessibilityLabel={`End date: ${formatDate(endDate)}`}
+          accessibilityState={{ disabled: isScheduleLocked }}
+          accessibilityHint={isScheduleLocked ? 'Cannot change end date for active challenges' : 'Tap to change end date'}
+        >
+          <Text style={[styles.dateText, { color: isScheduleLocked ? colors.textTertiary : colors.text }]}>
+            {formatDate(endDate)}
+          </Text>
+          <Ionicons
+            name={isScheduleLocked ? 'lock-closed' : 'chevron-forward'}
+            size={18}
+            color={isScheduleLocked ? colors.textTertiary : colors.textSecondary}
+          />
+        </TouchableOpacity>
+        {!isScheduleLocked && (
+          <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+            Calculated from start + duration
+          </Text>
+        )}
+        {isScheduleLocked && (
+          <Text style={[styles.helperText, { color: colors.textSecondary }]}>
+            Schedule cannot be changed for active challenges
+          </Text>
+        )}
+
+        {showStartPicker && Platform.OS === 'ios' && (
+          <Modal transparent animationType="slide">
+            <View style={styles.pickerModalOverlay}>
+              <View style={[styles.pickerModalContent, { backgroundColor: colors.surface }]}>
+                <View style={styles.pickerModalHeader}>
+                  <TouchableOpacity onPress={() => setShowStartPicker(false)}>
+                    <Text style={[styles.pickerDoneText, { color: colors.primary }]}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={dayjs(startDate).toDate()}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={new Date()}
+                  onChange={handleStartDateChange}
+                  themeVariant={colorScheme}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
+        {showStartPicker && Platform.OS === 'android' && (
+          <DateTimePicker
+            value={dayjs(startDate).toDate()}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            onChange={handleStartDateChange}
+          />
+        )}
+
+        {showEndPicker && Platform.OS === 'ios' && (
+          <Modal transparent animationType="slide">
+            <View style={styles.pickerModalOverlay}>
+              <View style={[styles.pickerModalContent, { backgroundColor: colors.surface }]}>
+                <View style={styles.pickerModalHeader}>
+                  <TouchableOpacity onPress={() => setShowEndPicker(false)}>
+                    <Text style={[styles.pickerDoneText, { color: colors.primary }]}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={dayjs(endDate).toDate()}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={dayjs(startDate).add(1, 'day').toDate()}
+                  onChange={handleEndDateChange}
+                  themeVariant={colorScheme}
+                />
+              </View>
+            </View>
+          </Modal>
+        )}
+        {showEndPicker && Platform.OS === 'android' && (
+          <DateTimePicker
+            value={dayjs(endDate).toDate()}
+            mode="date"
+            display="default"
+            minimumDate={dayjs(startDate).add(1, 'day').toDate()}
+            onChange={handleEndDateChange}
+          />
+        )}
+
         <Text style={[styles.label, { color: colors.text }]}>
           Daily Habits <Text style={{ color: colors.error }}>*</Text>
         </Text>
-        {habits.map((habit, index) => (
-          <View key={index} style={styles.habitRow}>
-            <TextInput
-              ref={(el) => { habitInputRefs.current[index] = el; }}
-              style={[
-                styles.input,
-                styles.habitInput,
-                {
-                  backgroundColor: colors.surface,
-                  color: colors.text,
-                  borderColor: errors.habits ? colors.error : colors.border,
-                },
-              ]}
-              value={habit}
-              onChangeText={text => {
-                updateHabit(index, text);
-                if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
-              }}
-              placeholder={`Habit ${index + 1}`}
-              placeholderTextColor={colors.textTertiary}
-            />
-            {habits.length > 1 && (
-              <TouchableOpacity
-                style={styles.removeHabitButton}
-                onPress={() => removeHabit(index)}
-              >
-                <Ionicons name="close-circle" size={24} color={colors.error} />
-              </TouchableOpacity>
-            )}
-          </View>
-        ))}
+        {(isExpoGo || !NestableDraggableFlatList) ? (
+          habits.map((habit, index) => (
+            <View key={habit.id} style={styles.habitRow}>
+              {habits.length > 1 && (
+                <View style={styles.reorderButtons}>
+                  <TouchableOpacity
+                    onPress={() => moveHabit(index, 'up')}
+                    hitSlop={14}
+                    disabled={index === 0}
+                    style={{ opacity: index === 0 ? 0.3 : 1 }}
+                  >
+                    <Ionicons name="chevron-up" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => moveHabit(index, 'down')}
+                    hitSlop={14}
+                    disabled={index === habits.length - 1}
+                    style={{ opacity: index === habits.length - 1 ? 0.3 : 1 }}
+                  >
+                    <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+              <TextInput
+                ref={(el) => { habitInputRefs.current[index] = el; }}
+                style={[
+                  styles.input,
+                  styles.habitInput,
+                  {
+                    backgroundColor: colors.surface,
+                    color: colors.text,
+                    borderColor: errors.habits ? colors.error : colors.border,
+                  },
+                ]}
+                value={habit.text}
+                onChangeText={text => {
+                  updateHabit(habit.id, text);
+                  if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
+                }}
+                placeholder={`Habit ${index + 1}`}
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="words"
+              />
+              {habits.length > 1 && (
+                <TouchableOpacity
+                  style={styles.removeHabitButton}
+                  onPress={() => removeHabit(habit.id)}
+                >
+                  <Ionicons name="close-circle" size={24} color={colors.error} />
+                </TouchableOpacity>
+              )}
+            </View>
+          ))
+        ) : (
+          <NestableDraggableFlatList
+            data={habits}
+            keyExtractor={(item: HabitItem) => item.id}
+            onDragEnd={({ data }: { data: HabitItem[] }) => setHabits(data)}
+            scrollEnabled={false}
+            renderItem={({ item: habit, drag, isActive, getIndex }: any) => {
+              const index = getIndex() ?? 0;
+              const content = (
+                <View style={[styles.habitRow, isActive && styles.habitRowDragging]}>
+                  {habits.length > 1 && (
+                    <TouchableOpacity
+                      onPressIn={drag}
+                      disabled={isActive}
+                      style={styles.dragHandle}
+                      hitSlop={14}
+                    >
+                      <Ionicons name="reorder-three" size={22} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                  <TextInput
+                    ref={(el: TextInput | null) => { habitInputRefs.current[index] = el; }}
+                    style={[
+                      styles.input,
+                      styles.habitInput,
+                      {
+                        backgroundColor: colors.surface,
+                        color: colors.text,
+                        borderColor: errors.habits ? colors.error : colors.border,
+                      },
+                    ]}
+                    value={habit.text}
+                    onChangeText={(text: string) => {
+                      updateHabit(habit.id, text);
+                      if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
+                    }}
+                    placeholder={`Habit ${index + 1}`}
+                    placeholderTextColor={colors.textTertiary}
+                    autoCapitalize="words"
+                  />
+                  {habits.length > 1 && (
+                    <TouchableOpacity
+                      style={styles.removeHabitButton}
+                      onPress={() => removeHabit(habit.id)}
+                    >
+                      <Ionicons name="close-circle" size={24} color={colors.error} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+              return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
+            }}
+          />
+        )}
         {errors.habits && (
           <Text style={[styles.errorText, { color: colors.error }]}>
             {errors.habits}
@@ -508,7 +809,7 @@ export default function CreateChallengeScreen() {
 
         <View style={styles.toggleRow}>
           <Text style={[styles.toggleLabel, { color: colors.text }]}>
-            Make challenge public
+            Public challenge
           </Text>
           <Toggle
             value={isPublic}
@@ -516,7 +817,7 @@ export default function CreateChallengeScreen() {
             accessibilityLabel="Toggle challenge visibility"
           />
         </View>
-      </ScrollView>
+      </FormScrollView>
 
       <View style={[styles.fixedButtonContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <TouchableOpacity
@@ -716,6 +1017,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  reorderButtons: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    gap: 2,
+  },
+  dragHandle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    paddingVertical: 4,
+  },
+  habitRowDragging: {
+    opacity: 0.9,
+  },
   habitInput: {
     flex: 1,
     marginBottom: 0,
@@ -734,6 +1050,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginLeft: 4,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  dateText: {
+    fontSize: 16,
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerModalContent: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 24,
+  },
+  pickerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  pickerDoneText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   toggleRow: {
     flexDirection: 'row',

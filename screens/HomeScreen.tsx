@@ -5,10 +5,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  ScrollView,
   Animated,
   PanResponder,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp } from '@react-navigation/native';
@@ -73,11 +73,7 @@ export default function HomeScreen() {
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const checkins = useSelector((state: RootState) => state.checkins.data);
   const participants = useSelector((state: RootState) => state.participants.data);
-  const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
-  const participantsLoading = useSelector((state: RootState) => state.participants.loading);
-
-  // Show skeleton until both challenges and participants have loaded
-  const isInitialLoad = (challengesLoading || participantsLoading) && participants.length === 0;
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(
@@ -218,11 +214,24 @@ export default function HomeScreen() {
   });
 
 
-  // Load data on mount
+  // Load data on mount - storage first, then server
   useEffect(() => {
-    dispatch(loadChallengesFromStorage());
-    dispatch(loadCheckinsFromStorage());
-    dispatch(loadParticipantsFromStorage());
+    const loadData = async () => {
+      await Promise.all([
+        dispatch(loadChallengesFromStorage()),
+        dispatch(loadCheckinsFromStorage()),
+        dispatch(loadParticipantsFromStorage()),
+      ]);
+      if (session?.access_token && isBackendConfigured()) {
+        await Promise.all([
+          dispatch(fetchChallengesFromServer(session.access_token)),
+          dispatch(fetchCheckinsFromServer(session.access_token)),
+          dispatch(fetchParticipantsFromServer(session.access_token)),
+        ]);
+      }
+      setInitialFetchDone(true);
+    };
+    loadData();
   }, [dispatch]);
 
   // Load challenge order from AsyncStorage
@@ -261,6 +270,9 @@ export default function HomeScreen() {
       userChallengeIds.has(c.id) &&
       getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
   );
+
+  // Show skeleton until initial fetch completes when there's no data
+  const isInitialLoad = !initialFetchDone && activeChallenges.length === 0;
 
   // Sort active challenges by saved order
   const orderedChallenges = [...activeChallenges].sort((a, b) => {
@@ -546,6 +558,9 @@ export default function HomeScreen() {
             }}
           >
             <View style={styles.selectorHeader}>
+              <Text style={[styles.selectorTitle, { color: colors.text }]}>
+                Challenges
+              </Text>
               <View ref={helpButtonRef}>
                 <TouchableOpacity
                   onPress={() => {
@@ -572,9 +587,6 @@ export default function HomeScreen() {
                   <Ionicons name="help-circle-outline" size={18} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
-              <Text style={[styles.selectorTitle, { color: colors.text }]}>
-                Challenges
-              </Text>
             </View>
             {isExpoGo || !DraggableFlatList ? (
               // Expo Go: arrows inside chips for reordering
@@ -701,13 +713,15 @@ export default function HomeScreen() {
             <View style={styles.dateSection}>
               {/* Habits header and date - fixed above swipeable content */}
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
-                </Text>
-                <View style={styles.dateRow}>
-                  <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-                    {formatDate(selectedDate, 'dddd, MMMM D')}
-                  </Text>
+                <View style={styles.sectionTitleRow}>
+                  <View>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
+                    </Text>
+                    <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+                      {formatDate(selectedDate, 'dddd, MMMM D')}
+                    </Text>
+                  </View>
                   {!isToday(selectedDate) && (
                     <View style={[styles.pastDayBadge, { borderColor: colors.primary }]}>
                       <Text style={[styles.pastDayBadgeText, { color: colors.primary }]}>
@@ -884,7 +898,8 @@ export default function HomeScreen() {
               ]}
             />
             <Text style={styles.helpTooltipText}>
-              Tap a challenge to select it, then check off habits below. Tap the card for details or swipe to switch.{' '}
+              Tap a challenge to select it, then check off habits below.{'\n\n'}
+              Tap the card for details or swipe to switch.{'\n\n'}
               {isExpoGo || !DraggableFlatList
                 ? 'Use arrows to reorder challenges.'
                 : 'Hold and drag to reorder challenges.'}
@@ -941,15 +956,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: TAB_BAR_HEIGHT + 32, // Extra padding for floating badge
   },
-  dateRow: {
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: -8,
-    marginBottom: 4,
-    gap: 8,
+    justifyContent: 'space-between',
   },
   dateText: {
     fontSize: 14,
+    marginTop: -8,
   },
   pastDayBadge: {
     borderWidth: 1,
@@ -973,7 +987,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   helpButton: {
-    marginRight: 2,
+    marginLeft: 2,
     padding: 2,
   },
   tooltipBackdrop: {

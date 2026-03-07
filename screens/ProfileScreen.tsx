@@ -148,7 +148,14 @@ export default function ProfileScreen() {
       const daysLeft = challenge?.endDate
         ? Math.max(0, dayjs(challenge.endDate).diff(dayjs(), 'day'))
         : 0;
-      const status = challenge?.status || 'active';
+
+      // Derive status from dates rather than relying solely on stored value
+      let status: 'upcoming' | 'active' | 'completed' = challenge?.status || 'active';
+      if (challenge?.endDate && dayjs(challenge.endDate).isBefore(dayjs(), 'day')) {
+        status = 'completed';
+      } else if (challenge?.startDate && dayjs(challenge.startDate).isAfter(dayjs(), 'day')) {
+        status = 'upcoming';
+      }
 
       // Calculate active streak from checkin data
       const participantCheckinDates = checkins
@@ -558,11 +565,6 @@ export default function ProfileScreen() {
 
               {enrichedParticipations.length > 0 ? (
                 <>
-                  {isOwnProfile && (
-                    <Text style={[styles.challengesSubheader, { color: colors.textSecondary }]}>
-                      Active Challenges
-                    </Text>
-                  )}
                   {enrichedParticipations.map(participation => (
                     <TouchableOpacity
                       key={participation.id}
@@ -585,9 +587,19 @@ export default function ProfileScreen() {
                         >
                           {participation.challengeName || 'Challenge'}
                         </Text>
-                        <View style={[styles.badge, { backgroundColor: '#e8f5e9' }]}>
-                          <Text style={[styles.badgeText, { color: '#4caf50' }]}>
-                            {participation.status === 'active' ? 'Active' : participation.status}
+                        <View style={[styles.badge, {
+                          backgroundColor: participation.status === 'completed' ? '#e3f2fd'
+                            : participation.status === 'upcoming' ? '#fff3e0'
+                            : '#e8f5e9',
+                        }]}>
+                          <Text style={[styles.badgeText, {
+                            color: participation.status === 'completed' ? '#1976d2'
+                              : participation.status === 'upcoming' ? '#f57c00'
+                              : '#4caf50',
+                          }]}>
+                            {participation.status === 'active' ? 'Active'
+                              : participation.status === 'completed' ? 'Completed'
+                              : 'Upcoming'}
                           </Text>
                         </View>
                         {participation.isCreator && (
