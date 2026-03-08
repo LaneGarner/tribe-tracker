@@ -19,6 +19,7 @@ import { PublicChallengeListSkeleton } from '../components/challenge/PublicChall
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useDispatch, useSelector } from 'react-redux';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
@@ -422,19 +423,27 @@ export default function CreateChallengeScreen() {
 
       <View style={styles.actionButtons}>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: colors.primary }]}
+          style={styles.actionButton}
           onPress={() => setMode('create')}
+          activeOpacity={0.8}
         >
-          <Ionicons name="add" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>Create Challenge</Text>
+          <LinearGradient
+            colors={['#F97316', '#EF4444']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.actionButtonGradient}
+          >
+            <Ionicons name="add-circle" size={20} color="#fff" />
+            <Text style={styles.actionButtonText}>New Challenge</Text>
+          </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: colors.surface }]}
+          style={[styles.actionButton, { backgroundColor: colors.surface, paddingVertical: 14 }]}
           onPress={() => setMode('join')}
         >
           <Ionicons name="key" size={20} color={colors.text} />
           <Text style={[styles.actionButtonTextAlt, { color: colors.text }]}>
-            Join by Code
+            Join By Code
           </Text>
         </TouchableOpacity>
       </View>
@@ -980,9 +989,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
     borderRadius: 12,
+    overflow: 'hidden',
     gap: 8,
+  },
+  actionButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+    width: '100%',
   },
   actionButtonText: {
     color: '#fff',
