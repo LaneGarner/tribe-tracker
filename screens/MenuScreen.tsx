@@ -254,7 +254,7 @@ export default function MenuScreen() {
 
         {/* Version */}
         <Text style={[styles.version, { color: colors.textTertiary }]}>
-          Tribe Tracker v1.0.0
+          Tribe Tracker v0.0.1
         </Text>
       </ScrollView>
     </View>
