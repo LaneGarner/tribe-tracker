@@ -7,9 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Modal,
-  ActivityIndicator,
 } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import dayjs from 'dayjs';
@@ -25,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { isBackendConfigured } from '../config/api';
 import { BadgeDefinition, UserBadge } from '../types';
 import BadgeGrid from '../components/badges/BadgeGrid';
+import BadgeGridSkeleton from '../components/badges/BadgeGridSkeleton';
 import LevelBadge, { LEVEL_COLORS } from '../components/badges/LevelBadge';
 import HexBadge from '../components/badges/HexBadge';
 
@@ -43,7 +42,6 @@ export default function BadgesScreen() {
   const [activeTab, setActiveTab] = useState<TabType | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showLevelInfo, setShowLevelInfo] = useState(false);
-  const [imagesReady, setImagesReady] = useState(false);
 
   // Set initial tab based on earned badges (once loaded)
   useEffect(() => {
@@ -52,23 +50,6 @@ export default function BadgesScreen() {
     }
   }, [activeTab, definitions.length, earned.length]);
 
-  // Prefetch all badge images at once using Promise.all
-  useEffect(() => {
-    if (definitions.length > 0 && !imagesReady) {
-      const imageUrls = definitions
-        .filter(d => d.imageUrl)
-        .map(d => d.imageUrl as string);
-
-      if (imageUrls.length === 0) {
-        setImagesReady(true);
-        return;
-      }
-
-      Promise.all(imageUrls.map(url => ExpoImage.prefetch(url)))
-        .then(() => setImagesReady(true))
-        .catch(() => setImagesReady(true)); // Show badges even if prefetch fails
-    }
-  }, [definitions, imagesReady]);
   const [selectedBadge, setSelectedBadge] = useState<{
     definition: BadgeDefinition;
     userBadge?: UserBadge;
@@ -83,7 +64,6 @@ export default function BadgesScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setImagesReady(false);
     await dispatch(loadBadgesFromStorage());
     if (session?.access_token && isBackendConfigured()) {
       await dispatch(fetchBadgesFromServer(session.access_token));
@@ -202,13 +182,8 @@ export default function BadgesScreen() {
         </View>
 
         {/* Badge Grid */}
-        {!imagesReady && definitions.length > 0 ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading badges...
-            </Text>
-          </View>
+        {definitions.length === 0 && loading ? (
+          <BadgeGridSkeleton />
         ) : filteredDefinitions.length > 0 ? (
           <BadgeGrid
             definitions={filteredDefinitions}
@@ -464,16 +439,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     textAlign: 'center',
-  },
-  loadingState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 48,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    marginTop: 8,
   },
   modalOverlay: {
     flex: 1,
