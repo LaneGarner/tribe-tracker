@@ -244,6 +244,26 @@ export default function CreateChallengeScreen() {
     }
 
     setErrors({});
+
+    // Confirm before creating if start date is today (challenge becomes immediately active)
+    const startsToday = !isEditMode && startDate === getToday();
+    if (startsToday) {
+      Alert.alert(
+        'Start Immediately?',
+        'This challenge will begin today and the duration cannot be changed once active. Continue?',
+        [
+          { text: 'Go Back', style: 'cancel' },
+          { text: 'Start Now', onPress: () => executeCreate() },
+        ]
+      );
+      return;
+    }
+
+    executeCreate();
+  };
+
+  const executeCreate = () => {
+    const validHabits = habits.map(h => h.text.trim()).filter(Boolean);
     setIsCreating(true);
 
     // Handle edit mode

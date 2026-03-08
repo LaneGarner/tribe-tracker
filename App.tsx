@@ -38,7 +38,7 @@ import { ThemeContext, ThemeProvider, getColors } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { isBackendConfigured } from './config/api';
 import { RootStackParamList } from './types';
-import { setPendingInviteCode, consumePendingInviteCode } from './utils/pendingInvite';
+import { setPendingInviteCode, consumePendingInviteCode, setPendingChallengeId, consumePendingChallengeId } from './utils/pendingInvite';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -47,6 +47,7 @@ const linking = {
   config: {
     screens: {
       CreateChallenge: 'invite/:inviteCode',
+      ChallengeDetail: 'challenge/:challengeId',
     },
   },
 };
@@ -89,41 +90,44 @@ function AppContent() {
     }
   }, [user, session, dispatch]);
 
-  // Handle pending invite after login
+  // Handle pending deep links after login
   useEffect(() => {
-    if (user && !isInitializing) {
+    if (user && !isInitializing && navigationRef.isReady()) {
       const code = consumePendingInviteCode();
-      if (code && navigationRef.isReady()) {
+      if (code) {
         setTimeout(() => {
           navigationRef.navigate('CreateChallenge', { mode: 'join', inviteCode: code });
+        }, 500);
+        return;
+      }
+      const challengeId = consumePendingChallengeId();
+      if (challengeId) {
+        setTimeout(() => {
+          navigationRef.navigate('ChallengeDetail', { challengeId });
         }, 500);
       }
     }
   }, [user, isInitializing]);
 
-  // Store deep link invite code if user is not authenticated
+  // Store deep link data if user is not authenticated
   useEffect(() => {
-    const parseInviteCode = (url: string) => {
-      const match = url.match(/invite\/([A-Za-z0-9]+)/);
-      return match ? match[1] : null;
-    };
-
-    const handleUrl = ({ url }: { url: string }) => {
-      const code = parseInviteCode(url);
-      if (code && !user) {
-        setPendingInviteCode(code);
+    const storePendingDeepLink = (url: string) => {
+      if (user) return;
+      const inviteMatch = url.match(/invite\/([A-Za-z0-9]+)/);
+      if (inviteMatch) {
+        setPendingInviteCode(inviteMatch[1]);
+        return;
+      }
+      const challengeMatch = url.match(/challenge\/([A-Za-z0-9-]+)/);
+      if (challengeMatch) {
+        setPendingChallengeId(challengeMatch[1]);
       }
     };
 
-    const subscription = Linking.addEventListener('url', handleUrl);
+    const subscription = Linking.addEventListener('url', ({ url }) => storePendingDeepLink(url));
 
     Linking.getInitialURL().then(url => {
-      if (url) {
-        const code = parseInviteCode(url);
-        if (code && !user) {
-          setPendingInviteCode(code);
-        }
-      }
+      if (url) storePendingDeepLink(url);
     });
 
     return () => subscription.remove();
