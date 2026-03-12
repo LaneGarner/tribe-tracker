@@ -59,6 +59,7 @@ export default function ChallengeDetailScreen() {
   );
 
   const selectConversationByChallengeId = useMemo(makeSelectConversationByChallengeId, []);
+  const profile = useSelector((state: RootState) => state.profile.data);
   const groupConversation = useSelector((state: RootState) =>
     selectConversationByChallengeId(state, challengeId)
   );
@@ -251,6 +252,7 @@ export default function ChallengeDetailScreen() {
       userId: user?.id || 'anonymous',
       userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
       userEmail: user?.email || '',
+      userPhotoUrl: profile?.profilePhotoUrl,
       totalPoints: 0,
       currentStreak: 0,
       longestStreak: 0,

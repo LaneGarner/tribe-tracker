@@ -156,6 +156,7 @@ export default function CreateChallengeScreen() {
   const habitInputRefs = useRef<(TextInput | null)[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const profile = useSelector((state: RootState) => state.profile.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
   const activePublicChallenges = challenges.filter(
@@ -410,6 +411,7 @@ export default function CreateChallengeScreen() {
         userId: user?.id || 'anonymous',
         userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
         userEmail: user?.email || '',
+        userPhotoUrl: profile?.profilePhotoUrl,
         totalPoints: 0,
         currentStreak: 0,
         longestStreak: 0,
@@ -491,6 +493,7 @@ export default function CreateChallengeScreen() {
       userId: user?.id || 'anonymous',
       userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
       userEmail: user?.email || '',
+      userPhotoUrl: profile?.profilePhotoUrl,
       totalPoints: 0,
       currentStreak: 0,
       longestStreak: 0,
