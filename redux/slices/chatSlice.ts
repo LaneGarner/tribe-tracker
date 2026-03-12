@@ -261,17 +261,10 @@ export const selectDmConversations = createSelector(
     .sort((a, b) => (b.lastMessageAt || b.updatedAt || '').localeCompare(a.lastMessageAt || a.updatedAt || ''))
 );
 
-export const selectGroupConversations = createSelector(
+export const selectAllConversationsSorted = createSelector(
   [selectChatState],
-  chat => chat.conversations
-    .filter(c => c.type === 'group')
+  chat => [...chat.conversations]
     .sort((a, b) => (b.lastMessageAt || b.updatedAt || '').localeCompare(a.lastMessageAt || a.updatedAt || ''))
-);
-
-export const selectPendingDmRequests = createSelector(
-  [selectChatState],
-  chat => chat.conversations
-    .filter(c => c.type === 'dm' && c.members.some(m => m.status === 'pending'))
 );
 
 export default chatSlice.reducer;

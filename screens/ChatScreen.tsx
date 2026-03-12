@@ -1,7 +1,6 @@
 import React, { useContext, useState, useCallback, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
@@ -17,21 +16,16 @@ import { RootState, AppDispatch } from '../redux/store';
 import {
   fetchConversationsFromServer,
   loadChatFromStorage,
-  selectGroupConversations,
-  selectDmConversations,
-  selectPendingDmRequests,
+  selectAllConversationsSorted,
 } from '../redux/slices/chatSlice';
 import { useChatRealtime } from '../hooks/useChatRealtime';
 import { isBackendConfigured } from '../config/api';
 import { RootStackParamList, Conversation } from '../types';
 import ConversationRow from '../components/chat/ConversationRow';
 import EmptyChat from '../components/chat/EmptyChat';
-import SegmentedControl from '../components/SegmentedControl';
 import Skeleton from '../components/ui/Skeleton';
 
 type ChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Chat'>;
-
-type Tab = 'groups' | 'direct';
 
 export default function ChatScreen() {
   const navigation = useNavigation<ChatNavigationProp>();
@@ -40,13 +34,9 @@ export default function ChatScreen() {
   const colors = getColors(colorScheme);
   const { session } = useAuth();
 
-  const [tab, setTab] = useState<Tab>('groups');
   const [refreshing, setRefreshing] = useState(false);
   const loading = useSelector((state: RootState) => state.chat.loading);
-
-  const groupConversations = useSelector(selectGroupConversations);
-  const dmConversations = useSelector(selectDmConversations);
-  const pendingRequests = useSelector(selectPendingDmRequests);
+  const conversations = useSelector(selectAllConversationsSorted);
 
   // Set up realtime subscriptions
   useChatRealtime();
@@ -88,13 +78,6 @@ export default function ChatScreen() {
     }
   };
 
-  const conversations = tab === 'groups' ? groupConversations : dmConversations;
-
-  const tabOptions: { value: Tab; label: string }[] = [
-    { value: 'groups', label: 'Groups' },
-    { value: 'direct', label: 'Direct' },
-  ];
-
   const renderConversation = ({ item }: { item: Conversation }) => (
     <ConversationRow
       conversation={item}
@@ -105,9 +88,6 @@ export default function ChatScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.header}>
-          <SegmentedControl options={tabOptions} value={tab} onValueChange={setTab} accessibilityLabel="Chat tabs" />
-        </View>
         <View style={styles.skeletonList}>
           {[1, 2, 3, 4].map(i => (
             <View key={i} style={[styles.skeletonRow, { backgroundColor: colors.surface }]}>
@@ -125,26 +105,6 @@ export default function ChatScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <SegmentedControl options={tabOptions} value={tab} onValueChange={setTab} accessibilityLabel="Chat tabs" />
-      </View>
-
-      {/* Pending DM requests banner */}
-      {tab === 'direct' && pendingRequests.length > 0 && (
-        <TouchableOpacity
-          style={[styles.requestsBanner, { backgroundColor: colors.primary + '15' }]}
-          onPress={() => navigation.navigate('DmRequests')}
-          accessibilityRole="button"
-          accessibilityLabel={`${pendingRequests.length} pending message request${pendingRequests.length !== 1 ? 's' : ''}`}
-        >
-          <Ionicons name="mail-outline" size={20} color={colors.primary} />
-          <Text style={[styles.requestsText, { color: colors.primary }]}>
-            {pendingRequests.length} message request{pendingRequests.length !== 1 ? 's' : ''}
-          </Text>
-          <Ionicons name="chevron-forward" size={18} color={colors.primary} />
-        </TouchableOpacity>
-      )}
-
       <FlatList
         data={conversations}
         renderItem={renderConversation}
@@ -153,23 +113,20 @@ export default function ChatScreen() {
           styles.listContent,
           conversations.length === 0 && styles.emptyList,
         ]}
-        ListEmptyComponent={<EmptyChat type={tab} />}
+        ListEmptyComponent={<EmptyChat type="chat" />}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       />
 
-      {/* New DM FAB on Direct tab */}
-      {tab === 'direct' && (
-        <TouchableOpacity
-          style={[styles.fab, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate('NewDm')}
-          accessibilityRole="button"
-          accessibilityLabel="New direct message"
-        >
-          <Ionicons name="create-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => navigation.navigate('NewDm')}
+        accessibilityRole="button"
+        accessibilityLabel="New direct message"
+      >
+        <Ionicons name="create-outline" size={24} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -177,25 +134,6 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  requestsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    gap: 8,
-  },
-  requestsText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
   },
   listContent: {
     paddingHorizontal: 20,
@@ -206,6 +144,7 @@ const styles = StyleSheet.create({
   },
   skeletonList: {
     paddingHorizontal: 20,
+    paddingTop: 8,
   },
   skeletonRow: {
     flexDirection: 'row',

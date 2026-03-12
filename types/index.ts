@@ -191,14 +191,6 @@ export interface ChatMessage {
   updatedAt?: string;
 }
 
-export interface DmRequest {
-  conversationId: string;
-  fromUserId: string;
-  fromUserName: string;
-  fromUserPhotoUrl?: string;
-  createdAt: string;
-}
-
 export interface BlockedUser {
   id: string;
   blockedId: string;
@@ -224,7 +216,6 @@ export type RootStackParamList = {
   Chat: undefined;
   GroupChat: { conversationId: string; challengeName: string };
   DirectMessage: { conversationId: string; otherUserName?: string };
-  DmRequests: undefined;
   NewDm: undefined;
   Coaching: undefined;
   AppsDevices: undefined;

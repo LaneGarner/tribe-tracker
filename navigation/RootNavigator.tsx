@@ -25,7 +25,6 @@ import HelpScreen from '../screens/HelpScreen';
 import ChatScreen from '../screens/ChatScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
 import DirectMessageScreen from '../screens/DirectMessageScreen';
-import DmRequestsScreen from '../screens/DmRequestsScreen';
 import NewDmScreen from '../screens/NewDmScreen';
 
 // Placeholder screens
@@ -158,12 +157,7 @@ export default function RootNavigator() {
               title: (route.params as { otherUserName?: string })?.otherUserName || 'Message',
             })}
           />
-          <Stack.Screen
-            name="DmRequests"
-            component={DmRequestsScreen}
-            options={{ title: 'Message Requests' }}
-          />
-          <Stack.Screen
+<Stack.Screen
             name="NewDm"
             component={NewDmScreen}
             options={{ title: 'New Message' }}

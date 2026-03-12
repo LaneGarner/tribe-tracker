@@ -24,6 +24,9 @@ export default function ConversationRow({ conversation, onPress }: ConversationR
     ? conversation.members.find(m => m.userId !== user?.id)
     : null;
 
+  const isPendingRequest = conversation.type === 'dm'
+    && conversation.members.some(m => m.userId === user?.id && m.status === 'pending');
+
   const displayName = conversation.type === 'dm'
     ? otherMember?.userName || 'Unknown'
     : conversation.name || 'Group Chat';
@@ -73,10 +76,11 @@ export default function ConversationRow({ conversation, onPress }: ConversationR
               styles.preview,
               { color: colors.textSecondary },
               conversation.unreadCount > 0 && { color: colors.text },
+              isPendingRequest && { color: colors.primary, fontStyle: 'italic' },
             ]}
             numberOfLines={1}
           >
-            {conversation.lastMessagePreview || 'No messages yet'}
+            {isPendingRequest ? 'Message request' : conversation.lastMessagePreview || 'No messages yet'}
           </Text>
           {conversation.unreadCount > 0 && (
             <View style={[styles.badge, { backgroundColor: colors.primary }]}>

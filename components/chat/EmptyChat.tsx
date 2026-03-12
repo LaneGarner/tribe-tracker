@@ -4,30 +4,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 
 interface EmptyChatProps {
-  type: 'groups' | 'direct' | 'messages' | 'requests';
+  type: 'chat' | 'messages';
   inverted?: boolean;
 }
 
 const CONFIG = {
-  groups: {
-    icon: 'people-outline' as const,
-    title: 'No Group Chats',
-    subtitle: 'Join a challenge to start chatting with your tribe.',
-  },
-  direct: {
-    icon: 'chatbubble-outline' as const,
-    title: 'No Direct Messages',
-    subtitle: 'Tap the + button to start a conversation.',
+  chat: {
+    icon: 'chatbubbles-outline' as const,
+    title: 'No Conversations',
+    subtitle: 'Join a challenge or start a direct message.',
   },
   messages: {
     icon: 'chatbubbles-outline' as const,
     title: 'No Messages Yet',
     subtitle: 'Send a message to get the conversation going.',
-  },
-  requests: {
-    icon: 'mail-outline' as const,
-    title: 'No Pending Requests',
-    subtitle: 'Message requests from other users will appear here.',
   },
 };
 
