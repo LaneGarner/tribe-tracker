@@ -1,8 +1,11 @@
 import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform, Linking, Alert } from 'react-native';
 import { NotificationSettings, Challenge, HabitCheckin, ChallengeParticipant } from '../types';
 import { getToday, subtractDays } from './dateUtils';
 import dayjs from 'dayjs';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   pushEnabled: true,
@@ -17,11 +20,13 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 // --- Permission Management ---
 
 export async function getPermissionStatus(): Promise<Notifications.PermissionStatus> {
+  if (isExpoGo) return 'undetermined' as Notifications.PermissionStatus;
   const { status } = await Notifications.getPermissionsAsync();
   return status;
 }
 
 export async function requestPermission(): Promise<boolean> {
+  if (isExpoGo) return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === 'granted') return true;
 
@@ -40,6 +45,7 @@ export function openNotificationSettings(): void {
 // --- Setup ---
 
 export function configureNotificationHandler(): void {
+  if (isExpoGo) return;
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
@@ -175,6 +181,7 @@ async function cancelNotificationById(identifier: string): Promise<void> {
 }
 
 export async function cancelAllNotifications(): Promise<void> {
+  if (isExpoGo) return;
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
@@ -187,6 +194,7 @@ export async function evaluateAndScheduleNotifications(
   participants: ChallengeParticipant[],
   userId: string
 ): Promise<void> {
+  if (isExpoGo) return;
   const permissionStatus = await getPermissionStatus();
   if (permissionStatus !== 'granted' || !settings.pushEnabled) {
     await cancelAllNotifications();
