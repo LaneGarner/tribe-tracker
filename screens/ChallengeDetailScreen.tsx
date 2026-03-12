@@ -29,6 +29,7 @@ import {
 } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import { isBackendConfigured } from '../config/api';
+import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
 
 type ChallengeDetailRouteProp = RouteProp<RootStackParamList, 'ChallengeDetail'>;
 type ChallengeDetailNavigationProp = NativeStackNavigationProp<
@@ -55,6 +56,11 @@ export default function ChallengeDetailScreen() {
   const selectParticipantsByChallengeId = useMemo(makeSelectParticipantsByChallengeId, []);
   const participants = useSelector((state: RootState) =>
     selectParticipantsByChallengeId(state, challengeId)
+  );
+
+  const selectConversationByChallengeId = useMemo(makeSelectConversationByChallengeId, []);
+  const groupConversation = useSelector((state: RootState) =>
+    selectConversationByChallengeId(state, challengeId)
   );
 
   const userParticipation = participants.find(p => p.userId === user?.id);
@@ -145,12 +151,27 @@ export default function ChallengeDetailScreen() {
     Alert.alert('Challenge Options', undefined, options);
   };
 
-  // Set up header with share, analytics, and creator menu buttons
+  // Set up header with chat, share, analytics, and creator menu buttons
   useLayoutEffect(() => {
     navigation.setOptions({
       title: '',
       headerRight: () => (
         <View style={{ flexDirection: 'row', gap: 20, paddingHorizontal: 8 }}>
+          {isJoined && groupConversation && (
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('GroupChat', {
+                  conversationId: groupConversation.id,
+                  challengeName: challenge?.name || 'Group Chat',
+                })
+              }
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Open group chat"
+            >
+              <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={handleShare}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -176,7 +197,7 @@ export default function ChallengeDetailScreen() {
         </View>
       ),
     });
-  }, [navigation, colors.text, challenge?.name, challengeId, isCreator, isJoined]);
+  }, [navigation, colors.text, challenge?.name, challengeId, isCreator, isJoined, groupConversation]);
 
   // Fetch fresh participant data when screen gains focus
   useFocusEffect(

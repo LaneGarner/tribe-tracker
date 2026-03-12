@@ -21,8 +21,13 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import PreferencesScreen from '../screens/PreferencesScreen';
 import HelpScreen from '../screens/HelpScreen';
 
-// Placeholder screens
+// Chat screens
 import ChatScreen from '../screens/ChatScreen';
+import GroupChatScreen from '../screens/GroupChatScreen';
+import DirectMessageScreen from '../screens/DirectMessageScreen';
+import DmRequestsScreen from '../screens/DmRequestsScreen';
+
+// Placeholder screens
 import CoachingScreen from '../screens/CoachingScreen';
 import AppsDevicesScreen from '../screens/AppsDevicesScreen';
 
@@ -132,12 +137,33 @@ export default function RootNavigator() {
             options={{ title: 'Help & Support' }}
           />
 
-          {/* Placeholder screens */}
+          {/* Chat screens */}
           <Stack.Screen
             name="Chat"
             component={ChatScreen}
             options={{ title: 'Chat' }}
           />
+          <Stack.Screen
+            name="GroupChat"
+            component={GroupChatScreen}
+            options={({ route }) => ({
+              title: (route.params as { challengeName?: string })?.challengeName || 'Group Chat',
+            })}
+          />
+          <Stack.Screen
+            name="DirectMessage"
+            component={DirectMessageScreen}
+            options={({ route }) => ({
+              title: (route.params as { otherUserName?: string })?.otherUserName || 'Message',
+            })}
+          />
+          <Stack.Screen
+            name="DmRequests"
+            component={DmRequestsScreen}
+            options={{ title: 'Message Requests' }}
+          />
+
+          {/* Placeholder screens */}
           <Stack.Screen
             name="Coaching"
             component={CoachingScreen}

@@ -140,6 +140,61 @@ export interface UserBadge {
   badge?: BadgeDefinition;
 }
 
+// Chat types
+export interface Conversation {
+  id: string;
+  type: 'group' | 'dm';
+  challengeId?: string;
+  name?: string;
+  createdBy: string;
+  lastMessageAt?: string;
+  lastMessagePreview?: string;
+  unreadCount: number;
+  members: ConversationMember[];
+  updatedAt?: string;
+}
+
+export interface ConversationMember {
+  id: string;
+  conversationId: string;
+  userId: string;
+  userName: string;
+  userPhotoUrl?: string;
+  role: 'admin' | 'member';
+  status: 'active' | 'pending' | 'rejected';
+  lastReadAt?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName?: string;
+  senderPhotoUrl?: string;
+  content: string;
+  type: 'text' | 'system';
+  clientId?: string;
+  status: 'sending' | 'sent' | 'failed';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface DmRequest {
+  conversationId: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserPhotoUrl?: string;
+  createdAt: string;
+}
+
+export interface BlockedUser {
+  id: string;
+  blockedId: string;
+  blockedName?: string;
+  blockedPhotoUrl?: string;
+  createdAt: string;
+}
+
 // Navigation types
 export type RootStackParamList = {
   Auth: undefined;
@@ -155,6 +210,9 @@ export type RootStackParamList = {
   Preferences: undefined;
   Help: undefined;
   Chat: undefined;
+  GroupChat: { conversationId: string; challengeName: string };
+  DirectMessage: { conversationId: string; otherUserName?: string };
+  DmRequests: undefined;
   Coaching: undefined;
   AppsDevices: undefined;
   BuildingManagement: undefined;
