@@ -34,7 +34,7 @@ export default function NewDmScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const { session } = useAuth();
+  const { user: authUser, session } = useAuth();
 
   const [search, setSearch] = useState('');
   const [creatingDmFor, setCreatingDmFor] = useState<string | null>(null);
@@ -99,6 +99,8 @@ export default function NewDmScreen() {
           recipientId: user.userId,
           recipientName: user.userName,
           recipientPhotoUrl: user.userPhotoUrl,
+          senderName: authUser?.user_metadata?.full_name || authUser?.email?.split('@')[0] || '',
+          senderPhotoUrl: authUser?.user_metadata?.profile_photo_url,
         }),
       });
       if (response.ok) {
