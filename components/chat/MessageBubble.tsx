@@ -10,10 +10,11 @@ interface MessageBubbleProps {
   message: ChatMessage;
   isOwn: boolean;
   showSender?: boolean;
+  pendingConversation?: boolean;
   onRetry?: () => void;
 }
 
-export default function MessageBubble({ message, isOwn, showSender = false, onRetry }: MessageBubbleProps) {
+export default function MessageBubble({ message, isOwn, showSender = false, pendingConversation = false, onRetry }: MessageBubbleProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
 
@@ -69,21 +70,27 @@ export default function MessageBubble({ message, isOwn, showSender = false, onRe
           </Text>
           {isOwn && (
             <>
-              {message.status === 'sending' && (
+              {pendingConversation ? (
                 <Ionicons name="time-outline" size={12} color={colors.textTertiary} style={styles.statusIcon} />
-              )}
-              {message.status === 'sent' && (
-                <Ionicons name="checkmark" size={12} color={colors.textTertiary} style={styles.statusIcon} />
-              )}
-              {message.status === 'failed' && (
-                <TouchableOpacity
-                  onPress={onRetry}
-                  hitSlop={14}
-                  accessibilityRole="button"
-                  accessibilityLabel="Retry sending message"
-                >
-                  <Ionicons name="alert-circle" size={14} color={colors.error} style={styles.statusIcon} />
-                </TouchableOpacity>
+              ) : (
+                <>
+                  {message.status === 'sending' && (
+                    <Ionicons name="time-outline" size={12} color={colors.textTertiary} style={styles.statusIcon} />
+                  )}
+                  {message.status === 'sent' && (
+                    <Ionicons name="checkmark" size={12} color={colors.textTertiary} style={styles.statusIcon} />
+                  )}
+                  {message.status === 'failed' && (
+                    <TouchableOpacity
+                      onPress={onRetry}
+                      hitSlop={14}
+                      accessibilityRole="button"
+                      accessibilityLabel="Retry sending message"
+                    >
+                      <Ionicons name="alert-circle" size={14} color={colors.error} style={styles.statusIcon} />
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
             </>
           )}

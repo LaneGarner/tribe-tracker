@@ -266,6 +266,8 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
                 payload: { clientId: message.clientId, status: 'sent', id: data.message?.id },
               });
             } else {
+              const errorText = await response.text();
+              console.error(`[Sync] Message send failed (${response.status}):`, errorText);
               store.dispatch({
                 type: 'chat/updateMessageStatus',
                 payload: { clientId: message.clientId, status: 'failed' },

@@ -3,16 +3,78 @@ import { useSelector, useDispatch } from 'react-redux';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { addRealtimeMessage, updateMemberStatus } from '../redux/slices/chatSlice';
-import { ChatMessage } from '../types';
+import { addRealtimeMessage, addConversation, updateMemberStatus } from '../redux/slices/chatSlice';
+import { ChatMessage, Conversation } from '../types';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { isBackendConfigured, API_URL } from '../config/api';
 
 export function useChatRealtime() {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const conversations = useSelector((state: RootState) => state.chat.conversations);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const memberChannelRef = useRef<RealtimeChannel | null>(null);
+  const newDmChannelRef = useRef<RealtimeChannel | null>(null);
+  const conversationIdsRef = useRef<Set<string>>(new Set());
+
+  // Keep track of known conversation IDs to detect new ones
+  useEffect(() => {
+    conversationIdsRef.current = new Set(conversations.map(c => c.id));
+  }, [conversations]);
+
+  // Subscribe to new DM requests (conversation_members INSERTs for this user)
+  useEffect(() => {
+    if (!user?.id || !isSupabaseConfigured()) return;
+
+    if (newDmChannelRef.current) {
+      supabase.removeChannel(newDmChannelRef.current);
+    }
+
+    newDmChannelRef.current = supabase
+      .channel('new-dm-requests')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversation_members',
+          filter: `user_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          const conversationId = row.conversation_id as string;
+
+          // Skip if we already have this conversation
+          if (conversationIdsRef.current.has(conversationId)) return;
+
+          // Fetch the full conversation from the server
+          if (!session?.access_token || !isBackendConfigured()) return;
+          try {
+            const response = await fetch(`${API_URL}/api/conversations`, {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            const conv = (data.conversations as Conversation[])?.find(
+              (c: Conversation) => c.id === conversationId
+            );
+            if (conv) {
+              dispatch(addConversation(conv));
+            }
+          } catch (err) {
+            console.error('[Realtime] Failed to fetch new conversation:', err);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (newDmChannelRef.current) {
+        supabase.removeChannel(newDmChannelRef.current);
+        newDmChannelRef.current = null;
+      }
+    };
+  }, [user?.id, session?.access_token]);
 
   useEffect(() => {
     if (!user?.id || !isSupabaseConfigured() || conversations.length === 0) return;

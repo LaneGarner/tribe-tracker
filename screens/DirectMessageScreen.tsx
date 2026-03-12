@@ -219,8 +219,9 @@ export default function DirectMessageScreen() {
       message={item}
       isOwn={item.senderId === user?.id}
       showSender={false}
+      pendingConversation={isOtherPending}
     />
-  ), [user?.id]);
+  ), [user?.id, isOtherPending]);
 
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
@@ -280,16 +281,17 @@ export default function DirectMessageScreen() {
         </View>
       )}
 
+      {reversedMessages.length === 0 && (
+        <View style={StyleSheet.absoluteFill}>
+          <EmptyChat type="messages" />
+        </View>
+      )}
       <FlatList
         data={reversedMessages}
         renderItem={renderMessage}
         keyExtractor={item => item.clientId || item.id}
         inverted
-        contentContainerStyle={[
-          styles.messageList,
-          reversedMessages.length === 0 && styles.emptyMessages,
-        ]}
-        ListEmptyComponent={<EmptyChat type="messages" inverted />}
+        contentContainerStyle={styles.messageList}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
       />
@@ -309,10 +311,6 @@ const styles = StyleSheet.create({
   },
   messageList: {
     paddingVertical: 8,
-  },
-  emptyMessages: {
-    flex: 1,
-    transform: [{ scaleY: -1 }],
   },
   banner: {
     flexDirection: 'row',
