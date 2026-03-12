@@ -10,6 +10,7 @@ import {
   ChatMessage,
   BlockedUser,
 } from '../types';
+import { API_URL } from '../config/api';
 
 // Storage keys
 const KEYS = {
@@ -219,6 +220,25 @@ export const clearUserData = async (): Promise<void> => {
     ]);
   } catch (error) {
     console.error('Error clearing user data:', error);
+  }
+};
+
+// Clear chat data locally and from the server
+export const clearChatData = async (token?: string | null): Promise<void> => {
+  try {
+    await AsyncStorage.multiRemove([KEYS.CONVERSATIONS, KEYS.MESSAGES, KEYS.BLOCKED_USERS]);
+
+    if (token) {
+      const response = await fetch(`${API_URL}/api/conversations`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        console.error('Failed to clear chat data on server:', response.status);
+      }
+    }
+  } catch (error) {
+    console.error('Error clearing chat data:', error);
   }
 };
 
