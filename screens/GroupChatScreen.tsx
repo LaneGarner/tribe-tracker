@@ -123,7 +123,7 @@ export default function GroupChatScreen() {
           styles.messageList,
           reversedMessages.length === 0 && styles.emptyMessages,
         ]}
-        ListEmptyComponent={<EmptyChat type="messages" />}
+        ListEmptyComponent={<EmptyChat type="messages" inverted />}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
       />

@@ -5,6 +5,7 @@ import { ThemeContext, getColors } from '../../theme/ThemeContext';
 
 interface EmptyChatProps {
   type: 'groups' | 'direct' | 'messages' | 'requests';
+  inverted?: boolean;
 }
 
 const CONFIG = {
@@ -30,13 +31,13 @@ const CONFIG = {
   },
 };
 
-export default function EmptyChat({ type }: EmptyChatProps) {
+export default function EmptyChat({ type, inverted }: EmptyChatProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const config = CONFIG[type];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, inverted && styles.inverted]}>
       <Ionicons name={config.icon} size={56} color={colors.textTertiary} />
       <Text style={[styles.title, { color: colors.text }]}>
         {config.title}
@@ -66,5 +67,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  inverted: {
+    transform: [{ scaleY: -1 }],
   },
 });
