@@ -54,6 +54,13 @@ export default {
           photosPermission: 'Tribe Tracker needs photo library access so you can choose a profile photo.',
         },
       ],
+      [
+        'expo-notifications',
+        {
+          icon: './assets/icon.png',
+          color: '#3B82F6',
+        },
+      ],
     ],
   },
 };

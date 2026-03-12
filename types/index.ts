@@ -49,6 +49,17 @@ export interface HabitCheckin {
   updatedAt?: string;
 }
 
+// Notification Settings
+export interface NotificationSettings {
+  pushEnabled: boolean;
+  dailyReminderEnabled: boolean;
+  dailyReminderTime: string; // "HH:mm", default "20:00"
+  streakProtectionEnabled: boolean;
+  streakProtectionTime: string; // "HH:mm", default "21:00"
+  challengeStartEnabled: boolean;
+  challengeEndEnabled: boolean;
+}
+
 // User Profile
 export interface UserProfile {
   id: string;
@@ -73,6 +84,7 @@ export interface UserProfile {
   // Notification settings
   pushNotifications: boolean;
   emailNotifications: boolean;
+  notificationSettings?: NotificationSettings;
   // Child account
   isChildAccount: boolean;
   parentUserId?: string;

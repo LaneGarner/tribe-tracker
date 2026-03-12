@@ -39,6 +39,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { isBackendConfigured } from './config/api';
 import { RootStackParamList } from './types';
 import { setPendingInviteCode, consumePendingInviteCode, setPendingChallengeId, consumePendingChallengeId } from './utils/pendingInvite';
+import { configureNotificationHandler } from './utils/notifications';
+import useNotificationScheduler from './hooks/useNotificationScheduler';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -58,6 +60,14 @@ function AppContent() {
   const { isLoading: authLoading, isConfigured, user, session } = useAuth();
   const [isInitializing, setIsInitializing] = useState(true);
   const prevUserRef = useRef<typeof user>(undefined);
+
+  // Configure notification handler on mount
+  useEffect(() => {
+    configureNotificationHandler();
+  }, []);
+
+  // Schedule notifications based on state
+  useNotificationScheduler();
 
   // Load data from storage on app start
   useEffect(() => {
