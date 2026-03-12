@@ -26,6 +26,7 @@ import ChatScreen from '../screens/ChatScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
 import DirectMessageScreen from '../screens/DirectMessageScreen';
 import DmRequestsScreen from '../screens/DmRequestsScreen';
+import NewDmScreen from '../screens/NewDmScreen';
 
 // Placeholder screens
 import CoachingScreen from '../screens/CoachingScreen';
@@ -161,6 +162,11 @@ export default function RootNavigator() {
             name="DmRequests"
             component={DmRequestsScreen}
             options={{ title: 'Message Requests' }}
+          />
+          <Stack.Screen
+            name="NewDm"
+            component={NewDmScreen}
+            options={{ title: 'New Message' }}
           />
 
           {/* Placeholder screens */}

@@ -150,6 +150,17 @@ export default function DirectMessageScreen() {
           userId: user?.id || '',
           status: 'rejected',
         }));
+        // Auto-block sender on reject
+        if (otherMember) {
+          const blocked: BlockedUser = {
+            id: Crypto.randomUUID(),
+            blockedId: otherMember.userId,
+            blockedName: otherMember.userName,
+            blockedPhotoUrl: otherMember.userPhotoUrl,
+            createdAt: new Date().toISOString(),
+          };
+          dispatch(addBlockedUser(blocked));
+        }
         navigation.goBack();
       }
     } catch (err) {

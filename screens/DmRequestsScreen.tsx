@@ -9,11 +9,12 @@ import { useSelector, useDispatch } from 'react-redux';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { updateMemberStatus, fetchConversationsFromServer } from '../redux/slices/chatSlice';
+import { updateMemberStatus, fetchConversationsFromServer, addBlockedUser } from '../redux/slices/chatSlice';
 import { isBackendConfigured, API_URL } from '../config/api';
-import { DmRequest } from '../types';
+import { DmRequest, BlockedUser } from '../types';
 import DmRequestRow from '../components/chat/DmRequestRow';
 import EmptyChat from '../components/chat/EmptyChat';
+import * as Crypto from 'expo-crypto';
 
 export default function DmRequestsScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -64,6 +65,21 @@ export default function DmRequestsScreen() {
           userId: user?.id || '',
           status: action === 'accept' ? 'active' : 'rejected',
         }));
+        // Auto-block sender on reject
+        if (action === 'reject') {
+          const conv = conversations.find(c => c.id === conversationId);
+          const sender = conv?.members.find(m => m.userId !== user?.id);
+          if (sender) {
+            const blocked: BlockedUser = {
+              id: Crypto.randomUUID(),
+              blockedId: sender.userId,
+              blockedName: sender.userName,
+              blockedPhotoUrl: sender.userPhotoUrl,
+              createdAt: new Date().toISOString(),
+            };
+            dispatch(addBlockedUser(blocked));
+          }
+        }
       }
     } catch (err) {
       console.error(`DM request ${action} error:`, err);

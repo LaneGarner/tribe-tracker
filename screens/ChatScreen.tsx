@@ -163,9 +163,7 @@ export default function ChatScreen() {
       {tab === 'direct' && (
         <TouchableOpacity
           style={[styles.fab, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            // TODO: Navigate to user search/selection for new DM
-          }}
+          onPress={() => navigation.navigate('NewDm')}
           accessibilityRole="button"
           accessibilityLabel="New direct message"
         >
