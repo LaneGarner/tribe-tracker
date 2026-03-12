@@ -355,10 +355,10 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     overflow: 'hidden',
     paddingVertical: TAB_BAR_PADDING,
-    paddingHorizontal: 4,
   },
   frostedOverlay: {
     borderRadius: 100,
+    paddingHorizontal: 4,
   },
   tabBarContent: {
     flexDirection: 'row',

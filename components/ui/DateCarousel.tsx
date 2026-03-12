@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
@@ -17,6 +17,7 @@ interface DateCarouselProps {
   minDate?: string;
   onPrevious?: () => void;
   onNext?: () => void;
+  hasBackgroundImage?: boolean;
 }
 
 export default function DateCarousel({
@@ -25,9 +26,25 @@ export default function DateCarousel({
   minDate,
   onPrevious,
   onNext,
+  hasBackgroundImage,
 }: DateCarouselProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+
+  const glassStyle: ViewStyle | undefined = hasBackgroundImage ? {
+    backgroundColor: colorScheme === 'dark'
+      ? 'rgba(24, 24, 27, 0.72)'
+      : 'rgba(255, 255, 255, 0.78)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colorScheme === 'dark'
+      ? 'rgba(255, 255, 255, 0.12)'
+      : 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  } : undefined;
 
   const today = getToday();
   const isSelectedToday = isToday(selectedDate);
@@ -65,7 +82,7 @@ export default function DateCarousel({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface }, glassStyle]}>
       {canGoBack ? (
         <TouchableOpacity
           style={[styles.arrowButton, { borderColor: colors.border }]}

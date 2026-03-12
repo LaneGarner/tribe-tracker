@@ -109,7 +109,7 @@ export default function AuthScreen() {
         <View style={styles.content}>
           <Image
             source={require('../assets/images/TT-logo.png')}
-            style={styles.logo}
+            style={[styles.logo, { tintColor: colorScheme === 'dark' ? '#fff' : undefined }]}
           />
           <Text style={[styles.title, { color: colors.text }]}>
             TribeTracker
@@ -136,7 +136,7 @@ export default function AuthScreen() {
       <View style={styles.content}>
         <Image
           source={require('../assets/images/TT-logo.png')}
-          style={styles.logo}
+          style={[styles.logo, { tintColor: colorScheme === 'dark' ? '#fff' : undefined }]}
         />
         <Text style={[styles.title, { color: colors.text }]}>TribeTracker</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -326,9 +326,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 80,
-    height: 80,
-    marginBottom: 16,
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+    marginBottom: 4,
   },
   title: {
     fontSize: 28,

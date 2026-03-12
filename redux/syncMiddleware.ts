@@ -229,7 +229,7 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
         ) {
           const profile = state.profile.data as UserProfile;
           if (profile) {
-            await pushToServer(`users/${profile.id}`, {
+            await pushToServer(`users?id=${profile.id}`, {
               profile: {
                 ...profile,
                 updated_at: new Date().toISOString(),

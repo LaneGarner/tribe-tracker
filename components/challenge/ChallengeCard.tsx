@@ -1,5 +1,6 @@
 import React, { useContext, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
@@ -75,13 +76,8 @@ export default function ChallengeCard({
   const daysRemaining = getDaysRemaining(challenge.endDate || challenge.startDate);
   const progressPercent = Math.min((currentDay / challenge.durationDays) * 100, 100);
 
-  return (
-    <LinearGradient
-      colors={DEFAULT_GRADIENT as [string, string]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-    >
+  const cardContent = (
+    <>
       {/* Header with title and streak badge */}
       <View style={styles.header}>
         <View style={styles.titleSection}>
@@ -154,16 +150,51 @@ export default function ChallengeCard({
           </View>
         </View>
       )}
+    </>
+  );
+
+  if (challenge.backgroundImageUrl) {
+    return (
+      <View style={styles.container}>
+        <ExpoImage
+          source={{ uri: challenge.backgroundImageUrl }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          cachePolicy="disk"
+        />
+        <LinearGradient
+          colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.65)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.scrim}
+        >
+          {cardContent}
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  return (
+    <LinearGradient
+      colors={DEFAULT_GRADIENT as [string, string]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.container, styles.scrim]}
+    >
+      {cardContent}
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
     borderRadius: 20,
     marginHorizontal: 20,
     marginTop: 16,
+    overflow: 'hidden',
+  },
+  scrim: {
+    padding: 20,
   },
   header: {
     flexDirection: 'row',

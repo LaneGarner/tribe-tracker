@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
@@ -30,6 +30,7 @@ interface ActivityCalendarProps {
   maxMonth?: string;            // latest valid month
   onPrevious?: () => void;      // for arrow button animation sync
   onNext?: () => void;
+  hasBackgroundImage?: boolean;
 }
 
 export default function ActivityCalendar({
@@ -44,9 +45,25 @@ export default function ActivityCalendar({
   maxMonth,
   onPrevious,
   onNext,
+  hasBackgroundImage,
 }: ActivityCalendarProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+
+  const glassStyle: ViewStyle | undefined = hasBackgroundImage ? {
+    backgroundColor: colorScheme === 'dark'
+      ? 'rgba(24, 24, 27, 0.72)'
+      : 'rgba(255, 255, 255, 0.78)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colorScheme === 'dark'
+      ? 'rgba(255, 255, 255, 0.12)'
+      : 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  } : undefined;
   const today = getToday();
 
   // Generate challenge colors if not provided
@@ -209,7 +226,7 @@ export default function ActivityCalendar({
   const inactiveBackground = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface }, glassStyle]}>
       {/* Month header with navigation */}
       <View style={styles.headerRow}>
         <TouchableOpacity
