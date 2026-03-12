@@ -127,9 +127,12 @@ export default function DirectMessageScreen() {
           userId: user?.id || '',
           status: 'active',
         }));
+      } else {
+        Alert.alert('Error', 'Something went wrong. Please try again.');
       }
     } catch (err) {
       console.error('Accept DM request error:', err);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
 
@@ -162,9 +165,12 @@ export default function DirectMessageScreen() {
           dispatch(addBlockedUser(blocked));
         }
         navigation.goBack();
+      } else {
+        Alert.alert('Error', 'Something went wrong. Please try again.');
       }
     } catch (err) {
       console.error('Reject DM request error:', err);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
 
@@ -205,6 +211,12 @@ export default function DirectMessageScreen() {
     ]);
   };
 
+  // DM approval status
+  const isOwnPending = ownMember?.status === 'pending';
+  const isOtherPending = otherMember?.status === 'pending';
+  const isOwnRejected = ownMember?.status === 'rejected';
+  const isOtherRejected = otherMember?.status === 'rejected';
+
   const handleLoadMore = useCallback(() => {
     if (!hasMore || !session?.access_token) return;
     dispatch(fetchMessagesFromServer({
@@ -224,12 +236,6 @@ export default function DirectMessageScreen() {
   ), [user?.id, isOtherPending]);
 
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
-
-  // DM approval status
-  const isOwnPending = ownMember?.status === 'pending';
-  const isOtherPending = otherMember?.status === 'pending';
-  const isOwnRejected = ownMember?.status === 'rejected';
-  const isOtherRejected = otherMember?.status === 'rejected';
 
   return (
     <KeyboardAvoidingView
