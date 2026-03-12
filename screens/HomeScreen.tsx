@@ -1003,11 +1003,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Kanit_700Bold',
     letterSpacing: 0.5,
     textAlign: 'center',
+    marginBottom: -4,
   },
   logoSubtitle: {
     fontSize: 14,
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 0,
     marginBottom: 4,
   },
   scrollView: {
