@@ -242,21 +242,23 @@ export default function MenuScreen() {
               />
             </TouchableOpacity>
           ))}
-          {/* Clear Chat Data */}
-          <TouchableOpacity
-            style={[styles.menuItem, { backgroundColor: colors.surface }]}
-            onPress={handleClearChatData}
-          >
-            <Ionicons name="chatbubble-outline" size={22} color={colors.error} />
-            <Text style={[styles.menuItemText, { color: colors.error }]}>
-              Clear Chat Data
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors.textTertiary}
-            />
-          </TouchableOpacity>
+          {/* Clear Chat Data - dev only */}
+          {__DEV__ && (
+            <TouchableOpacity
+              style={[styles.menuItem, { backgroundColor: colors.surface }]}
+              onPress={handleClearChatData}
+            >
+              <Ionicons name="chatbubble-outline" size={22} color={colors.error} />
+              <Text style={[styles.menuItemText, { color: colors.error }]}>
+                Clear Chat Data
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textTertiary}
+              />
+            </TouchableOpacity>
+          )}
           {/* Clear All Data - destructive action */}
           <TouchableOpacity
             style={[styles.menuItem, { backgroundColor: colors.surface }]}
