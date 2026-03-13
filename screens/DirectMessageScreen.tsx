@@ -26,6 +26,7 @@ import {
   updateMemberStatus,
 } from '../redux/slices/chatSlice';
 import { RootStackParamList, ChatMessage, BlockedUser } from '../types';
+import { useConversationRealtime } from '../hooks/useConversationRealtime';
 import MessageBubble from '../components/chat/MessageBubble';
 import ChatInput from '../components/chat/ChatInput';
 import EmptyChat from '../components/chat/EmptyChat';
@@ -43,6 +44,8 @@ export default function DirectMessageScreen() {
   const { user, session } = useAuth();
 
   const { conversationId, otherUserName } = route.params;
+
+  useConversationRealtime(conversationId);
 
   const conversation = useSelector((state: RootState) =>
     state.chat.conversations.find(c => c.id === conversationId)

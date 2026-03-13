@@ -20,6 +20,7 @@ import {
   markConversationRead,
 } from '../redux/slices/chatSlice';
 import { RootStackParamList, ChatMessage } from '../types';
+import { useConversationRealtime } from '../hooks/useConversationRealtime';
 import MessageBubble from '../components/chat/MessageBubble';
 import ChatInput from '../components/chat/ChatInput';
 import EmptyChat from '../components/chat/EmptyChat';
@@ -36,12 +37,14 @@ export default function GroupChatScreen() {
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
 
-  const { conversationId, challengeName } = route.params;
+  const { conversationId, groupName } = route.params;
+
+  useConversationRealtime(conversationId);
 
   // Set header title
   useLayoutEffect(() => {
-    navigation.setOptions({ title: challengeName });
-  }, [navigation, challengeName]);
+    navigation.setOptions({ title: groupName });
+  }, [navigation, groupName]);
 
   // Memoized selector
   const selectMessages = useMemo(makeSelectMessagesByConversationId, []);

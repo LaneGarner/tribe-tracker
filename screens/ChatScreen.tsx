@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,7 +19,7 @@ import {
   loadChatFromStorage,
   selectAllConversationsSorted,
 } from '../redux/slices/chatSlice';
-import { useChatRealtime } from '../hooks/useChatRealtime';
+import { useChatListRealtime } from '../hooks/useChatListRealtime';
 import { isBackendConfigured } from '../config/api';
 import { RootStackParamList, Conversation } from '../types';
 import ConversationRow from '../components/chat/ConversationRow';
@@ -39,7 +40,7 @@ export default function ChatScreen() {
   const conversations = useSelector(selectAllConversationsSorted);
 
   // Set up realtime subscriptions
-  useChatRealtime();
+  useChatListRealtime();
 
   // Load from storage on mount
   useEffect(() => {
@@ -67,7 +68,7 @@ export default function ChatScreen() {
     if (conversation.type === 'group') {
       navigation.navigate('GroupChat', {
         conversationId: conversation.id,
-        challengeName: conversation.name || 'Group Chat',
+        groupName: conversation.name || 'Group Chat',
       });
     } else {
       const otherMember = conversation.members.find(m => m.userId !== session?.user?.id);
@@ -121,9 +122,15 @@ export default function ChatScreen() {
 
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary }]}
-        onPress={() => navigation.navigate('NewDm')}
+        onPress={() =>
+          Alert.alert('New Conversation', undefined, [
+            { text: 'New Message', onPress: () => navigation.navigate('NewDm') },
+            { text: 'New Group Chat', onPress: () => navigation.navigate('NewGroupChat') },
+            { text: 'Cancel', style: 'cancel' },
+          ])
+        }
         accessibilityRole="button"
-        accessibilityLabel="New direct message"
+        accessibilityLabel="New conversation"
       >
         <Ionicons name="create-outline" size={24} color="#fff" />
       </TouchableOpacity>

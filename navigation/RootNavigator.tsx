@@ -26,6 +26,7 @@ import ChatScreen from '../screens/ChatScreen';
 import GroupChatScreen from '../screens/GroupChatScreen';
 import DirectMessageScreen from '../screens/DirectMessageScreen';
 import NewDmScreen from '../screens/NewDmScreen';
+import NewGroupChatScreen from '../screens/NewGroupChatScreen';
 
 // Placeholder screens
 import CoachingScreen from '../screens/CoachingScreen';
@@ -147,7 +148,7 @@ export default function RootNavigator() {
             name="GroupChat"
             component={GroupChatScreen}
             options={({ route }) => ({
-              title: (route.params as { challengeName?: string })?.challengeName || 'Group Chat',
+              title: (route.params as { groupName?: string })?.groupName || 'Group Chat',
             })}
           />
           <Stack.Screen
@@ -161,6 +162,11 @@ export default function RootNavigator() {
             name="NewDm"
             component={NewDmScreen}
             options={{ title: 'New Message' }}
+          />
+          <Stack.Screen
+            name="NewGroupChat"
+            component={NewGroupChatScreen}
+            options={{ title: 'New Group Chat' }}
           />
 
           {/* Placeholder screens */}

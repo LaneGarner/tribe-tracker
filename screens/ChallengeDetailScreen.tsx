@@ -163,7 +163,7 @@ export default function ChallengeDetailScreen() {
               onPress={() =>
                 navigation.navigate('GroupChat', {
                   conversationId: groupConversation.id,
-                  challengeName: challenge?.name || 'Group Chat',
+                  groupName: challenge?.name || 'Group Chat',
                 })
               }
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

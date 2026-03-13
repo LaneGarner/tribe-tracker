@@ -214,9 +214,10 @@ export type RootStackParamList = {
   Preferences: undefined;
   Help: undefined;
   Chat: undefined;
-  GroupChat: { conversationId: string; challengeName: string };
+  GroupChat: { conversationId: string; groupName: string };
   DirectMessage: { conversationId: string; otherUserName?: string };
   NewDm: undefined;
+  NewGroupChat: undefined;
   Coaching: undefined;
   AppsDevices: undefined;
   BuildingManagement: undefined;
