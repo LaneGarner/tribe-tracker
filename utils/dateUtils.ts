@@ -111,6 +111,17 @@ export function getDaysRemaining(endDate: string): number {
   return Math.max(0, diff);
 }
 
+// Format a date for chat date separators
+export function formatChatDate(date: string): string {
+  const now = dayjs();
+  const target = dayjs(date);
+
+  if (target.isSame(now, 'day')) return 'Today';
+  if (target.isSame(now.subtract(1, 'day'), 'day')) return 'Yesterday';
+  if (target.isSame(now, 'year')) return target.format('ddd, MMM D');
+  return target.format('ddd, MMM D, YYYY');
+}
+
 // Add days to a date
 export function addDays(date: string, days: number): string {
   return dayjs(date).add(days, 'day').format('YYYY-MM-DD');

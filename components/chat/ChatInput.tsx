@@ -5,11 +5,12 @@ import { ThemeContext, getColors } from '../../theme/ThemeContext';
 
 interface ChatInputProps {
   onSend: (text: string) => void;
+  onTyping?: () => void;
   disabled?: boolean;
   placeholder?: string;
 }
 
-export default function ChatInput({ onSend, disabled = false, placeholder = 'Message...' }: ChatInputProps) {
+export default function ChatInput({ onSend, onTyping, disabled = false, placeholder = 'Message...' }: ChatInputProps) {
   const [text, setText] = useState('');
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -19,6 +20,11 @@ export default function ChatInput({ onSend, disabled = false, placeholder = 'Mes
     if (!trimmed || disabled) return;
     onSend(trimmed);
     setText('');
+  };
+
+  const handleChangeText = (newText: string) => {
+    setText(newText);
+    if (newText.length > 0) onTyping?.();
   };
 
   const canSend = text.trim().length > 0 && !disabled;
@@ -34,7 +40,7 @@ export default function ChatInput({ onSend, disabled = false, placeholder = 'Mes
           },
         ]}
         value={text}
-        onChangeText={setText}
+        onChangeText={handleChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.textTertiary}
         multiline

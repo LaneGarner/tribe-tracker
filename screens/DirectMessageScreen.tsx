@@ -27,10 +27,14 @@ import {
 } from '../redux/slices/chatSlice';
 import { RootStackParamList, ChatMessage, BlockedUser } from '../types';
 import { useConversationRealtime } from '../hooks/useConversationRealtime';
+import { useTypingIndicator } from '../hooks/useTypingIndicator';
 import MessageBubble from '../components/chat/MessageBubble';
+import DateSeparator from '../components/chat/DateSeparator';
 import ChatInput from '../components/chat/ChatInput';
+import TypingIndicator from '../components/chat/TypingIndicator';
 import EmptyChat from '../components/chat/EmptyChat';
 import { isBackendConfigured, API_URL } from '../config/api';
+import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage } from '../utils/chatUtils';
 
 type DirectMessageRouteProp = RouteProp<RootStackParamList, 'DirectMessage'>;
 type DirectMessageNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DirectMessage'>;
@@ -46,6 +50,7 @@ export default function DirectMessageScreen() {
   const { conversationId, otherUserName } = route.params;
 
   useConversationRealtime(conversationId);
+  const { typingUsers, sendTypingEvent } = useTypingIndicator(conversationId);
 
   const conversation = useSelector((state: RootState) =>
     state.chat.conversations.find(c => c.id === conversationId)
@@ -231,17 +236,27 @@ export default function DirectMessageScreen() {
     }));
   }, [dispatch, session?.access_token, conversationId, hasMore, cursor]);
 
-  const renderMessage = useCallback(({ item }: { item: ChatMessage }) => (
-    <MessageBubble
-      message={item}
-      isOwn={item.senderId === user?.id}
-      showAvatar={true}
-      avatarUrl={otherMember?.userPhotoUrl}
-      pendingConversation={isOtherPending}
-    />
-  ), [user?.id, isOtherPending, otherMember?.userPhotoUrl]);
+  const renderItem = useCallback(({ item }: { item: ChatDisplayItem }) => {
+    if (item.type === 'date-separator') {
+      return <DateSeparator date={(item as DateSeparatorItem).date} />;
+    }
+    const msg = item as DisplayMessage;
+    return (
+      <MessageBubble
+        message={msg}
+        isOwn={msg.senderId === user?.id}
+        showAvatar={true}
+        avatarUrl={otherMember?.userPhotoUrl}
+        pendingConversation={isOtherPending}
+        showTimestamp={msg.showTimestamp}
+      />
+    );
+  }, [user?.id, isOtherPending, otherMember?.userPhotoUrl]);
 
-  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  const displayItems = useMemo(() => {
+    const reversed = [...messages].reverse();
+    return buildChatDisplayItems(reversed);
+  }, [messages]);
 
   return (
     <KeyboardAvoidingView
@@ -293,23 +308,27 @@ export default function DirectMessageScreen() {
         </View>
       )}
 
-      {reversedMessages.length === 0 && (
+      {displayItems.length === 0 && (
         <View style={StyleSheet.absoluteFill}>
           <EmptyChat type="messages" />
         </View>
       )}
       <FlatList
-        data={reversedMessages}
-        renderItem={renderMessage}
-        keyExtractor={item => item.clientId || item.id}
+        data={displayItems}
+        renderItem={renderItem}
+        keyExtractor={item => item.type === 'date-separator' ? item.id : (item as DisplayMessage).clientId || item.id}
         inverted
         contentContainerStyle={styles.messageList}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
+        ListHeaderComponent={
+          typingUsers.length > 0 ? <TypingIndicator typingUsers={typingUsers} /> : null
+        }
       />
 
       <ChatInput
         onSend={handleSend}
+        onTyping={sendTypingEvent}
         disabled={isOwnPending || isOwnRejected || isOtherRejected}
         placeholder={isOwnPending ? 'Accept request to reply...' : 'Message...'}
       />

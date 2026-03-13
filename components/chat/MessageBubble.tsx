@@ -13,10 +13,11 @@ interface MessageBubbleProps {
   showAvatar?: boolean;
   avatarUrl?: string;
   pendingConversation?: boolean;
+  showTimestamp?: boolean;
   onRetry?: () => void;
 }
 
-export default function MessageBubble({ message, isOwn, showSender = false, showAvatar, avatarUrl, pendingConversation = false, onRetry }: MessageBubbleProps) {
+export default function MessageBubble({ message, isOwn, showSender = false, showAvatar, avatarUrl, pendingConversation = false, showTimestamp = true, onRetry }: MessageBubbleProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
 
@@ -66,7 +67,7 @@ export default function MessageBubble({ message, isOwn, showSender = false, show
             {message.content}
           </Text>
         </View>
-        <View style={styles.metaRow}>
+        {showTimestamp && <View style={styles.metaRow}>
           <Text style={[styles.time, { color: colors.textTertiary }]}>
             {time}
           </Text>
@@ -96,7 +97,7 @@ export default function MessageBubble({ message, isOwn, showSender = false, show
               )}
             </>
           )}
-        </View>
+        </View>}
       </View>
     </View>
   );
