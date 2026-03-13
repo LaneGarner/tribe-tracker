@@ -10,11 +10,13 @@ interface MessageBubbleProps {
   message: ChatMessage;
   isOwn: boolean;
   showSender?: boolean;
+  showAvatar?: boolean;
+  avatarUrl?: string;
   pendingConversation?: boolean;
   onRetry?: () => void;
 }
 
-export default function MessageBubble({ message, isOwn, showSender = false, pendingConversation = false, onRetry }: MessageBubbleProps) {
+export default function MessageBubble({ message, isOwn, showSender = false, showAvatar, avatarUrl, pendingConversation = false, onRetry }: MessageBubbleProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
 
@@ -33,9 +35,9 @@ export default function MessageBubble({ message, isOwn, showSender = false, pend
 
   return (
     <View style={[styles.container, isOwn ? styles.ownContainer : styles.otherContainer]}>
-      {!isOwn && showSender && (
+      {!isOwn && (showAvatar ?? showSender) && (
         <Avatar
-          imageUrl={message.senderPhotoUrl}
+          imageUrl={message.senderPhotoUrl || avatarUrl}
           name={message.senderName}
           size={28}
           style={{ marginRight: 8 }}

@@ -101,6 +101,7 @@ export default function DirectMessageScreen() {
       conversationId,
       senderId: user.id,
       senderName: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+      senderPhotoUrl: user.user_metadata?.profile_photo_url,
       content: text,
       type: 'text',
       clientId,
@@ -230,10 +231,11 @@ export default function DirectMessageScreen() {
     <MessageBubble
       message={item}
       isOwn={item.senderId === user?.id}
-      showSender={false}
+      showAvatar={true}
+      avatarUrl={otherMember?.userPhotoUrl}
       pendingConversation={isOtherPending}
     />
-  ), [user?.id, isOtherPending]);
+  ), [user?.id, isOtherPending, otherMember?.userPhotoUrl]);
 
   const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
 
