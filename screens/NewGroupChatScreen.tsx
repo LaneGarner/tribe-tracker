@@ -99,6 +99,7 @@ export default function NewGroupChatScreen() {
           accessibilityRole="button"
           accessibilityLabel="Create group chat"
           hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+          style={{ minWidth: 54, minHeight: 28, alignItems: 'center', justifyContent: 'center' }}
         >
           {creating ? (
             <ActivityIndicator size="small" color={colors.primary} />
