@@ -60,6 +60,7 @@ export default function DirectMessageScreen() {
         <TouchableOpacity
           onPress={handleOptionsMenu}
           hitSlop={14}
+          style={styles.headerButton}
           accessibilityRole="button"
           accessibilityLabel="Chat options"
         >
@@ -316,6 +317,12 @@ export default function DirectMessageScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   messageList: {
     paddingVertical: 8,
