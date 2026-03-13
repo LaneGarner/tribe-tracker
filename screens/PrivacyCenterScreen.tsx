@@ -5,13 +5,16 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
 import { updatePrivacySettings, updateProfile } from '../redux/slices/profileSlice';
+import { removeBlockedUser } from '../redux/slices/chatSlice';
 import Toggle from '../components/Toggle';
+import Avatar from '../components/Avatar';
 
 export default function PrivacyCenterScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -19,6 +22,7 @@ export default function PrivacyCenterScreen() {
   const colors = getColors(colorScheme);
 
   const profile = useSelector((state: RootState) => state.profile.data);
+  const blockedUsers = useSelector((state: RootState) => state.chat.blockedUsers);
 
   const privacySettings = [
     {
@@ -148,6 +152,57 @@ export default function PrivacyCenterScreen() {
           ))}
         </View>
 
+        {/* Blocked Users */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="ban-outline" size={20} color={colors.error} />
+            <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
+              Blocked Users
+            </Text>
+          </View>
+          {blockedUsers.length > 0 ? (
+            blockedUsers.map(blocked => (
+              <View
+                key={blocked.id}
+                style={[styles.blockedUserRow, { backgroundColor: colors.surface }]}
+              >
+                <Avatar
+                  imageUrl={blocked.blockedPhotoUrl}
+                  name={blocked.blockedName}
+                  size={36}
+                />
+                <Text style={[styles.blockedUserName, { color: colors.text }]} numberOfLines={1}>
+                  {blocked.blockedName || 'Unknown User'}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.unblockButton, { borderColor: colors.border }]}
+                  onPress={() => {
+                    Alert.alert(
+                      'Unblock User',
+                      `Unblock ${blocked.blockedName || 'this user'}? They will be able to send you messages again.`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Unblock',
+                          onPress: () => dispatch(removeBlockedUser(blocked.id)),
+                        },
+                      ]
+                    );
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Unblock ${blocked.blockedName || 'user'}`}
+                >
+                  <Text style={[styles.unblockText, { color: colors.primary }]}>Unblock</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          ) : (
+            <Text style={[styles.emptyBlockedText, { color: colors.textSecondary }]}>
+              No blocked users
+            </Text>
+          )}
+        </View>
+
         {/* Account Type */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -263,5 +318,35 @@ const styles = StyleSheet.create({
   },
   settingDescription: {
     fontSize: 13,
+  },
+  blockedUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+    gap: 12,
+  },
+  blockedUserName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  unblockButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  unblockText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  emptyBlockedText: {
+    fontSize: 14,
+    paddingLeft: 4,
+    paddingVertical: 8,
   },
 });

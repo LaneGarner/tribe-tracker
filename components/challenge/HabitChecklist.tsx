@@ -1,5 +1,5 @@
 import React, { useContext, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { createSelector } from '@reduxjs/toolkit';
@@ -18,16 +18,33 @@ interface HabitChecklistProps {
   challenge: Challenge;
   checkin?: HabitCheckin;
   date?: string;
+  hasBackgroundImage?: boolean;
 }
 
 export default function HabitChecklist({
   challenge,
   checkin,
   date,
+  hasBackgroundImage,
 }: HabitChecklistProps) {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+
+  const glassStyle: ViewStyle | undefined = hasBackgroundImage ? {
+    backgroundColor: colorScheme === 'dark'
+      ? 'rgba(24, 24, 27, 0.72)'
+      : 'rgba(255, 255, 255, 0.78)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colorScheme === 'dark'
+      ? 'rgba(255, 255, 255, 0.12)'
+      : 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  } : undefined;
   const { user } = useAuth();
 
   // Use provided date or default to today
@@ -159,7 +176,7 @@ export default function HabitChecklist({
     checkin && checkin.habitsCompleted.every(h => h);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface }, glassStyle]}>
       {/* Progress header */}
       <View style={styles.header}>
         <View style={styles.progressInfo}>

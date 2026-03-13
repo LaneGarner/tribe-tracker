@@ -21,8 +21,14 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import PreferencesScreen from '../screens/PreferencesScreen';
 import HelpScreen from '../screens/HelpScreen';
 
-// Placeholder screens
+// Chat screens
 import ChatScreen from '../screens/ChatScreen';
+import GroupChatScreen from '../screens/GroupChatScreen';
+import DirectMessageScreen from '../screens/DirectMessageScreen';
+import NewDmScreen from '../screens/NewDmScreen';
+import NewGroupChatScreen from '../screens/NewGroupChatScreen';
+
+// Placeholder screens
 import CoachingScreen from '../screens/CoachingScreen';
 import AppsDevicesScreen from '../screens/AppsDevicesScreen';
 
@@ -132,12 +138,38 @@ export default function RootNavigator() {
             options={{ title: 'Help & Support' }}
           />
 
-          {/* Placeholder screens */}
+          {/* Chat screens */}
           <Stack.Screen
             name="Chat"
             component={ChatScreen}
             options={{ title: 'Chat' }}
           />
+          <Stack.Screen
+            name="GroupChat"
+            component={GroupChatScreen}
+            options={({ route }) => ({
+              title: (route.params as { groupName?: string })?.groupName || 'Group Chat',
+            })}
+          />
+          <Stack.Screen
+            name="DirectMessage"
+            component={DirectMessageScreen}
+            options={({ route }) => ({
+              title: (route.params as { otherUserName?: string })?.otherUserName || 'Message',
+            })}
+          />
+<Stack.Screen
+            name="NewDm"
+            component={NewDmScreen}
+            options={{ title: 'New Message' }}
+          />
+          <Stack.Screen
+            name="NewGroupChat"
+            component={NewGroupChatScreen}
+            options={{ title: 'New Group Chat' }}
+          />
+
+          {/* Placeholder screens */}
           <Stack.Screen
             name="Coaching"
             component={CoachingScreen}

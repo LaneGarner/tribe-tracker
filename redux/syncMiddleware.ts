@@ -1,6 +1,6 @@
 import { Middleware, UnknownAction } from '@reduxjs/toolkit';
 import { API_URL } from '../config/api';
-import { Challenge, ChallengeParticipant, HabitCheckin, UserProfile } from '../types';
+import { Challenge, ChallengeParticipant, HabitCheckin, UserProfile, ChatMessage, BlockedUser } from '../types';
 import { addToPendingSync, PendingSyncItem } from '../utils/storage';
 
 // Type guard for actions with payload
@@ -106,11 +106,19 @@ const PROFILE_SYNC_ACTIONS = [
   'profile/updateChallengeOrder',
 ];
 
+// Chat action types to sync
+const CHAT_SYNC_ACTIONS = [
+  'chat/addMessage',
+  'chat/addBlockedUser',
+  'chat/removeBlockedUser',
+];
+
 const ALL_SYNC_ACTIONS = [
   ...CHALLENGE_SYNC_ACTIONS,
   ...PARTICIPANT_SYNC_ACTIONS,
   ...CHECKIN_SYNC_ACTIONS,
   ...PROFILE_SYNC_ACTIONS,
+  ...CHAT_SYNC_ACTIONS,
 ];
 
 export const syncMiddleware: Middleware = store => next => unknownAction => {
@@ -229,13 +237,54 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
         ) {
           const profile = state.profile.data as UserProfile;
           if (profile) {
-            await pushToServer(`users/${profile.id}`, {
+            await pushToServer(`users?id=${profile.id}`, {
               profile: {
                 ...profile,
                 updated_at: new Date().toISOString(),
               },
             }, 'PUT');
           }
+        }
+
+        // Chat actions
+        else if (action.type === 'chat/addMessage') {
+          const message = action.payload as ChatMessage;
+          try {
+            const response = await fetch(`${API_URL}/api/messages`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${authToken}`,
+              },
+              body: JSON.stringify({ message }),
+            });
+            if (response.ok) {
+              const data = await response.json();
+              // Update message status to sent
+              store.dispatch({
+                type: 'chat/updateMessageStatus',
+                payload: { clientId: message.clientId, status: 'sent', id: data.message?.id },
+              });
+            } else {
+              const errorText = await response.text();
+              console.error(`[Sync] Message send failed (${response.status}):`, errorText);
+              store.dispatch({
+                type: 'chat/updateMessageStatus',
+                payload: { clientId: message.clientId, status: 'failed' },
+              });
+            }
+          } catch {
+            store.dispatch({
+              type: 'chat/updateMessageStatus',
+              payload: { clientId: message.clientId, status: 'failed' },
+            });
+          }
+        } else if (action.type === 'chat/addBlockedUser') {
+          const blocked = action.payload as BlockedUser;
+          await pushToServer('blocked-users', { blockedId: blocked.blockedId });
+        } else if (action.type === 'chat/removeBlockedUser') {
+          const blockedId = action.payload as string;
+          await pushToServer(`blocked-users?id=${blockedId}`, {}, 'DELETE');
         }
       } catch (err) {
         console.error('Background sync failed:', err);

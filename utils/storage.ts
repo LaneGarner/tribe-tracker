@@ -6,7 +6,11 @@ import {
   UserProfile,
   BadgeDefinition,
   UserBadge,
+  Conversation,
+  ChatMessage,
+  BlockedUser,
 } from '../types';
+import { API_URL } from '../config/api';
 
 // Storage keys
 const KEYS = {
@@ -20,6 +24,9 @@ const KEYS = {
   THEME_MODE: 'tribe_theme_mode',
   BADGE_DEFINITIONS: 'tribe_badge_definitions',
   BADGES: 'tribe_badges',
+  CONVERSATIONS: 'tribe_conversations',
+  MESSAGES: 'tribe_messages',
+  BLOCKED_USERS: 'tribe_blocked_users',
 };
 
 // Challenge storage functions
@@ -207,9 +214,31 @@ export const clearUserData = async (): Promise<void> => {
       AsyncStorage.removeItem(KEYS.PENDING_SYNC),
       AsyncStorage.removeItem(KEYS.BADGE_DEFINITIONS),
       AsyncStorage.removeItem(KEYS.BADGES),
+      AsyncStorage.removeItem(KEYS.CONVERSATIONS),
+      AsyncStorage.removeItem(KEYS.MESSAGES),
+      AsyncStorage.removeItem(KEYS.BLOCKED_USERS),
     ]);
   } catch (error) {
     console.error('Error clearing user data:', error);
+  }
+};
+
+// Clear chat data locally and from the server
+export const clearChatData = async (token?: string | null): Promise<void> => {
+  try {
+    await AsyncStorage.multiRemove([KEYS.CONVERSATIONS, KEYS.MESSAGES, KEYS.BLOCKED_USERS]);
+
+    if (token) {
+      const response = await fetch(`${API_URL}/api/conversations`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        console.error('Failed to clear chat data on server:', response.status);
+      }
+    }
+  } catch (error) {
+    console.error('Error clearing chat data:', error);
   }
 };
 
@@ -257,6 +286,67 @@ export const loadBadges = async (): Promise<UserBadge[]> => {
     return data ? JSON.parse(data) : [];
   } catch (error) {
     console.error('Error loading badges:', error);
+    return [];
+  }
+};
+
+// Conversation storage functions
+export const saveConversations = async (conversations: Conversation[]) => {
+  try {
+    await AsyncStorage.setItem(KEYS.CONVERSATIONS, JSON.stringify(conversations));
+  } catch (error) {
+    console.error('Error saving conversations:', error);
+  }
+};
+
+export const loadConversations = async (): Promise<Conversation[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.CONVERSATIONS);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error loading conversations:', error);
+    return [];
+  }
+};
+
+// Message storage functions (keyed by conversation, capped at 100 per convo)
+export const saveMessages = async (messages: Record<string, ChatMessage[]>) => {
+  try {
+    const capped: Record<string, ChatMessage[]> = {};
+    for (const [convId, msgs] of Object.entries(messages)) {
+      capped[convId] = msgs.slice(-100);
+    }
+    await AsyncStorage.setItem(KEYS.MESSAGES, JSON.stringify(capped));
+  } catch (error) {
+    console.error('Error saving messages:', error);
+  }
+};
+
+export const loadMessages = async (): Promise<Record<string, ChatMessage[]>> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.MESSAGES);
+    return data ? JSON.parse(data) : {};
+  } catch (error) {
+    console.error('Error loading messages:', error);
+    return {};
+  }
+};
+
+// Blocked users storage functions
+export const saveBlockedUsers = async (blockedUsers: BlockedUser[]) => {
+  try {
+    await AsyncStorage.setItem(KEYS.BLOCKED_USERS, JSON.stringify(blockedUsers));
+  } catch (error) {
+    console.error('Error saving blocked users:', error);
+  }
+};
+
+export const loadBlockedUsers = async (): Promise<BlockedUser[]> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.BLOCKED_USERS);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error loading blocked users:', error);
     return [];
   }
 };

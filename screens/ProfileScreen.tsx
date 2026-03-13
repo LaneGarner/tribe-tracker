@@ -25,10 +25,12 @@ import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge } from '../types';
 import { calculateActiveStreak } from '../utils/streakUtils';
 import { loadBadgesFromStorage, fetchBadgesFromServer } from '../redux/slices/badgesSlice';
+import { addConversation } from '../redux/slices/chatSlice';
 import LevelBadge from '../components/badges/LevelBadge';
 import HexBadge from '../components/badges/HexBadge';
 import Avatar from '../components/Avatar';
 import { useAvatarPicker } from '../hooks/useAvatarPicker';
+import { isBackendConfigured as isApiConfigured, API_URL } from '../config/api';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 type ProfileNavigationProp = NativeStackNavigationProp<
@@ -80,6 +82,7 @@ export default function ProfileScreen() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [sendingDm, setSendingDm] = useState(false);
   const [editForm, setEditForm] = useState({
     fullName: profile?.fullName || '',
     age: profile?.age?.toString() || '',
@@ -271,6 +274,49 @@ export default function ProfileScreen() {
                   ? profile?.fullName || user?.email?.split('@')[0] || 'User'
                   : otherUserInfo?.userName || 'User'}
               </Text>
+              {!isOwnProfile && targetUserId && (
+                <TouchableOpacity
+                  style={[styles.messageButton, { backgroundColor: colors.primary }]}
+                  onPress={async () => {
+                    if (!session?.access_token || !isApiConfigured() || sendingDm) return;
+                    setSendingDm(true);
+                    try {
+                      const response = await fetch(`${API_URL}/api/conversations`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${session.access_token}`,
+                        },
+                        body: JSON.stringify({
+                          recipientId: targetUserId,
+                          recipientName: otherUserInfo?.userName,
+                          recipientPhotoUrl: otherUserInfo?.userPhotoUrl,
+                        }),
+                      });
+                      if (response.ok) {
+                        const data = await response.json();
+                        dispatch(addConversation(data.conversation));
+                        navigation.navigate('DirectMessage', {
+                          conversationId: data.conversation.id,
+                          otherUserName: otherUserInfo?.userName,
+                        });
+                      }
+                    } catch (err) {
+                      console.error('Create DM error:', err);
+                    } finally {
+                      setSendingDm(false);
+                    }
+                  }}
+                  disabled={sendingDm}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Send message to ${otherUserInfo?.userName || 'this user'}`}
+                >
+                  <Ionicons name="chatbubble-outline" size={16} color="#fff" />
+                  <Text style={styles.messageButtonText}>
+                    {sendingDm ? 'Opening...' : 'Message'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
         </View>
@@ -735,6 +781,21 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 22,
     fontWeight: 'bold',
+  },
+  messageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 12,
+    minHeight: 44,
+  },
+  messageButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statsGrid: {
     flexDirection: 'row',

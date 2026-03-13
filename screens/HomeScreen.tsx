@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useState, useRef, useMemo, useCallback } 
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
@@ -18,6 +19,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import dayjs from 'dayjs';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image as ExpoImage } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 
@@ -209,7 +211,7 @@ export default function HomeScreen() {
   // Header height shrinks as logo shrinks (uses JS driver since height can't use native)
   const headerHeight = scrollYLayout.interpolate({
     inputRange: [0, 80],
-    outputRange: [72, 30],
+    outputRange: [72, 40],
     extrapolate: 'clamp',
   });
 
@@ -511,18 +513,59 @@ export default function HomeScreen() {
     return { completed, total };
   }, [activeChallenges, checkins, user?.id]);
 
-  return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
-    >
+  const backgroundImage = selectedChallenge?.backgroundImageUrl;
+
+
+  const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
+
+  const pillStyle = backgroundImage ? {
+    backgroundColor: colorScheme === 'dark'
+      ? 'rgba(24, 24, 27, 0.72)'
+      : 'rgba(255, 255, 255, 0.78)',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colorScheme === 'dark'
+      ? 'rgba(255, 255, 255, 0.12)'
+      : 'rgba(0, 0, 0, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start' as const,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  } : null;
+
+  const screenContent = (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {backgroundImage && (
+        <View
+          style={StyleSheet.absoluteFill}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <ExpoImage
+            source={{ uri: backgroundImage }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            cachePolicy="disk"
+          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]} />
+        </View>
+      )}
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: 'transparent' }]}
+        edges={['top']}
+      >
       {/* Sticky logo header */}
       <Animated.View style={[styles.stickyHeader, { backgroundColor: colors.background, height: headerHeight }]}>
-        <Animated.Image
-          source={require('../assets/images/TT-logo.png')}
-          style={[styles.logo, { transform: [{ scale: logoScale }] }]}
-          // resizeMode="contain"
-        />
+        <Animated.View style={{ transform: [{ scale: logoScale }] }}>
+          <Image
+            source={require('../assets/images/TT-logo.png')}
+            style={[styles.logo, { tintColor: colorScheme === 'dark' ? '#fff' : '#000' }]}
+          />
+        </Animated.View>
       </Animated.View>
 
       <Animated.ScrollView
@@ -539,15 +582,17 @@ export default function HomeScreen() {
           scrollYLayout.setValue(offsetY);
         }}
         scrollEventThrottle={16}
-        stickyHeaderIndices={orderedChallenges.length > 1 ? [2] : undefined}
+        stickyHeaderIndices={orderedChallenges.length > 1 ? [1] : undefined}
       >
         {/* TribeTracker text - scrolls away and fades */}
-        <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity }]}>
-          TribeTracker
-        </Animated.Text>
-        <Animated.Text style={[styles.logoSubtitle, { color: colors.textSecondary, opacity: textOpacity }]}>
-          Build your streak today.
-        </Animated.Text>
+        <View style={{ backgroundColor: colors.background }}>
+          <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity }]}>
+            TribeTracker
+          </Animated.Text>
+          <Animated.Text style={[styles.logoSubtitle, { color: colors.textSecondary, opacity: textOpacity }]}>
+            Build your streak today.
+          </Animated.Text>
+        </View>
 
         {/* Challenge selector - sticks to top when scrolling */}
         {orderedChallenges.length > 1 && (
@@ -698,7 +743,11 @@ export default function HomeScreen() {
 
               {/* Leaderboard Link */}
               <TouchableOpacity
-                style={styles.leaderboardLink}
+                style={[
+                  styles.leaderboardLink,
+                  pillStyle,
+                  backgroundImage && { paddingHorizontal: 16, alignSelf: 'center' as const },
+                ]}
                 onPress={() => navigation.navigate('Leaderboard', { challengeId: selectedChallengeId || undefined })}
               >
                 <Ionicons name="trophy-outline" size={16} color={colors.primary} />
@@ -714,7 +763,7 @@ export default function HomeScreen() {
               {/* Habits header and date - fixed above swipeable content */}
               <View style={styles.section}>
                 <View style={styles.sectionTitleRow}>
-                  <View>
+                  <View style={[pillStyle]}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>
                       {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
                     </Text>
@@ -746,6 +795,7 @@ export default function HomeScreen() {
                 minDate={minDateForCarousel}
                 onPrevious={handleArrowPrevious}
                 onNext={handleArrowNext}
+                hasBackgroundImage={!!backgroundImage}
               />
 
               {/* Habits checklist */}
@@ -754,6 +804,7 @@ export default function HomeScreen() {
                   challenge={selectedChallenge}
                   checkin={dateCheckin}
                   date={selectedDate}
+                  hasBackgroundImage={!!backgroundImage}
                 />
               </View>
               </SwipeableView>
@@ -761,9 +812,14 @@ export default function HomeScreen() {
 
             {/* Activity Calendar */}
             <View style={styles.calendarSection}>
-              <Text style={[styles.sectionTitle, styles.calendarSectionTitle, { color: colors.text }]}>
-                Calendar
-              </Text>
+              <View style={[
+                { marginHorizontal: 20, marginBottom: 12 },
+                pillStyle,
+              ]}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
+                  Calendar
+                </Text>
+              </View>
               <SwipeableView
                 ref={calendarSwipeRef}
                 onSwipeLeft={handleCalendarSwipeLeft}
@@ -783,6 +839,7 @@ export default function HomeScreen() {
                   maxMonth={maxMonth ?? undefined}
                   onPrevious={() => calendarSwipeRef.current?.animateRight()}
                   onNext={() => calendarSwipeRef.current?.animateLeft()}
+                  hasBackgroundImage={!!backgroundImage}
                 />
               </SwipeableView>
             </View>
@@ -918,7 +975,10 @@ export default function HomeScreen() {
         );
       })()}
     </SafeAreaView>
+    </View>
   );
+
+  return screenContent;
 }
 
 const styles = StyleSheet.create({
@@ -943,11 +1003,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Kanit_700Bold',
     letterSpacing: 0.5,
     textAlign: 'center',
+    marginBottom: -4,
   },
   logoSubtitle: {
     fontSize: 14,
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 0,
     marginBottom: 4,
   },
   scrollView: {

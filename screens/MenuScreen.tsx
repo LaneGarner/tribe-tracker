@@ -10,12 +10,13 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { ThemeContext, ThemePreference, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { clearAllAppData } from '../utils/storage';
+import { clearAllAppData, clearChatData } from '../utils/storage';
 import { RootStackParamList } from '../types';
-import { RootState } from '../redux/store';
+import { RootState, AppDispatch } from '../redux/store';
+import { selectTotalUnreadCount, loadChatFromStorage } from '../redux/slices/chatSlice';
 import SegmentedControl from '../components/SegmentedControl';
 import Avatar from '../components/Avatar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
@@ -34,8 +35,10 @@ export default function MenuScreen() {
   const navigation = useNavigation<MenuNavigationProp>();
   const { colorScheme, themePreference, setThemePreference } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const { user, signOut } = useAuth();
+  const dispatch = useDispatch<AppDispatch>();
+  const { user, signOut, getAccessToken } = useAuth();
   const profile = useSelector((state: RootState) => state.profile.data);
+  const totalUnread = useSelector(selectTotalUnreadCount);
 
   const featureItems: MenuItem[] = [
     { id: 'badges', label: 'Badges', icon: 'ribbon-outline', screen: 'Badges' },
@@ -55,6 +58,26 @@ export default function MenuScreen() {
     { id: 'privacyPolicy', label: 'Privacy Policy', icon: 'lock-closed-outline' },
     { id: 'help', label: 'Help', icon: 'help-circle-outline', screen: 'Help' },
   ];
+
+  const handleClearChatData = () => {
+    Alert.alert(
+      'Clear Chat Data',
+      'This will permanently delete all your chat history, conversations, and messages. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            const token = getAccessToken();
+            await clearChatData(token);
+            dispatch(loadChatFromStorage());
+            Alert.alert('Done', 'Chat data has been cleared');
+          },
+        },
+      ]
+    );
+  };
 
   const handleClearData = () => {
     Alert.alert(
@@ -163,6 +186,13 @@ export default function MenuScreen() {
               <Text style={[styles.menuItemText, { color: colors.text }]}>
                 {item.label}
               </Text>
+              {item.id === 'chat' && totalUnread > 0 && (
+                <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.unreadBadgeText}>
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </Text>
+                </View>
+              )}
               <Ionicons
                 name="chevron-forward"
                 size={20}
@@ -212,6 +242,23 @@ export default function MenuScreen() {
               />
             </TouchableOpacity>
           ))}
+          {/* Clear Chat Data - dev only */}
+          {__DEV__ && (
+            <TouchableOpacity
+              style={[styles.menuItem, { backgroundColor: colors.surface }]}
+              onPress={handleClearChatData}
+            >
+              <Ionicons name="chatbubble-outline" size={22} color={colors.error} />
+              <Text style={[styles.menuItemText, { color: colors.error }]}>
+                Clear Chat Data
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textTertiary}
+              />
+            </TouchableOpacity>
+          )}
           {/* Clear All Data - destructive action */}
           <TouchableOpacity
             style={[styles.menuItem, { backgroundColor: colors.surface }]}
@@ -322,6 +369,20 @@ const styles = StyleSheet.create({
   menuItemText: {
     flex: 1,
     fontSize: 16,
+  },
+  unreadBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginRight: 4,
+  },
+  unreadBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   signOutButton: {
     flexDirection: 'row',

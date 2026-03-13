@@ -13,6 +13,7 @@ import {
   RefreshControl,
   Modal,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import dayjs from 'dayjs';
 import { PublicChallengeListSkeleton } from '../components/challenge/PublicChallengeCardSkeleton';
@@ -53,6 +54,7 @@ import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '.
 import Toggle from '../components/Toggle';
 import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { pickImage, uploadChallengeBackground, deleteChallengeBackground } from '../utils/imageUpload';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -102,6 +104,8 @@ export default function CreateChallengeScreen() {
   });
   const [habits, setHabits] = useState<HabitItem[]>([makeHabitItem()]);
   const [isPublic, setIsPublic] = useState(true);
+  const [backgroundImageUri, setBackgroundImageUri] = useState<string | null>(null);
+  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
   const [inviteCode, setInviteCode] = useState(route.params?.inviteCode || '');
 
   // Pre-fill invite code from deep link
@@ -126,6 +130,7 @@ export default function CreateChallengeScreen() {
           : [makeHabitItem()]
       );
       setIsPublic(existingChallenge.isPublic);
+      setBackgroundImageUri(existingChallenge.backgroundImageUrl || null);
     }
   }, [isEditMode, existingChallenge]);
 
@@ -151,6 +156,7 @@ export default function CreateChallengeScreen() {
   const habitInputRefs = useRef<(TextInput | null)[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const profile = useSelector((state: RootState) => state.profile.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
   const activePublicChallenges = challenges.filter(
@@ -187,6 +193,30 @@ export default function CreateChallengeScreen() {
     const newHabits = [...habits];
     [newHabits[index], newHabits[newIndex]] = [newHabits[newIndex], newHabits[index]];
     setHabits(newHabits);
+  };
+
+  const handlePickBackground = () => {
+    const buttons: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' }[] = [
+      { text: 'Choose from Library', onPress: async () => {
+        const uri = await pickImage('library', { aspect: [16, 9], quality: 0.8 });
+        if (uri) setBackgroundImageUri(uri);
+      }},
+      { text: 'Take Photo', onPress: async () => {
+        const uri = await pickImage('camera', { aspect: [16, 9], quality: 0.8 });
+        if (uri) setBackgroundImageUri(uri);
+      }},
+    ];
+
+    if (backgroundImageUri) {
+      buttons.push({
+        text: 'Remove Background',
+        style: 'destructive',
+        onPress: () => setBackgroundImageUri(null),
+      });
+    }
+
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert('Background Image', undefined, buttons);
   };
 
   const isScheduleLocked = isEditMode && isActiveChallenge;
@@ -262,18 +292,42 @@ export default function CreateChallengeScreen() {
     executeCreate();
   };
 
-  const executeCreate = () => {
+  const executeCreate = async () => {
     const validHabits = habits.map(h => h.text.trim()).filter(Boolean);
     setIsCreating(true);
 
     // Handle edit mode
     if (isEditMode && existingChallenge) {
+      let backgroundImageUrl = existingChallenge.backgroundImageUrl;
+
+      // Upload new background image if changed
+      if (backgroundImageUri && backgroundImageUri !== existingChallenge.backgroundImageUrl) {
+        try {
+          setIsUploadingBackground(true);
+          backgroundImageUrl = await uploadChallengeBackground(existingChallenge.id, backgroundImageUri);
+        } catch {
+          Alert.alert('Upload Failed', 'Could not upload background image. Your other changes were saved.');
+          backgroundImageUrl = existingChallenge.backgroundImageUrl;
+        } finally {
+          setIsUploadingBackground(false);
+        }
+      } else if (!backgroundImageUri && existingChallenge.backgroundImageUrl) {
+        // Background was removed
+        try {
+          await deleteChallengeBackground(existingChallenge.id);
+        } catch {
+          // Non-critical, continue
+        }
+        backgroundImageUrl = undefined;
+      }
+
       const updatedChallenge: Challenge = {
         ...existingChallenge,
         name: name.trim(),
         description: description.trim() || undefined,
         habits: validHabits,
         isPublic,
+        backgroundImageUrl,
         inviteCode: isPublic
           ? undefined
           : (existingChallenge.inviteCode || generateInviteCode()),
@@ -297,6 +351,23 @@ export default function CreateChallengeScreen() {
 
     // Handle create mode
     const challengeId = Crypto.randomUUID();
+
+    // Upload background image if selected
+    let backgroundImageUrl: string | undefined;
+    console.log('Background image URI:', backgroundImageUri ? 'present' : 'null');
+    if (backgroundImageUri) {
+      try {
+        setIsUploadingBackground(true);
+        backgroundImageUrl = await uploadChallengeBackground(challengeId, backgroundImageUri);
+        console.log('Background upload succeeded:', backgroundImageUrl);
+      } catch (err) {
+        console.log('Background upload failed:', err);
+        Alert.alert('Upload Failed', 'Could not upload background image. The challenge was created without it.');
+      } finally {
+        setIsUploadingBackground(false);
+      }
+    }
+
     const today = getToday();
     const isFutureStart = dayjs(startDate).isAfter(dayjs(today), 'day');
     const newChallenge: Challenge = {
@@ -309,6 +380,7 @@ export default function CreateChallengeScreen() {
       startDate,
       endDate,
       habits: validHabits,
+      backgroundImageUrl,
       isPublic,
       inviteCode: isPublic ? undefined : generateInviteCode(),
       status: isFutureStart ? 'upcoming' : 'active',
@@ -327,6 +399,7 @@ export default function CreateChallengeScreen() {
       setStartDate(getToday());
       setEndDate(getChallengeEndDate(getToday(), 30));
       setHabits([makeHabitItem()]);
+      setBackgroundImageUri(null);
       setErrors({});
     };
 
@@ -338,6 +411,7 @@ export default function CreateChallengeScreen() {
         userId: user?.id || 'anonymous',
         userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
         userEmail: user?.email || '',
+        userPhotoUrl: profile?.profilePhotoUrl,
         totalPoints: 0,
         currentStreak: 0,
         longestStreak: 0,
@@ -419,6 +493,7 @@ export default function CreateChallengeScreen() {
       userId: user?.id || 'anonymous',
       userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
       userEmail: user?.email || '',
+      userPhotoUrl: profile?.profilePhotoUrl,
       totalPoints: 0,
       currentStreak: 0,
       longestStreak: 0,
@@ -584,6 +659,46 @@ export default function CreateChallengeScreen() {
           multiline
           numberOfLines={3}
         />
+
+        <Text style={[styles.label, { color: colors.text }]}>Background Image</Text>
+        <TouchableOpacity
+          style={[
+            styles.backgroundImagePicker,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+          onPress={handlePickBackground}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={backgroundImageUri ? 'Change background image' : 'Add background image'}
+          accessibilityHint="Opens image picker for challenge card background"
+        >
+          {backgroundImageUri ? (
+            <ExpoImage
+              source={{ uri: backgroundImageUri }}
+              style={styles.backgroundImagePreview}
+              contentFit="cover"
+              cachePolicy="disk"
+            />
+          ) : (
+            <View style={styles.backgroundImagePlaceholder}>
+              <Ionicons name="image-outline" size={32} color={colors.textTertiary} />
+              <Text style={[styles.backgroundImagePlaceholderText, { color: colors.textTertiary }]}>
+                Add a background image
+              </Text>
+            </View>
+          )}
+          {isUploadingBackground && (
+            <View style={styles.backgroundImageUploadingOverlay}>
+              <ActivityIndicator color="#fff" />
+            </View>
+          )}
+        </TouchableOpacity>
+        <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+          Shown behind the challenge card on the home screen
+        </Text>
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
           Schedule
@@ -874,9 +989,9 @@ export default function CreateChallengeScreen() {
 
       <View style={[styles.fixedButtonContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <TouchableOpacity
-          style={[styles.submitButton, { backgroundColor: colors.primary, marginBottom: 0, opacity: isCreating ? 0.7 : 1 }]}
+          style={[styles.submitButton, { backgroundColor: colors.primary, marginBottom: 0, opacity: (isCreating || isUploadingBackground) ? 0.7 : 1 }]}
           onPress={handleCreate}
-          disabled={isCreating}
+          disabled={isCreating || isUploadingBackground}
         >
           {isCreating ? (
             <ActivityIndicator color="#fff" />
@@ -1172,6 +1287,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 24,
   },
   submitButtonText: {
@@ -1206,5 +1322,32 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: 200,
     marginBottom: 24,
+  },
+  backgroundImagePicker: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 8,
+    height: 140,
+  },
+  backgroundImagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  backgroundImagePlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  backgroundImagePlaceholderText: {
+    fontSize: 14,
+  },
+  backgroundImageUploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

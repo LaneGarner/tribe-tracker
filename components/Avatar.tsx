@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
   ViewStyle,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -47,6 +47,11 @@ export default function Avatar({
   style,
 }: AvatarProps) {
   const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [imageUrl]);
+
   const showImage = !!imageUrl && !imageError;
   const initials = getInitials(name, email);
   const fontSize = size * 0.4;
@@ -55,13 +60,15 @@ export default function Avatar({
   const avatarContent = (
     <View style={[{ width: size, height: size, borderRadius: size / 2 }, style]}>
       {showImage ? (
-        <Image
+        <ExpoImage
           source={{ uri: imageUrl }}
           style={{
             width: size,
             height: size,
             borderRadius: size / 2,
           }}
+          contentFit="cover"
+          cachePolicy="disk"
           onError={() => setImageError(true)}
         />
       ) : (
