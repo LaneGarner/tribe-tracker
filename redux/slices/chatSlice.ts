@@ -120,8 +120,8 @@ export const markConversationAsRead = createAsyncThunk(
     dispatch(markConversationRead(conversationId));
 
     try {
-      await fetch(`${API_URL}/api/mark-read`, {
-        method: 'POST',
+      await fetch(`${API_URL}/api/messages`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,

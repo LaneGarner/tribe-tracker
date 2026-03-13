@@ -161,8 +161,8 @@ export default function DirectMessageScreen() {
   const handleAcceptRequest = async () => {
     if (!session?.access_token) return;
     try {
-      const response = await fetch(`${API_URL}/api/dm-requests`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/api/conversations`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
@@ -187,8 +187,8 @@ export default function DirectMessageScreen() {
   const handleRejectRequest = async () => {
     if (!session?.access_token) return;
     try {
-      const response = await fetch(`${API_URL}/api/dm-requests`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/api/conversations`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,

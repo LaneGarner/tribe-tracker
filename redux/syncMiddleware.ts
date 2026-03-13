@@ -67,7 +67,7 @@ async function pushToServer(
     console.error(`[Sync] Failed to sync to ${endpoint}:`, err);
     // Queue for later sync
     const syncItem: PendingSyncItem = {
-      type: endpoint.split('/')[0] as PendingSyncItem['type'],
+      type: endpoint.split('?')[0].split('/')[0] as PendingSyncItem['type'],
       action: method === 'DELETE' ? 'delete' : method === 'PUT' ? 'update' : 'create',
       data,
       timestamp: new Date().toISOString(),
@@ -281,10 +281,10 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
           }
         } else if (action.type === 'chat/addBlockedUser') {
           const blocked = action.payload as BlockedUser;
-          await pushToServer('blocked-users', { blockedId: blocked.blockedId });
+          await pushToServer('users?resource=blocked', { blockedId: blocked.blockedId });
         } else if (action.type === 'chat/removeBlockedUser') {
           const blockedId = action.payload as string;
-          await pushToServer(`blocked-users?id=${blockedId}`, {}, 'DELETE');
+          await pushToServer(`users?resource=blocked&id=${blockedId}`, {}, 'DELETE');
         }
       } catch (err) {
         console.error('Background sync failed:', err);
