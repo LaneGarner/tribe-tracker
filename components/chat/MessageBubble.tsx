@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import Avatar from '../Avatar';
 import { ChatMessage } from '../../types';
+import { ReaderInfo } from '../../utils/chatUtils';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -15,9 +16,11 @@ interface MessageBubbleProps {
   pendingConversation?: boolean;
   showTimestamp?: boolean;
   onRetry?: () => void;
+  readByOther?: boolean;
+  readBy?: ReaderInfo[];
 }
 
-export default function MessageBubble({ message, isOwn, showSender = false, showAvatar, avatarUrl, pendingConversation = false, showTimestamp = true, onRetry }: MessageBubbleProps) {
+export default function MessageBubble({ message, isOwn, showSender = false, showAvatar, avatarUrl, pendingConversation = false, showTimestamp = true, onRetry, readByOther, readBy }: MessageBubbleProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
 
@@ -80,7 +83,16 @@ export default function MessageBubble({ message, isOwn, showSender = false, show
                   {message.status === 'sending' && (
                     <Ionicons name="time-outline" size={12} color={colors.textTertiary} style={styles.statusIcon} />
                   )}
-                  {message.status === 'sent' && (
+                  {message.status === 'sent' && readByOther && (
+                    <Ionicons
+                      name="checkmark-done"
+                      size={12}
+                      color={colors.primary}
+                      style={styles.statusIcon}
+                      accessibilityLabel="Read"
+                    />
+                  )}
+                  {message.status === 'sent' && !readByOther && (
                     <Ionicons name="checkmark" size={12} color={colors.textTertiary} style={styles.statusIcon} />
                   )}
                   {message.status === 'failed' && (
@@ -98,6 +110,27 @@ export default function MessageBubble({ message, isOwn, showSender = false, show
             </>
           )}
         </View>}
+        {readBy && readBy.length > 0 && (
+          <View
+            style={[styles.readByRow, isOwn ? styles.readByRowOwn : styles.readByRowOther]}
+            accessibilityLabel={`Read by ${readBy.map(r => r.userName).join(', ')}`}
+          >
+            {readBy.slice(0, 4).map((reader, index) => (
+              <Avatar
+                key={reader.userId}
+                imageUrl={reader.userPhotoUrl}
+                name={reader.userName}
+                size={16}
+                style={index > 0 ? { marginLeft: -4 } : undefined}
+              />
+            ))}
+            {readBy.length > 4 && (
+              <Text style={[styles.readByOverflow, { color: colors.textTertiary }]}>
+                +{readBy.length - 4}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -149,6 +182,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   statusIcon: {
+    marginLeft: 4,
+  },
+  readByRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  readByRowOwn: {
+    justifyContent: 'flex-end',
+    marginRight: 4,
+  },
+  readByRowOther: {
+    justifyContent: 'flex-start',
+    marginLeft: 4,
+  },
+  readByOverflow: {
+    fontSize: 10,
     marginLeft: 4,
   },
   systemContainer: {

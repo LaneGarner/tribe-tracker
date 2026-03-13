@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useCallback, useEffect, useLayoutEffect } from 'react';
+import React, { useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,9 +15,11 @@ import { useAuth } from '../context/AuthContext';
 import { RootState, AppDispatch } from '../redux/store';
 import {
   makeSelectMessagesByConversationId,
+  makeSelectReadReceiptsByConversationId,
   fetchMessagesFromServer,
   addMessage,
   markConversationRead,
+  markConversationAsRead,
 } from '../redux/slices/chatSlice';
 import { RootStackParamList, ChatMessage } from '../types';
 import { useConversationRealtime } from '../hooks/useConversationRealtime';
@@ -28,7 +30,7 @@ import ChatInput from '../components/chat/ChatInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import EmptyChat from '../components/chat/EmptyChat';
 import { isBackendConfigured } from '../config/api';
-import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage } from '../utils/chatUtils';
+import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage, computeReadReceipts, ReaderInfo } from '../utils/chatUtils';
 
 type GroupChatRouteProp = RouteProp<RootStackParamList, 'GroupChat'>;
 type GroupChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'GroupChat'>;
@@ -78,6 +80,34 @@ export default function GroupChatScreen() {
     dispatch(markConversationRead(conversationId));
   }, [dispatch, conversationId]);
 
+  // Mark conversation as read (debounced) on mount and when new messages arrive
+  const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!session?.access_token || !user?.id || !isBackendConfigured()) return;
+    if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+    markReadTimerRef.current = setTimeout(() => {
+      dispatch(markConversationAsRead({
+        token: session.access_token!,
+        conversationId,
+        userId: user.id,
+      }));
+    }, 300);
+    return () => {
+      if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+    };
+  }, [dispatch, session?.access_token, user?.id, conversationId, messages.length]);
+
+  // Read receipts
+  const selectReadReceipts = useMemo(makeSelectReadReceiptsByConversationId, []);
+  const readReceipts = useSelector((state: RootState) =>
+    selectReadReceipts(state, conversationId)
+  );
+
+  const readReceiptMap = useMemo(() => {
+    if (!user?.id) return new Map<string, ReaderInfo[]>();
+    return computeReadReceipts(messages, readReceipts, user.id);
+  }, [messages, readReceipts, user?.id]);
+
   const handleSend = useCallback((text: string) => {
     if (!user?.id) return;
     const clientId = Crypto.randomUUID();
@@ -110,15 +140,19 @@ export default function GroupChatScreen() {
       return <DateSeparator date={(item as DateSeparatorItem).date} />;
     }
     const msg = item as DisplayMessage;
+    const msgReaders = readReceiptMap.get(msg.id);
+    // Exclude the message sender from readBy
+    const readBy = msgReaders?.filter(r => r.userId !== msg.senderId);
     return (
       <MessageBubble
         message={msg}
         isOwn={msg.senderId === user?.id}
         showSender={true}
         showTimestamp={msg.showTimestamp}
+        readBy={readBy}
       />
     );
-  }, [user?.id]);
+  }, [user?.id, readReceiptMap]);
 
   const displayItems = useMemo(() => {
     const reversed = [...messages].reverse();

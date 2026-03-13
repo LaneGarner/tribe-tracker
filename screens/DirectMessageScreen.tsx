@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useCallback, useEffect, useLayoutEffect } from 'react';
+import React, { useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,9 +19,11 @@ import { useAuth } from '../context/AuthContext';
 import { RootState, AppDispatch } from '../redux/store';
 import {
   makeSelectMessagesByConversationId,
+  makeSelectReadReceiptsByConversationId,
   fetchMessagesFromServer,
   addMessage,
   markConversationRead,
+  markConversationAsRead,
   addBlockedUser,
   updateMemberStatus,
 } from '../redux/slices/chatSlice';
@@ -34,7 +36,7 @@ import ChatInput from '../components/chat/ChatInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import EmptyChat from '../components/chat/EmptyChat';
 import { isBackendConfigured, API_URL } from '../config/api';
-import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage } from '../utils/chatUtils';
+import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage, computeReadReceipts, ReaderInfo } from '../utils/chatUtils';
 
 type DirectMessageRouteProp = RouteProp<RootStackParamList, 'DirectMessage'>;
 type DirectMessageNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DirectMessage'>;
@@ -101,6 +103,42 @@ export default function DirectMessageScreen() {
   useEffect(() => {
     dispatch(markConversationRead(conversationId));
   }, [dispatch, conversationId]);
+
+  // Mark conversation as read (debounced) on mount and when new messages arrive
+  const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!session?.access_token || !user?.id || !isBackendConfigured()) return;
+    if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+    markReadTimerRef.current = setTimeout(() => {
+      dispatch(markConversationAsRead({
+        token: session.access_token!,
+        conversationId,
+        userId: user.id,
+      }));
+    }, 300);
+    return () => {
+      if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+    };
+  }, [dispatch, session?.access_token, user?.id, conversationId, messages.length]);
+
+  // Read receipts
+  const selectReadReceipts = useMemo(makeSelectReadReceiptsByConversationId, []);
+  const readReceipts = useSelector((state: RootState) =>
+    selectReadReceipts(state, conversationId)
+  );
+
+  const readReceiptMap = useMemo(() => {
+    if (!user?.id) return new Map<string, ReaderInfo[]>();
+    return computeReadReceipts(messages, readReceipts, user.id);
+  }, [messages, readReceipts, user?.id]);
+
+  // For DMs, find the single message the other person has read up to
+  const otherReadMessageId = useMemo(() => {
+    for (const [msgId, readers] of readReceiptMap.entries()) {
+      if (readers.length > 0) return msgId;
+    }
+    return null;
+  }, [readReceiptMap]);
 
   const handleSend = useCallback((text: string) => {
     if (!user?.id) return;
@@ -241,17 +279,19 @@ export default function DirectMessageScreen() {
       return <DateSeparator date={(item as DateSeparatorItem).date} />;
     }
     const msg = item as DisplayMessage;
+    const isOwn = msg.senderId === user?.id;
     return (
       <MessageBubble
         message={msg}
-        isOwn={msg.senderId === user?.id}
+        isOwn={isOwn}
         showAvatar={true}
         avatarUrl={otherMember?.userPhotoUrl}
         pendingConversation={isOtherPending}
         showTimestamp={msg.showTimestamp}
+        readByOther={isOwn && msg.id === otherReadMessageId}
       />
     );
-  }, [user?.id, isOtherPending, otherMember?.userPhotoUrl]);
+  }, [user?.id, isOtherPending, otherMember?.userPhotoUrl, otherReadMessageId]);
 
   const displayItems = useMemo(() => {
     const reversed = [...messages].reverse();

@@ -4,7 +4,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { addRealtimeMessage, setActiveConversation, pollNewMessages } from '../redux/slices/chatSlice';
+import { addRealtimeMessage, setActiveConversation, pollNewMessages, updateMemberLastReadAt } from '../redux/slices/chatSlice';
 import { ChatMessage } from '../types';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { isBackendConfigured } from '../config/api';
@@ -58,6 +58,26 @@ export function useConversationRealtime(conversationId: string) {
             createdAt: row.created_at as string,
           };
           dispatch(addRealtimeMessage(message));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversation_members',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          if (row.user_id === user.id) return;
+          if (row.last_read_at) {
+            dispatch(updateMemberLastReadAt({
+              conversationId,
+              userId: row.user_id as string,
+              lastReadAt: row.last_read_at as string,
+            }));
+          }
         }
       )
       .subscribe((status, err) => {

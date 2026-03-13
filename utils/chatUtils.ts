@@ -2,6 +2,51 @@ import dayjs from 'dayjs';
 import { ChatMessage } from '../types';
 import { formatChatDate } from './dateUtils';
 
+export interface ReaderInfo {
+  userId: string;
+  userName: string;
+  userPhotoUrl?: string;
+}
+
+export function computeReadReceipts(
+  messages: ChatMessage[],
+  readers: { userId: string; userName: string; userPhotoUrl?: string; lastReadAt: string }[],
+  currentUserId: string
+): Map<string, ReaderInfo[]> {
+  const result = new Map<string, ReaderInfo[]>();
+  if (messages.length === 0 || readers.length === 0) return result;
+
+  // Messages should be in chronological order (oldest first)
+  const sorted = [...messages].sort(
+    (a, b) => a.createdAt.localeCompare(b.createdAt)
+  );
+
+  for (const reader of readers) {
+    if (reader.userId === currentUserId) continue;
+
+    // Find the last message where createdAt <= reader.lastReadAt
+    let lastReadMsg: ChatMessage | undefined;
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].createdAt <= reader.lastReadAt) {
+        lastReadMsg = sorted[i];
+        break;
+      }
+    }
+
+    if (lastReadMsg) {
+      const existing = result.get(lastReadMsg.id) || [];
+      existing.push({
+        userId: reader.userId,
+        userName: reader.userName,
+        userPhotoUrl: reader.userPhotoUrl,
+      });
+      result.set(lastReadMsg.id, existing);
+    }
+  }
+
+  return result;
+}
+
 export interface DateSeparatorItem {
   type: 'date-separator';
   date: string;

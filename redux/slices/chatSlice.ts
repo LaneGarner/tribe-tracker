@@ -112,6 +112,28 @@ export const pollNewMessages = createAsyncThunk(
   }
 );
 
+export const markConversationAsRead = createAsyncThunk(
+  'chat/markConversationAsRead',
+  async ({ token, conversationId, userId }: { token: string; conversationId: string; userId: string }, { dispatch }) => {
+    const now = new Date().toISOString();
+    dispatch(updateMemberLastReadAt({ conversationId, userId, lastReadAt: now }));
+    dispatch(markConversationRead(conversationId));
+
+    try {
+      await fetch(`${API_URL}/api/mark-read`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ conversationId }),
+      });
+    } catch (err) {
+      console.error('Mark read API error:', err);
+    }
+  }
+);
+
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
@@ -204,6 +226,16 @@ const chatSlice = createSlice({
         }
       }
     },
+    updateMemberLastReadAt: (state, action: PayloadAction<{ conversationId: string; userId: string; lastReadAt: string }>) => {
+      const conv = state.conversations.find(c => c.id === action.payload.conversationId);
+      if (conv) {
+        const member = conv.members.find(m => m.userId === action.payload.userId);
+        if (member) {
+          member.lastReadAt = action.payload.lastReadAt;
+          saveConversations(state.conversations);
+        }
+      }
+    },
   },
   extraReducers: builder => {
     builder
@@ -267,6 +299,7 @@ export const {
   addBlockedUser,
   removeBlockedUser,
   updateMemberStatus,
+  updateMemberLastReadAt,
 } = chatSlice.actions;
 
 // Selectors
@@ -301,5 +334,22 @@ export const selectAllConversationsSorted = createSelector(
   chat => [...chat.conversations]
     .sort((a, b) => (b.lastMessageAt || b.updatedAt || '').localeCompare(a.lastMessageAt || a.updatedAt || ''))
 );
+
+export const makeSelectReadReceiptsByConversationId = () =>
+  createSelector(
+    [selectChatState, (_: RootState, conversationId: string) => conversationId],
+    (chat, conversationId) => {
+      const conv = chat.conversations.find(c => c.id === conversationId);
+      if (!conv) return [];
+      return conv.members
+        .filter(m => m.status === 'active' && m.lastReadAt)
+        .map(m => ({
+          userId: m.userId,
+          userName: m.userName,
+          userPhotoUrl: m.userPhotoUrl,
+          lastReadAt: m.lastReadAt!,
+        }));
+    }
+  );
 
 export default chatSlice.reducer;
