@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Get initial session
+    // Note: SDK's _listenForAuthEvents handles realtime.setAuth automatically
     supabase.auth.getSession().then(({ data: { session } }) => {
       setState(prev => ({
         ...prev,
@@ -79,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const configured = state.isConfigured && isBackendConfigured();
     setSyncAuth(token, configured);
   }, [state.session, state.isConfigured]);
+
 
   const signUp = useCallback(
     async (email: string, password: string, fullName?: string) => {

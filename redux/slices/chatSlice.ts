@@ -19,6 +19,28 @@ interface ChatState {
   error: string | null;
   messageCursors: Record<string, string | null>;
   hasMoreMessages: Record<string, boolean>;
+  activeConversationId: string | null;
+}
+
+function mergeMessage(state: ChatState, msg: ChatMessage): boolean {
+  const convId = msg.conversationId;
+  if (!state.messages[convId]) state.messages[convId] = [];
+  const existing = state.messages[convId].find(
+    m => (msg.clientId && m.clientId === msg.clientId) || m.id === msg.id
+  );
+  if (!existing) {
+    state.messages[convId].push(msg);
+    const convIndex = state.conversations.findIndex(c => c.id === convId);
+    if (convIndex !== -1) {
+      if (state.activeConversationId !== convId) {
+        state.conversations[convIndex].unreadCount += 1;
+      }
+      state.conversations[convIndex].lastMessageAt = msg.createdAt;
+      state.conversations[convIndex].lastMessagePreview = msg.content;
+    }
+    return true;
+  }
+  return false;
 }
 
 const initialState: ChatState = {
@@ -29,6 +51,7 @@ const initialState: ChatState = {
   error: null,
   messageCursors: {},
   hasMoreMessages: {},
+  activeConversationId: null,
 };
 
 export const loadChatFromStorage = createAsyncThunk(
@@ -76,6 +99,19 @@ export const fetchMessagesFromServer = createAsyncThunk(
   }
 );
 
+export const pollNewMessages = createAsyncThunk(
+  'chat/pollNewMessages',
+  async ({ token, conversationId, after }: { token: string; conversationId: string; after: string }) => {
+    const url = `${API_URL}/api/messages?conversationId=${conversationId}&after=${encodeURIComponent(after)}`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error('Poll failed');
+    const data = await response.json();
+    return { conversationId, messages: data.messages as ChatMessage[] };
+  }
+);
+
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
@@ -120,25 +156,13 @@ const chatSlice = createSlice({
       saveConversations(state.conversations);
     },
     addRealtimeMessage: (state, action: PayloadAction<ChatMessage>) => {
-      const msg = action.payload;
-      const convId = msg.conversationId;
-      if (!state.messages[convId]) state.messages[convId] = [];
-      // Skip if already exists (sender already added optimistically)
-      const existing = state.messages[convId].find(
-        m => (msg.clientId && m.clientId === msg.clientId) || m.id === msg.id
-      );
-      if (!existing) {
-        state.messages[convId].push(msg);
-        // Increment unread count
-        const convIndex = state.conversations.findIndex(c => c.id === convId);
-        if (convIndex !== -1) {
-          state.conversations[convIndex].unreadCount += 1;
-          state.conversations[convIndex].lastMessageAt = msg.createdAt;
-          state.conversations[convIndex].lastMessagePreview = msg.content;
-        }
+      if (mergeMessage(state, action.payload)) {
         saveMessages(state.messages);
         saveConversations(state.conversations);
       }
+    },
+    setActiveConversation: (state, action: PayloadAction<string | null>) => {
+      state.activeConversationId = action.payload;
     },
     updateMessageStatus: (state, action: PayloadAction<{ clientId: string; status: ChatMessage['status']; id?: string }>) => {
       for (const msgs of Object.values(state.messages)) {
@@ -216,6 +240,16 @@ const chatSlice = createSlice({
           state.messageCursors[conversationId] = messages[0].createdAt;
         }
         saveMessages(state.messages);
+      })
+      .addCase(pollNewMessages.fulfilled, (state, action) => {
+        let changed = false;
+        for (const msg of action.payload.messages) {
+          if (mergeMessage(state, msg)) changed = true;
+        }
+        if (changed) {
+          saveMessages(state.messages);
+          saveConversations(state.conversations);
+        }
       });
   },
 });
@@ -226,6 +260,7 @@ export const {
   updateConversation,
   addMessage,
   addRealtimeMessage,
+  setActiveConversation,
   updateMessageStatus,
   setMessages,
   markConversationRead,
