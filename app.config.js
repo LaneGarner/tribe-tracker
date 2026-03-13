@@ -15,6 +15,11 @@ export default {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
       backgroundColor: '#000000',
+      dark: {
+        image: './assets/splash-icon.png',
+        resizeMode: 'contain',
+        backgroundColor: '#000000',
+      },
     },
     ios: {
       bundleIdentifier: 'com.lanegarner.tribetracker',
