@@ -17,7 +17,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import * as Crypto from 'expo-crypto';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { deleteChallenge } from '../redux/slices/challengesSlice';
+import { deleteChallenge, updateChallenge } from '../redux/slices/challengesSlice';
 import { API_URL, isBackendConfigured } from '../config/api';
 import { addParticipant, importParticipant, removeParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
@@ -72,12 +72,35 @@ export default function ChallengeDetailScreen() {
   const handleShare = async () => {
     if (!challenge) return;
     try {
-      const shareUrl = challenge.inviteCode
-        ? `https://tribe-tracker-backend.vercel.app/invite/${challenge.inviteCode}`
-        : `https://tribe-tracker-backend.vercel.app/challenge/${challenge.id}`;
+      let inviteCode = challenge.inviteCode;
+
+      // Generate an invite code if the challenge doesn't have one
+      if (!inviteCode) {
+        inviteCode = Crypto.randomUUID().slice(0, 8);
+        dispatch(updateChallenge({ ...challenge, inviteCode }));
+      }
+
+      // Sync challenge to backend so the landing page can find it
+      if (session?.access_token && isBackendConfigured()) {
+        try {
+          await fetch(`${API_URL}/api/challenges?id=${challenge.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              challenge: { ...challenge, inviteCode, updated_at: new Date().toISOString() },
+            }),
+          });
+        } catch (syncErr) {
+          console.error('[handleShare] Failed to sync challenge:', syncErr);
+        }
+      }
+
+      const shareUrl = `https://tribe-tracker-backend.vercel.app/invite/${inviteCode}`;
       const label = challenge.isPublic ? '' : 'private ';
-      const inviteCodeLine = challenge.inviteCode ? `\n\nInvite code: ${challenge.inviteCode}` : '';
-      const message = `Join my ${label}challenge "${challenge.name}" on Tribe Tracker!\n${shareUrl}${inviteCodeLine}`;
+      const message = `Join my ${label}challenge "${challenge.name}" on Tribe Tracker!\n${shareUrl}\n\nInvite code: ${inviteCode}`;
       await Share.share({ message });
     } catch (error) {
       console.error('Error sharing:', error);
