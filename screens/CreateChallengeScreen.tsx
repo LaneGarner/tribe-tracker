@@ -539,7 +539,7 @@ export default function CreateChallengeScreen() {
 
     setIsJoining(false);
     Alert.alert('Success', `Joined "${challenge.name}"!`, [
-      { text: 'OK', onPress: () => navigation.navigate('Main') },
+      { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Home', params: { selectChallengeId: challenge.id } }) },
     ]);
   };
 

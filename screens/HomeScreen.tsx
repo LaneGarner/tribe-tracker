@@ -10,7 +10,7 @@ import {
   PanResponder,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -66,6 +66,7 @@ type HomeScreenNavigationProp = CompositeNavigationProp<
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const route = useRoute<RouteProp<TabParamList, 'Home'>>();
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -105,6 +106,15 @@ export default function HomeScreen() {
   const badgeTranslateX = useRef(new Animated.Value(0)).current;
   const BADGE_WIDTH = 70;
   const HIDDEN_OFFSET = BADGE_WIDTH + 10; // How far off-screen when hidden
+
+  // Auto-select challenge when navigated with selectChallengeId param
+  useEffect(() => {
+    const selectId = route.params?.selectChallengeId;
+    if (selectId) {
+      setSelectedChallengeId(selectId);
+      navigation.setParams({ selectChallengeId: undefined });
+    }
+  }, [route.params?.selectChallengeId]);
 
   // Keep ref in sync with state
   useEffect(() => {

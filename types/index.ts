@@ -200,9 +200,11 @@ export interface BlockedUser {
 }
 
 // Navigation types
+import { NavigatorScreenParams } from '@react-navigation/native';
+
 export type RootStackParamList = {
   Auth: undefined;
-  Main: undefined;
+  Main: NavigatorScreenParams<TabParamList> | undefined;
   ChallengeDetail: { challengeId: string };
   CreateChallenge: { mode?: 'browse' | 'create' | 'join'; challengeId?: string; inviteCode?: string } | undefined;
   ViewMember: { userId: string };
@@ -229,7 +231,7 @@ export type RootStackParamList = {
 };
 
 export type TabParamList = {
-  Home: undefined;
+  Home: { selectChallengeId?: string } | undefined;
   Challenges: undefined;
   Leaderboard: { challengeId?: string } | undefined;
   Menu: undefined;

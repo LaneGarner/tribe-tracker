@@ -328,7 +328,7 @@ export default function ChallengeDetailScreen() {
 
     setIsJoining(false);
     Alert.alert('Joined!', `You've joined "${challenge.name}"`, [
-      { text: 'OK', onPress: () => navigation.navigate('Main') },
+      { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Home', params: { selectChallengeId: challenge.id } }) },
     ]);
   };
 
