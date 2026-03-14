@@ -847,19 +847,23 @@ export default function HomeScreen() {
         ) : (
           <View style={styles.emptyState}>
             <Ionicons
-              name="trophy-outline"
+              name="people-outline"
               size={64}
               color={colors.textTertiary}
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
             />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              No Active Challenges
+              Ready to start your first challenge?
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              Join a challenge or create your own to get started!
+              Build habits with friends. Challenges keep you accountable and on track.
             </Text>
             <TouchableOpacity
               style={[styles.emptyButton, { backgroundColor: colors.primary }]}
               onPress={() => (navigation as any).navigate('Challenges')}
+              accessibilityLabel="Find challenges to join"
+              accessibilityRole="button"
             >
               <Ionicons name="search" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.emptyButtonText}>Find Challenges</Text>
@@ -867,9 +871,11 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={styles.textButton}
               onPress={() => navigation.navigate('CreateChallenge', { mode: 'create' })}
+              accessibilityLabel="Create your own challenge"
+              accessibilityRole="button"
             >
               <Text style={[styles.textButtonText, { color: colors.primary }]}>
-                or create your own
+                Or create your own
               </Text>
             </TouchableOpacity>
           </View>
