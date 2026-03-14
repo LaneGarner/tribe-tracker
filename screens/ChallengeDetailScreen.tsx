@@ -83,16 +83,27 @@ export default function ChallengeDetailScreen() {
       // Sync challenge to backend so the landing page can find it
       if (session?.access_token && isBackendConfigured()) {
         try {
-          await fetch(`${API_URL}/api/challenges?id=${challenge.id}`, {
+          const challengePayload = { ...challenge, inviteCode, updated_at: new Date().toISOString() };
+          const putRes = await fetch(`${API_URL}/api/challenges?id=${challenge.id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({
-              challenge: { ...challenge, inviteCode, updated_at: new Date().toISOString() },
-            }),
+            body: JSON.stringify({ challenge: challengePayload }),
           });
+
+          // If PUT failed (challenge doesn't exist on backend yet), try POST
+          if (!putRes.ok) {
+            await fetch(`${API_URL}/api/challenges`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ challenge: challengePayload }),
+            });
+          }
         } catch (syncErr) {
           console.error('[handleShare] Failed to sync challenge:', syncErr);
         }

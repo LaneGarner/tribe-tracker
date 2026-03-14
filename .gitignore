@@ -45,3 +45,6 @@ yarn-error.*
 
 # Google Play service account key
 google-service-account-key.json
+
+# Supabase
+supabase/.temp/
