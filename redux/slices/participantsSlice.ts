@@ -54,7 +54,15 @@ const participantsSlice = createSlice({
       saveParticipants(action.payload);
     },
     addParticipant: (state, action: PayloadAction<ChallengeParticipant>) => {
-      state.data.push(action.payload);
+      if (!state.data.find(p => p.id === action.payload.id)) {
+        state.data.push(action.payload);
+      }
+      saveParticipants(state.data);
+    },
+    importParticipant: (state, action: PayloadAction<ChallengeParticipant>) => {
+      if (!state.data.find(p => p.id === action.payload.id)) {
+        state.data.push(action.payload);
+      }
       saveParticipants(state.data);
     },
     updateParticipant: (state, action: PayloadAction<ChallengeParticipant>) => {
@@ -132,6 +140,7 @@ const participantsSlice = createSlice({
 export const {
   setParticipants,
   addParticipant,
+  importParticipant,
   updateParticipant,
   removeParticipant,
   updateParticipantStats,
