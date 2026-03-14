@@ -1128,6 +1128,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
+    textAlign: 'center',
     marginTop: 16,
     marginBottom: 8,
   },
