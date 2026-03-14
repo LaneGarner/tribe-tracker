@@ -17,8 +17,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import * as Crypto from 'expo-crypto';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { deleteChallenge } from '../redux/slices/challengesSlice';
-import { addParticipant, removeParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
+import { deleteChallenge, updateChallenge } from '../redux/slices/challengesSlice';
+import { API_URL, isBackendConfigured } from '../config/api';
+import { addParticipant, importParticipant, removeParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, ChallengeParticipant } from '../types';
 import {
@@ -28,7 +29,6 @@ import {
   getDaysBetween,
 } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
-import { isBackendConfigured } from '../config/api';
 import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
 
 type ChallengeDetailRouteProp = RouteProp<RootStackParamList, 'ChallengeDetail'>;
@@ -72,11 +72,46 @@ export default function ChallengeDetailScreen() {
   const handleShare = async () => {
     if (!challenge) return;
     try {
-      const shareUrl = challenge.inviteCode
-        ? `https://tribe-tracker-backend.vercel.app/invite/${challenge.inviteCode}`
-        : `https://tribe-tracker-backend.vercel.app/challenge/${challenge.id}`;
+      let inviteCode = challenge.inviteCode;
+
+      // Generate an invite code if the challenge doesn't have one
+      if (!inviteCode) {
+        inviteCode = Crypto.randomUUID().slice(0, 8);
+        dispatch(updateChallenge({ ...challenge, inviteCode }));
+      }
+
+      // Sync challenge to backend so the landing page can find it
+      if (session?.access_token && isBackendConfigured()) {
+        try {
+          const challengePayload = { ...challenge, inviteCode, updated_at: new Date().toISOString() };
+          const putRes = await fetch(`${API_URL}/api/challenges?id=${challenge.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ challenge: challengePayload }),
+          });
+
+          // If PUT failed (challenge doesn't exist on backend yet), try POST
+          if (!putRes.ok) {
+            await fetch(`${API_URL}/api/challenges`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ challenge: challengePayload }),
+            });
+          }
+        } catch (syncErr) {
+          console.error('[handleShare] Failed to sync challenge:', syncErr);
+        }
+      }
+
+      const shareUrl = `https://tribe-tracker-backend.vercel.app/invite/${inviteCode}`;
       const label = challenge.isPublic ? '' : 'private ';
-      const message = `Join my ${label}challenge "${challenge.name}" on Tribe Tracker!\n${shareUrl}`;
+      const message = `Join my ${label}challenge "${challenge.name}" on Tribe Tracker!\n${shareUrl}\n\nInvite code: ${inviteCode}`;
       await Share.share({ message });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -261,16 +296,39 @@ export default function ChallengeDetailScreen() {
       updatedAt: new Date().toISOString(),
     };
 
-    dispatch(addParticipant(participation));
+    // Add locally without triggering sync middleware
+    dispatch(importParticipant(participation));
 
-    // Fetch all participants from server to see other members
-    if (session?.access_token) {
-      await dispatch(fetchParticipantsFromServer(session.access_token));
+    // Directly POST participant to backend (awaited to guarantee persistence)
+    if (session?.access_token && isBackendConfigured()) {
+      try {
+        const response = await fetch(`${API_URL}/api/participants`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            participant: {
+              ...participation,
+              updated_at: new Date().toISOString(),
+            },
+          }),
+        });
+        if (!response.ok) {
+          console.error('[HandleJoin] Failed to sync participant:', await response.text());
+        }
+
+        // Fire-and-forget: refresh from server for consistency
+        dispatch(fetchParticipantsFromServer(session.access_token));
+      } catch (err) {
+        console.error('[HandleJoin] Failed to sync participant:', err);
+      }
     }
 
     setIsJoining(false);
     Alert.alert('Joined!', `You've joined "${challenge.name}"`, [
-      { text: 'OK', onPress: () => navigation.navigate('Main') },
+      { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Home', params: { selectChallengeId: challenge.id } }) },
     ]);
   };
 
@@ -427,7 +485,10 @@ export default function ChallengeDetailScreen() {
             disabled={isJoining}
           >
             {isJoining ? (
-              <ActivityIndicator color="#fff" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.joinButtonText}>Joining...</Text>
+              </View>
             ) : (
               <Text style={styles.joinButtonText}>Join Challenge</Text>
             )}

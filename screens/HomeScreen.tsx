@@ -10,7 +10,7 @@ import {
   PanResponder,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -66,6 +66,7 @@ type HomeScreenNavigationProp = CompositeNavigationProp<
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const route = useRoute<RouteProp<TabParamList, 'Home'>>();
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -105,6 +106,15 @@ export default function HomeScreen() {
   const badgeTranslateX = useRef(new Animated.Value(0)).current;
   const BADGE_WIDTH = 70;
   const HIDDEN_OFFSET = BADGE_WIDTH + 10; // How far off-screen when hidden
+
+  // Auto-select challenge when navigated with selectChallengeId param
+  useEffect(() => {
+    const selectId = route.params?.selectChallengeId;
+    if (selectId) {
+      setSelectedChallengeId(selectId);
+      navigation.setParams({ selectChallengeId: undefined });
+    }
+  }, [route.params?.selectChallengeId]);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -847,19 +857,23 @@ export default function HomeScreen() {
         ) : (
           <View style={styles.emptyState}>
             <Ionicons
-              name="trophy-outline"
+              name="people-outline"
               size={64}
               color={colors.textTertiary}
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
             />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              No Active Challenges
+              Ready to start your first challenge?
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              Join a challenge or create your own to get started!
+              Build habits with friends. Challenges keep you accountable and on track.
             </Text>
             <TouchableOpacity
               style={[styles.emptyButton, { backgroundColor: colors.primary }]}
               onPress={() => (navigation as any).navigate('Challenges')}
+              accessibilityLabel="Find challenges to join"
+              accessibilityRole="button"
             >
               <Ionicons name="search" size={20} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.emptyButtonText}>Find Challenges</Text>
@@ -867,9 +881,11 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={styles.textButton}
               onPress={() => navigation.navigate('CreateChallenge', { mode: 'create' })}
+              accessibilityLabel="Create your own challenge"
+              accessibilityRole="button"
             >
               <Text style={[styles.textButtonText, { color: colors.primary }]}>
-                or create your own
+                Or create your own
               </Text>
             </TouchableOpacity>
           </View>
@@ -1122,6 +1138,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
+    textAlign: 'center',
     marginTop: 16,
     marginBottom: 8,
   },

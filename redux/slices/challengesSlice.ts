@@ -71,7 +71,15 @@ const challengesSlice = createSlice({
       saveChallenges(action.payload);
     },
     addChallenge: (state, action: PayloadAction<Challenge>) => {
-      state.data.push(action.payload);
+      if (!state.data.find(c => c.id === action.payload.id)) {
+        state.data.push(action.payload);
+      }
+      saveChallenges(state.data);
+    },
+    importChallenge: (state, action: PayloadAction<Challenge>) => {
+      if (!state.data.find(c => c.id === action.payload.id)) {
+        state.data.push(action.payload);
+      }
       saveChallenges(state.data);
     },
     updateChallenge: (state, action: PayloadAction<Challenge>) => {
@@ -153,6 +161,7 @@ const challengesSlice = createSlice({
 export const {
   setChallenges,
   addChallenge,
+  importChallenge,
   updateChallenge,
   deleteChallenge,
   reorderChallenges,

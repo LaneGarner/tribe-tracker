@@ -45,9 +45,9 @@ if (!isExpoGo) {
 const FormScrollView = (!isExpoGo && NestableScrollContainer) ? NestableScrollContainer : ScrollView;
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { AppDispatch, RootState } from '../redux/store';
-import { addChallenge, updateChallenge, fetchPublicChallenges, loadChallengesFromStorage } from '../redux/slices/challengesSlice';
+import { addChallenge, importChallenge, updateChallenge, fetchPublicChallenges, fetchChallengesFromServer, loadChallengesFromStorage } from '../redux/slices/challengesSlice';
 import { API_URL, isBackendConfigured } from '../config/api';
-import { addParticipant } from '../redux/slices/participantsSlice';
+import { addParticipant, importParticipant, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
 import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '../utils/dateUtils';
@@ -471,7 +471,8 @@ export default function CreateChallengeScreen() {
             const data = await response.json();
             if (data.challenge) {
               challenge = data.challenge;
-              dispatch(addChallenge(data.challenge));
+              // Use importChallenge to avoid triggering a spurious backend POST
+              dispatch(importChallenge(data.challenge));
             }
           }
         }
@@ -502,11 +503,43 @@ export default function CreateChallengeScreen() {
       updatedAt: new Date().toISOString(),
     };
 
-    dispatch(addParticipant(participation));
+    // Add participant locally without triggering sync middleware
+    dispatch(importParticipant(participation));
+
+    // Directly POST participant to backend (awaited to guarantee persistence)
+    if (isBackendConfigured()) {
+      try {
+        const token = await getAccessToken();
+        if (token) {
+          const response = await fetch(`${API_URL}/api/participants`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              participant: {
+                ...participation,
+                updated_at: new Date().toISOString(),
+              },
+            }),
+          });
+          if (!response.ok) {
+            console.error('[JoinByCode] Failed to sync participant:', await response.text());
+          }
+
+          // Fire-and-forget: refresh from server for consistency
+          dispatch(fetchChallengesFromServer(token));
+          dispatch(fetchParticipantsFromServer(token));
+        }
+      } catch (err) {
+        console.error('[JoinByCode] Failed to sync participant:', err);
+      }
+    }
 
     setIsJoining(false);
     Alert.alert('Success', `Joined "${challenge.name}"!`, [
-      { text: 'OK', onPress: () => navigation.navigate('Main') },
+      { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Home', params: { selectChallengeId: challenge.id } }) },
     ]);
   };
 
@@ -1285,6 +1318,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     paddingVertical: 16,
+    paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',

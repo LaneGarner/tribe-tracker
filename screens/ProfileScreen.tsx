@@ -9,6 +9,8 @@ import {
   Alert,
   Share,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -235,7 +237,8 @@ export default function ProfileScreen() {
         ? `https://tribe-tracker-backend.vercel.app/invite/${challenge.inviteCode}`
         : `https://tribe-tracker-backend.vercel.app/challenge/${challenge.id}`;
       const label = challenge.isPublic ? '' : 'private ';
-      const message = `Join my ${label}challenge "${challenge.name}" on Tribe Tracker!\n${shareUrl}`;
+      const inviteCodeLine = challenge.inviteCode ? `\n\nInvite code: ${challenge.inviteCode}` : '';
+      const message = `Join my ${label}challenge "${challenge.name}" on Tribe Tracker!\n${shareUrl}${inviteCodeLine}`;
       await Share.share({ message });
     } catch {
       // User cancelled share
@@ -244,6 +247,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -758,6 +762,7 @@ export default function ProfileScreen() {
           </>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
