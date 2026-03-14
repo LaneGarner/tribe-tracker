@@ -88,12 +88,6 @@ export default function AuthScreen() {
         const { error } = await signUp(email, password, fullName);
         if (error) {
           Alert.alert('Signup Failed', error.message);
-        } else {
-          Alert.alert(
-            'Check Your Email',
-            'We sent you a confirmation email. Please verify your account.',
-            [{ text: 'OK', onPress: () => setIsLogin(true) }]
-          );
         }
       }
     } catch (err) {
