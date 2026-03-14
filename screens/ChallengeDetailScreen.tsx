@@ -485,7 +485,10 @@ export default function ChallengeDetailScreen() {
             disabled={isJoining}
           >
             {isJoining ? (
-              <ActivityIndicator color="#fff" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.joinButtonText}>Joining...</Text>
+              </View>
             ) : (
               <Text style={styles.joinButtonText}>Join Challenge</Text>
             )}
