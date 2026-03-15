@@ -51,6 +51,7 @@ import ChallengeCard from '../components/challenge/ChallengeCard';
 import ChallengeCardSkeleton from '../components/challenge/ChallengeCardSkeleton';
 import ChallengeChip from '../components/challenge/ChallengeChip';
 import HabitChecklist from '../components/challenge/HabitChecklist';
+import ReadOnlyHabitList from '../components/challenge/ReadOnlyHabitList';
 import DateCarousel from '../components/ui/DateCarousel';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import Skeleton from '../components/ui/Skeleton';
@@ -283,11 +284,18 @@ export default function HomeScreen() {
       getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
   );
 
-  // Show skeleton until initial fetch completes when there's no data
-  const isInitialLoad = !initialFetchDone && activeChallenges.length === 0;
+  // Filter upcoming challenges the user has joined
+  const upcomingChallenges = challenges.filter(
+    c =>
+      userChallengeIds.has(c.id) &&
+      getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'upcoming'
+  );
 
-  // Sort active challenges by saved order
-  const orderedChallenges = [...activeChallenges].sort((a, b) => {
+  // Show skeleton until initial fetch completes when there's no data
+  const isInitialLoad = !initialFetchDone && activeChallenges.length === 0 && upcomingChallenges.length === 0;
+
+  // Sort active + upcoming challenges by saved order
+  const orderedChallenges = [...activeChallenges, ...upcomingChallenges].sort((a, b) => {
     const indexA = challengeOrder.indexOf(a.id);
     const indexB = challengeOrder.indexOf(b.id);
     if (indexA === -1 && indexB === -1) return 0;
@@ -348,6 +356,10 @@ export default function HomeScreen() {
   };
 
   const selectedChallenge = challenges.find(c => c.id === selectedChallengeId);
+
+  const selectedStatus = selectedChallenge
+    ? getChallengeStatus(selectedChallenge.startDate, selectedChallenge.endDate || selectedChallenge.startDate)
+    : null;
 
   // Get checkin for selected date and challenge
   const dateCheckin = checkins.find(
@@ -751,108 +763,119 @@ export default function HomeScreen() {
                 />
               </TouchableOpacity>
 
-              {/* Leaderboard Link */}
-              <TouchableOpacity
-                style={[
-                  styles.leaderboardLink,
-                  pillStyle,
-                  backgroundImage && { paddingHorizontal: 16, alignSelf: 'center' as const },
-                ]}
-                onPress={() => navigation.navigate('Leaderboard', { challengeId: selectedChallengeId || undefined })}
-              >
-                <Ionicons name="trophy-outline" size={16} color={colors.primary} />
-                <Text style={[styles.leaderboardLinkText, { color: colors.primary }]}>
-                  View Leaderboard
-                </Text>
-                <Ionicons name="chevron-forward" size={14} color={colors.primary} />
-              </TouchableOpacity>
             </SwipeableView>
 
-            {/* Swipeable date section */}
-            <View style={styles.dateSection}>
-              {/* Habits header and date - fixed above swipeable content */}
-              <View style={styles.section}>
-                <View style={styles.sectionTitleRow}>
-                  <View style={[pillStyle]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                      {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
-                    </Text>
-                    <Text style={[styles.dateText, { color: colors.textSecondary }]}>
-                      {formatDate(selectedDate, 'dddd, MMMM D')}
+            {selectedStatus === 'active' ? (
+              <>
+                {/* Leaderboard Link */}
+                <TouchableOpacity
+                  style={[
+                    styles.leaderboardLink,
+                    pillStyle,
+                    backgroundImage && { paddingHorizontal: 16, alignSelf: 'center' as const },
+                  ]}
+                  onPress={() => navigation.navigate('Leaderboard', { challengeId: selectedChallengeId || undefined })}
+                >
+                  <Ionicons name="trophy-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.leaderboardLinkText, { color: colors.primary }]}>
+                    View Leaderboard
+                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                </TouchableOpacity>
+                {/* Swipeable date section */}
+                <View style={styles.dateSection}>
+                  {/* Habits header and date - fixed above swipeable content */}
+                  <View style={styles.section}>
+                    <View style={styles.sectionTitleRow}>
+                      <View style={[pillStyle]}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                          {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
+                        </Text>
+                        <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+                          {formatDate(selectedDate, 'dddd, MMMM D')}
+                        </Text>
+                      </View>
+                      {!isToday(selectedDate) && (
+                        <View style={[styles.pastDayBadge, { borderColor: colors.primary }]}>
+                          <Text style={[styles.pastDayBadgeText, { color: colors.primary }]}>
+                            Editing Past Day
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  <SwipeableView
+                    ref={swipeableRef}
+                    onSwipeLeft={handleSwipeLeft}
+                    onSwipeRight={handleSwipeRight}
+                    canSwipeLeft={canSwipeForward}
+                    canSwipeRight={canSwipeBack}
+                  >
+                  {/* Date carousel */}
+                  <DateCarousel
+                    selectedDate={selectedDate}
+                    onDateChange={setSelectedDate}
+                    minDate={minDateForCarousel}
+                    onPrevious={handleArrowPrevious}
+                    onNext={handleArrowNext}
+                    hasBackgroundImage={!!backgroundImage}
+                  />
+
+                  {/* Habits checklist */}
+                  <View style={styles.habitListSection}>
+                    <HabitChecklist
+                      challenge={selectedChallenge}
+                      checkin={dateCheckin}
+                      date={selectedDate}
+                      hasBackgroundImage={!!backgroundImage}
+                    />
+                  </View>
+                  </SwipeableView>
+                </View>
+
+                {/* Activity Calendar */}
+                <View style={styles.calendarSection}>
+                  <View style={[
+                    { marginHorizontal: 20, marginBottom: 12 },
+                    pillStyle,
+                  ]}>
+                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
+                      Calendar
                     </Text>
                   </View>
-                  {!isToday(selectedDate) && (
-                    <View style={[styles.pastDayBadge, { borderColor: colors.primary }]}>
-                      <Text style={[styles.pastDayBadgeText, { color: colors.primary }]}>
-                        Editing Past Day
-                      </Text>
-                    </View>
-                  )}
+                  <SwipeableView
+                    ref={calendarSwipeRef}
+                    onSwipeLeft={handleCalendarSwipeLeft}
+                    onSwipeRight={handleCalendarSwipeRight}
+                    canSwipeLeft={!maxMonth || dayjs(displayMonth + '-01').add(1, 'month').format('YYYY-MM') <= maxMonth}
+                    canSwipeRight={!minMonth || dayjs(displayMonth + '-01').subtract(1, 'month').format('YYYY-MM') >= minMonth}
+                  >
+                    <ActivityCalendar
+                      challenges={activeChallenges}
+                      checkins={userCheckins}
+                      selectedDate={selectedDate}
+                      onDateSelect={handleDateSelect}
+                      challengeColors={challengeColors}
+                      displayMonth={displayMonth}
+                      onMonthChange={setDisplayMonth}
+                      minMonth={minMonth ?? undefined}
+                      maxMonth={maxMonth ?? undefined}
+                      onPrevious={() => calendarSwipeRef.current?.animateRight()}
+                      onNext={() => calendarSwipeRef.current?.animateLeft()}
+                      hasBackgroundImage={!!backgroundImage}
+                    />
+                  </SwipeableView>
                 </View>
-              </View>
-
-              <SwipeableView
-                ref={swipeableRef}
-                onSwipeLeft={handleSwipeLeft}
-                onSwipeRight={handleSwipeRight}
-                canSwipeLeft={canSwipeForward}
-                canSwipeRight={canSwipeBack}
-              >
-              {/* Date carousel */}
-              <DateCarousel
-                selectedDate={selectedDate}
-                onDateChange={setSelectedDate}
-                minDate={minDateForCarousel}
-                onPrevious={handleArrowPrevious}
-                onNext={handleArrowNext}
-                hasBackgroundImage={!!backgroundImage}
-              />
-
-              {/* Habits checklist */}
+              </>
+            ) : (
               <View style={styles.habitListSection}>
-                <HabitChecklist
+                <ReadOnlyHabitList
                   challenge={selectedChallenge}
-                  checkin={dateCheckin}
-                  date={selectedDate}
                   hasBackgroundImage={!!backgroundImage}
                 />
               </View>
-              </SwipeableView>
-            </View>
-
-            {/* Activity Calendar */}
-            <View style={styles.calendarSection}>
-              <View style={[
-                { marginHorizontal: 20, marginBottom: 12 },
-                pillStyle,
-              ]}>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
-                  Calendar
-                </Text>
-              </View>
-              <SwipeableView
-                ref={calendarSwipeRef}
-                onSwipeLeft={handleCalendarSwipeLeft}
-                onSwipeRight={handleCalendarSwipeRight}
-                canSwipeLeft={!maxMonth || dayjs(displayMonth + '-01').add(1, 'month').format('YYYY-MM') <= maxMonth}
-                canSwipeRight={!minMonth || dayjs(displayMonth + '-01').subtract(1, 'month').format('YYYY-MM') >= minMonth}
-              >
-                <ActivityCalendar
-                  challenges={activeChallenges}
-                  checkins={userCheckins}
-                  selectedDate={selectedDate}
-                  onDateSelect={handleDateSelect}
-                  challengeColors={challengeColors}
-                  displayMonth={displayMonth}
-                  onMonthChange={setDisplayMonth}
-                  minMonth={minMonth ?? undefined}
-                  maxMonth={maxMonth ?? undefined}
-                  onPrevious={() => calendarSwipeRef.current?.animateRight()}
-                  onNext={() => calendarSwipeRef.current?.animateLeft()}
-                  hasBackgroundImage={!!backgroundImage}
-                />
-              </SwipeableView>
-            </View>
+            )}
           </>
         ) : (
           <View style={styles.emptyState}>
@@ -890,6 +913,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         )}
+
       </Animated.ScrollView>
 
       {/* Floating Points Badge */}

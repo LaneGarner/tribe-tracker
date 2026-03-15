@@ -12,6 +12,7 @@ import {
   getChallengeStatus,
   getCurrentChallengeDay,
   getDaysRemaining,
+  formatDate,
 } from '../../utils/dateUtils';
 import { calculateActiveStreak } from '../../utils/streakUtils';
 
@@ -86,7 +87,9 @@ export default function ChallengeCard({
           </Text>
           {status !== 'active' && (
             <Text style={styles.daysRemaining}>
-              {status === 'upcoming' ? 'Starting soon' : 'Completed'}
+              {status === 'upcoming'
+                ? `Starts ${formatDate(challenge.startDate, 'MMM D')} (${getDaysRemaining(challenge.startDate)} day${getDaysRemaining(challenge.startDate) !== 1 ? 's' : ''})`
+                : 'Completed'}
             </Text>
           )}
           {status === 'active' && daysRemaining > 0 && (
@@ -95,7 +98,7 @@ export default function ChallengeCard({
             </Text>
           )}
         </View>
-        {participation && (
+        {participation && status !== 'upcoming' && (
           <View style={styles.badgeRow}>
             {userRank !== null && (
               <View style={styles.rankBadge}>
@@ -116,7 +119,7 @@ export default function ChallengeCard({
       </View>
 
       {/* Stats row */}
-      {participation && (
+      {participation && status !== 'upcoming' && (
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>My Points</Text>
