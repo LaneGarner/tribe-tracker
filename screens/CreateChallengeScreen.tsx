@@ -162,6 +162,9 @@ export default function CreateChallengeScreen() {
   const activePublicChallenges = challenges.filter(
     c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
   );
+  const upcomingPublicChallenges = challenges.filter(
+    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'upcoming'
+  );
   const completedPublicChallenges = challenges.filter(
     c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'completed'
   );
@@ -608,6 +611,26 @@ export default function CreateChallengeScreen() {
         ))
       )}
 
+      {!challengesLoading && upcomingPublicChallenges.length > 0 && (
+        <>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
+            Upcoming Challenges
+          </Text>
+          {upcomingPublicChallenges.map((challenge, index) => (
+            <PublicChallengeCard
+              key={challenge.id}
+              challenge={challenge}
+              gradientColors={getGradientForIndex(activePublicChallenges.length + index)}
+              onPress={() =>
+                navigation.navigate('ChallengeDetail', {
+                  challengeId: challenge.id,
+                })
+              }
+            />
+          ))}
+        </>
+      )}
+
       {!challengesLoading && completedPublicChallenges.length > 0 && (
         <>
           <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
@@ -617,7 +640,7 @@ export default function CreateChallengeScreen() {
             <PublicChallengeCard
               key={challenge.id}
               challenge={challenge}
-              gradientColors={getGradientForIndex(activePublicChallenges.length + index)}
+              gradientColors={getGradientForIndex(activePublicChallenges.length + upcomingPublicChallenges.length + index)}
               onPress={() =>
                 navigation.navigate('ChallengeDetail', {
                   challengeId: challenge.id,

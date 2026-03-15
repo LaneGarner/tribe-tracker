@@ -732,7 +732,7 @@ export default function ProfileScreen() {
                             </>
                           ) : (
                             <TouchableOpacity
-                              style={[styles.leaveButtonLarge, { borderColor: colors.error }]}
+                              style={[styles.leaveButtonLarge, { backgroundColor: colors.error, borderColor: colors.error }]}
                               onPress={() =>
                                 handleLeaveChallenge(
                                   participation.id,
@@ -740,8 +740,8 @@ export default function ProfileScreen() {
                                 )
                               }
                             >
-                              <Ionicons name="close" size={18} color={colors.error} />
-                              <Text style={[styles.leaveButtonLargeText, { color: colors.error }]}>
+                              <Ionicons name="close" size={18} color="#fff" />
+                              <Text style={[styles.leaveButtonLargeText, { color: '#fff' }]}>
                                 Leave Challenge
                               </Text>
                             </TouchableOpacity>
