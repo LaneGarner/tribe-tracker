@@ -330,11 +330,15 @@ export default function HomeScreen() {
   useEffect(() => {
     if (orderedChallenges.length > 0 && !selectedChallengeId) {
       setSelectedChallengeId(orderedChallenges[0].id);
-    } else if (orderedChallenges.length > 0 && selectedChallengeId && !userChallengeIds.has(selectedChallengeId)) {
-      // Reset if selected challenge is no longer in user's list
+    } else if (
+      orderedChallenges.length > 0 &&
+      selectedChallengeId &&
+      !orderedChallenges.some(c => c.id === selectedChallengeId)
+    ) {
+      // Reset if selected challenge was deleted or is no longer active/upcoming
       setSelectedChallengeId(orderedChallenges[0].id);
     }
-  }, [orderedChallenges, selectedChallengeId, userChallengeIds]);
+  }, [orderedChallenges, selectedChallengeId]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -887,7 +891,7 @@ export default function HomeScreen() {
               importantForAccessibility="no-hide-descendants"
             />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              Ready to start your first challenge?
+              Ready to start your next challenge?
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
               Build habits with friends. Challenges keep you accountable and on track.
