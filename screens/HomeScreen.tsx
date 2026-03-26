@@ -226,6 +226,13 @@ export default function HomeScreen() {
     extrapolate: 'clamp',
   });
 
+  // Text container collapses when outside ScrollView (background image mode)
+  const textContainerHeight = scrollYLayout.interpolate({
+    inputRange: [0, 40],
+    outputRange: [48, 0],
+    extrapolate: 'clamp',
+  });
+
 
   // Load data on mount - storage first, then server
   useEffect(() => {
@@ -563,6 +570,123 @@ export default function HomeScreen() {
     elevation: 2,
   } : null;
 
+  const pillsSection = orderedChallenges.length > 1 ? (
+    <View
+      style={[
+        styles.stickyCarouselContainer,
+        {
+          backgroundColor: backgroundImage ? 'transparent' : colors.background,
+          ...(backgroundImage ? {
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colorScheme === 'dark'
+              ? 'rgba(255, 255, 255, 0.15)'
+              : 'rgba(0, 0, 0, 0.1)',
+          } : {}),
+        },
+      ]}
+      onLayout={(event) => {
+        carouselLayoutYRef.current = event.nativeEvent.layout.y;
+      }}
+    >
+      <View style={styles.selectorHeader}>
+        <View style={[pillStyle, { flexDirection: 'row', alignItems: 'center' }]}>
+          <Text style={[styles.selectorTitle, { color: colors.text }]}>
+            Challenges
+          </Text>
+          <View ref={helpButtonRef}>
+          <TouchableOpacity
+            onPress={() => {
+              if (showHelpTooltip) {
+                setShowHelpTooltip(false);
+              } else {
+                helpButtonRef.current?.measureInWindow((buttonX, buttonY, buttonWidth, buttonHeight) => {
+                  const isSticky = backgroundImage ? true : scrollOffsetRef.current > carouselLayoutYRef.current;
+                  const minStickyY = insets.top + 30;
+                  const correctedY = isSticky ? Math.max(buttonY, minStickyY) : buttonY;
+                  setHelpButtonPosition({ x: buttonX, y: correctedY, width: buttonWidth, height: buttonHeight });
+                  setShowHelpTooltip(true);
+                });
+              }
+            }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.helpButton}
+            accessibilityLabel="Help"
+            accessibilityRole="button"
+          >
+            <Ionicons name="help-circle-outline" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+        </View>
+      </View>
+      {isExpoGo || !DraggableFlatList ? (
+        <ScrollView
+          ref={pillsScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.challengeSelector}
+          contentContainerStyle={styles.challengeSelectorContent}
+        >
+          {orderedChallenges.map((challenge, index) => (
+            <ChallengeChip
+              key={challenge.id}
+              name={challenge.name}
+              isSelected={selectedChallengeId === challenge.id}
+              onPress={() => {
+                setSelectedChallengeId(challenge.id);
+                scrollPillIntoView(challenge.id, index);
+              }}
+              onLayout={(e) => {
+                pillPositions.current[challenge.id] = {
+                  x: e.nativeEvent.layout.x,
+                  width: e.nativeEvent.layout.width,
+                };
+              }}
+              showArrows
+              onMoveLeft={() => moveChallengeLeft(challenge.id)}
+              onMoveRight={() => moveChallengeRight(challenge.id)}
+              isFirst={index === 0}
+              isLast={index === orderedChallenges.length - 1}
+            />
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={styles.challengeSelector}>
+          <DraggableFlatList
+            ref={pillsScrollRef}
+            horizontal
+            data={orderedChallenges}
+            keyExtractor={(item: Challenge) => item.id}
+            onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.challengeSelectorContent}
+            renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
+              const isSelected = selectedChallengeId === challenge.id;
+              const content = (
+                <ChallengeChip
+                  name={challenge.name}
+                  isSelected={isSelected}
+                  onPress={() => {
+                    setSelectedChallengeId(challenge.id);
+                    scrollPillIntoView(challenge.id, getIndex() ?? 0);
+                  }}
+                  onLongPress={drag}
+                  disabled={isActive}
+                  onLayout={(e) => {
+                    pillPositions.current[challenge.id] = {
+                      x: e.nativeEvent.layout.x,
+                      width: e.nativeEvent.layout.width,
+                    };
+                  }}
+                />
+              );
+              return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
+            }}
+          />
+        </View>
+      )}
+    </View>
+  ) : null;
+
   const screenContent = (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {backgroundImage && (
@@ -585,7 +709,7 @@ export default function HomeScreen() {
         edges={['top']}
       >
       {/* Sticky logo header */}
-      <Animated.View style={[styles.stickyHeader, { backgroundColor: colors.background, height: headerHeight }]}>
+      <Animated.View style={[styles.stickyHeader, { backgroundColor: backgroundImage ? 'transparent' : colors.background, height: headerHeight }]}>
         <Animated.View style={{ transform: [{ scale: logoScale }] }}>
           <Image
             source={require('../assets/images/TT-logo.png')}
@@ -593,6 +717,16 @@ export default function HomeScreen() {
           />
         </Animated.View>
       </Animated.View>
+
+      {/* Text + pills outside ScrollView when background image - content clips at ScrollView top edge */}
+      {backgroundImage && (
+        <Animated.View style={{ height: textContainerHeight, overflow: 'hidden', transform: [{ translateY: -6 }], paddingHorizontal: 20, zIndex: 12 }}>
+          <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 4 }]}>
+            TribeTracker
+          </Animated.Text>
+        </Animated.View>
+      )}
+      {backgroundImage && pillsSection}
 
       <Animated.ScrollView
         style={styles.scrollView}
@@ -608,127 +742,19 @@ export default function HomeScreen() {
           scrollYLayout.setValue(offsetY);
         }}
         scrollEventThrottle={16}
-        stickyHeaderIndices={orderedChallenges.length > 1 ? [1] : undefined}
+        stickyHeaderIndices={!backgroundImage && orderedChallenges.length > 1 ? [1] : undefined}
       >
-        {/* TribeTracker text - scrolls away and fades */}
-        <View style={{ backgroundColor: colors.background }}>
-          <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity }]}>
-            TribeTracker
-          </Animated.Text>
-          <Animated.Text style={[styles.logoSubtitle, { color: colors.textSecondary, opacity: textOpacity }]}>
-            Build your streak today.
-          </Animated.Text>
-        </View>
-
-        {/* Challenge selector - sticks to top when scrolling */}
-        {orderedChallenges.length > 1 && (
-          <View
-            style={[styles.stickyCarouselContainer, { backgroundColor: colors.background }]}
-            onLayout={(event) => {
-              carouselLayoutYRef.current = event.nativeEvent.layout.y;
-            }}
-          >
-            <View style={styles.selectorHeader}>
-              <Text style={[styles.selectorTitle, { color: colors.text }]}>
-                Challenges
-              </Text>
-              <View ref={helpButtonRef}>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (showHelpTooltip) {
-                      setShowHelpTooltip(false);
-                    } else {
-                      helpButtonRef.current?.measureInWindow((buttonX, buttonY, buttonWidth, buttonHeight) => {
-                        // When sticky, measureInWindow can return incorrect Y values
-                        // Use a minimum Y based on where the sticky header actually appears
-                        const isSticky = scrollOffsetRef.current > carouselLayoutYRef.current;
-                        // When sticky: safe area + collapsed header height (30)
-                        const minStickyY = insets.top + 30;
-                        const correctedY = isSticky ? Math.max(buttonY, minStickyY) : buttonY;
-                        setHelpButtonPosition({ x: buttonX, y: correctedY, width: buttonWidth, height: buttonHeight });
-                        setShowHelpTooltip(true);
-                      });
-                    }
-                  }}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={styles.helpButton}
-                  accessibilityLabel="Help"
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="help-circle-outline" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-            {isExpoGo || !DraggableFlatList ? (
-              // Expo Go: arrows inside chips for reordering
-              <ScrollView
-                ref={pillsScrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.challengeSelector}
-                contentContainerStyle={styles.challengeSelectorContent}
-              >
-                {orderedChallenges.map((challenge, index) => (
-                  <ChallengeChip
-                    key={challenge.id}
-                    name={challenge.name}
-                    isSelected={selectedChallengeId === challenge.id}
-                    onPress={() => {
-                      setSelectedChallengeId(challenge.id);
-                      scrollPillIntoView(challenge.id, index);
-                    }}
-                    onLayout={(e) => {
-                      pillPositions.current[challenge.id] = {
-                        x: e.nativeEvent.layout.x,
-                        width: e.nativeEvent.layout.width,
-                      };
-                    }}
-                    showArrows
-                    onMoveLeft={() => moveChallengeLeft(challenge.id)}
-                    onMoveRight={() => moveChallengeRight(challenge.id)}
-                    isFirst={index === 0}
-                    isLast={index === orderedChallenges.length - 1}
-                  />
-                ))}
-              </ScrollView>
-            ) : (
-              // Production build: draggable with long press
-              <View style={styles.challengeSelector}>
-                <DraggableFlatList
-                  ref={pillsScrollRef}
-                  horizontal
-                  data={orderedChallenges}
-                  keyExtractor={(item: Challenge) => item.id}
-                  onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.challengeSelectorContent}
-                  renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
-                    const isSelected = selectedChallengeId === challenge.id;
-                    const content = (
-                      <ChallengeChip
-                        name={challenge.name}
-                        isSelected={isSelected}
-                        onPress={() => {
-                          setSelectedChallengeId(challenge.id);
-                          scrollPillIntoView(challenge.id, getIndex() ?? 0);
-                        }}
-                        onLongPress={drag}
-                        disabled={isActive}
-                        onLayout={(e) => {
-                          pillPositions.current[challenge.id] = {
-                            x: e.nativeEvent.layout.x,
-                            width: e.nativeEvent.layout.width,
-                          };
-                        }}
-                      />
-                    );
-                    return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
-                  }}
-                />
-              </View>
-            )}
+        {/* TribeTracker text - scrolls away and fades (inside ScrollView only when no background) */}
+        {!backgroundImage && (
+          <View style={{ backgroundColor: colors.background, transform: [{ translateY: -6 }] }}>
+            <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 4 }]}>
+              TribeTracker
+            </Animated.Text>
           </View>
         )}
+
+        {/* Challenge selector - inside ScrollView only when no background image */}
+        {!backgroundImage && pillsSection}
 
         {/* Selected challenge card */}
         {isInitialLoad ? (
