@@ -570,7 +570,11 @@ export default function HomeScreen() {
     shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
     shadowRadius: 4,
     elevation: 2,
-  } : null;
+  } : {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start' as const,
+  };
 
   const pillsSection = orderedChallenges.length > 1 ? (
     <View
@@ -748,7 +752,7 @@ export default function HomeScreen() {
       >
         {/* TribeTracker text - scrolls away and fades (inside ScrollView only when no background) */}
         {!backgroundImage && (
-          <View style={{ backgroundColor: colors.background, transform: [{ translateY: -6 }], paddingHorizontal: 20 }}>
+          <View style={{ backgroundColor: colors.background, transform: [{ translateY: -6 }], paddingHorizontal: 20, height: 48 }}>
             <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 4 }]}>
               TribeTracker
             </Animated.Text>
