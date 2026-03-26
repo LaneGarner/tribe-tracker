@@ -809,18 +809,18 @@ export default function HomeScreen() {
                   style={[
                     styles.leaderboardLink,
                     pillStyle,
-                    backgroundImage && { paddingHorizontal: 20, paddingVertical: 12, alignSelf: 'center' as const },
+                    { paddingHorizontal: 20, paddingVertical: 12, alignSelf: 'center' as const },
                   ]}
                   onPress={() => navigation.navigate('Leaderboard', { challengeId: selectedChallengeId || undefined })}
                   activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel="View leaderboard"
                 >
-                  <Ionicons name="trophy" size={18} color={colorScheme === 'dark' ? '#FFFFFF' : colors.primary} />
-                  <Text style={[styles.leaderboardLinkText, { color: colorScheme === 'dark' ? '#FFFFFF' : colors.primary }]}>
+                  <Ionicons name="trophy" size={18} color={colorScheme === 'dark' ? '#FFFFFF' : colors.text} />
+                  <Text style={[styles.leaderboardLinkText, { color: colorScheme === 'dark' ? '#FFFFFF' : colors.text }]}>
                     View Leaderboard
                   </Text>
-                  <Ionicons name="chevron-forward" size={16} color={colorScheme === 'dark' ? '#FFFFFF' : colors.primary} />
+                  <Ionicons name="chevron-forward" size={16} color={colorScheme === 'dark' ? '#FFFFFF' : colors.text} />
                 </TouchableOpacity>
                 {/* Swipeable date section */}
                 <View style={styles.dateSection}>
