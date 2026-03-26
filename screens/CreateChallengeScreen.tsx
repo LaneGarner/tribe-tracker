@@ -54,6 +54,7 @@ import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '.
 import Toggle from '../components/Toggle';
 import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 import { pickImage, uploadChallengeBackground, deleteChallengeBackground } from '../utils/imageUpload';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
@@ -80,13 +81,14 @@ export default function CreateChallengeScreen() {
   );
   const isEditMode = Boolean(editChallengeId && existingChallenge);
   const isActiveChallenge = existingChallenge?.status === 'active';
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
   // Fetch public challenges when in browse mode
   useEffect(() => {
     if (mode === 'browse') {
       const token = getAccessToken();
       if (token) {
-        dispatch(fetchPublicChallenges(token));
+        dispatch(fetchPublicChallenges(token)).finally(() => setInitialFetchDone(true));
       }
     }
   }, [mode, dispatch, getAccessToken]);
@@ -583,7 +585,7 @@ export default function CreateChallengeScreen() {
         Public Challenges
       </Text>
 
-      {challengesLoading ? (
+      {!initialFetchDone && challengesLoading ? (
         <PublicChallengeListSkeleton count={3} />
       ) : activePublicChallenges.length === 0 ? (
         <View style={styles.emptyState}>
@@ -1141,6 +1143,7 @@ export default function CreateChallengeScreen() {
         {mode === 'browse' && renderBrowse()}
         {mode === 'join' && renderJoin()}
       </ScrollView>
+      <TabBarGradientFade />
     </SafeAreaView>
   );
 }
@@ -1169,6 +1172,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   actionButtons: {
     flexDirection: 'row',

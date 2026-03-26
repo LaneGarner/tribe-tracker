@@ -116,7 +116,9 @@ const challengesSlice = createSlice({
   extraReducers: builder => {
     builder
       .addCase(loadChallengesFromStorage.pending, state => {
-        state.loading = true;
+        if (state.data.length === 0) {
+          state.loading = true;
+        }
       })
       .addCase(loadChallengesFromStorage.fulfilled, (state, action) => {
         state.data = action.payload;
@@ -127,7 +129,9 @@ const challengesSlice = createSlice({
         state.loading = false;
       })
       .addCase(fetchChallengesFromServer.pending, state => {
-        state.loading = true;
+        if (state.data.length === 0) {
+          state.loading = true;
+        }
       })
       .addCase(fetchChallengesFromServer.fulfilled, (state, action) => {
         state.data = action.payload;
@@ -139,7 +143,9 @@ const challengesSlice = createSlice({
         state.loading = false;
       })
       .addCase(fetchPublicChallenges.pending, state => {
-        state.loading = true;
+        if (state.data.length === 0) {
+          state.loading = true;
+        }
       })
       .addCase(fetchPublicChallenges.fulfilled, (state, action) => {
         // Merge public challenges with existing ones (avoid duplicates)

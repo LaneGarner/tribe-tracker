@@ -8,18 +8,21 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import CreateChallengeScreen from '../screens/CreateChallengeScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import MenuScreen from '../screens/MenuScreen';
+import ChatScreen from '../screens/ChatScreen';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { TabParamList } from '../types';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { selectTotalUnreadCount } from '../redux/slices/chatSlice';
+import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -28,6 +31,7 @@ const TAB_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; size: nu
   Home: { icon: 'home', size: 22 },
   Challenges: { icon: 'flag', size: 22 },
   Leaderboard: { icon: 'trophy', size: 22 },
+  Chat: { icon: 'chatbubble', size: 22 },
   Menu: { icon: 'menu', size: 26 },
 };
 
@@ -36,20 +40,94 @@ const TIMING_CONFIG = {
   easing: Easing.out(Easing.cubic),
 };
 
-const EXPAND_SPRING_CONFIG = {
-  damping: 7,
-  stiffness: 300,
-  mass: 0.4,
-};
-
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 500;
 
 const TAB_BAR_PADDING = 0;
 const SELECTION_PILL_PADDING = 6;
-const SELECTION_PILL_HORIZONTAL_INSET = 4;  // Original default inset from tab edges
-const MIN_CONTENT_PADDING = 20;              // Minimum padding around content
+const PILL_HORIZONTAL_PADDING = 16; // padding on each side of content
+const MIN_PILL_WIDTH = 72;
 
+
+// Tab button component
+const TabButton = ({
+  route,
+  index,
+  isFocused,
+  iconConfig,
+  label,
+  colors,
+  totalUnread,
+  accessibilityLabel,
+  onPress,
+  onLongPress,
+  onTabLayout,
+  onContentLayout,
+}: {
+  route: { key: string; name: string };
+  index: number;
+  isFocused: boolean;
+  iconConfig: { icon: keyof typeof Ionicons.glyphMap; size: number };
+  label: string;
+  colors: ReturnType<typeof getColors>;
+  totalUnread: number;
+  accessibilityLabel?: string;
+  onPress: () => void;
+  onLongPress: () => void;
+  onTabLayout: (index: number, x: number, width: number) => void;
+  onContentLayout: (index: number, width: number) => void;
+}) => {
+
+  return (
+    <TouchableOpacity
+      key={route.key}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isFocused }}
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      hitSlop={{ top: 20, bottom: 20, left: 8, right: 8 }}
+      style={styles.tabButton}
+      onLayout={(e) => {
+        const { x, width } = e.nativeEvent.layout;
+        onTabLayout(index, x, width);
+      }}
+    >
+      <View
+        style={styles.tabButtonContent}
+        onLayout={(e) => {
+          onContentLayout(index, e.nativeEvent.layout.width);
+        }}
+      >
+        <View style={styles.iconContainer}>
+          <Ionicons
+            name={iconConfig.icon}
+            size={iconConfig.size}
+            color={isFocused ? colors.tabBarActive : colors.tabBarInactive}
+          />
+          {route.name === 'Chat' && totalUnread > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text
+          style={[
+            styles.tabLabel,
+            {
+              color: isFocused ? colors.tabBarActive : colors.tabBarInactive,
+              fontWeight: isFocused ? '700' : '500',
+            },
+          ]}
+        >
+          {typeof label === 'string' ? label : route.name}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 // Selection indicator component for the floating pill
 const SelectionIndicator = ({
@@ -82,12 +160,26 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const insets = useSafeAreaInsets();
+  const totalUnread = useSelector(selectTotalUnreadCount);
 
   // Track tab widths and positions for the sliding indicator
   const tabWidths = useRef<number[]>([]);
   const tabPositions = useRef<number[]>([]);
   const contentWidths = useRef<number[]>([]);
   const [indicatorReady, setIndicatorReady] = useState(false);
+
+  // Reset indicator measurements when tab count changes (feature flag toggle)
+  const routeCount = state.routes.length;
+  const prevRouteCount = useRef(routeCount);
+  useEffect(() => {
+    if (prevRouteCount.current !== routeCount) {
+      prevRouteCount.current = routeCount;
+      setIndicatorReady(false);
+      tabWidths.current = [];
+      tabPositions.current = [];
+      contentWidths.current = [];
+    }
+  }, [routeCount]);
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
 
@@ -99,49 +191,23 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
     }
   };
 
-  // Calculate indicator position - uses default size, expands if content too tight
+  // Calculate indicator position - sized to content with padding
   const calculateIndicatorPosition = (index: number, animate: boolean) => {
     const tabX = tabPositions.current[index];
     const tabWidth = tabWidths.current[index];
     const contentWidth = contentWidths.current[index];
 
-    if (tabX === undefined || tabWidth === undefined) return;
+    if (tabX === undefined || tabWidth === undefined || contentWidth === undefined) return;
 
-    // Default pill size (original behavior - minimum size)
-    const defaultPillX = tabX + SELECTION_PILL_HORIZONTAL_INSET;
-    const defaultPillWidth = tabWidth - SELECTION_PILL_HORIZONTAL_INSET * 2;
-
-    // Check if content needs more room
-    let finalPillX = defaultPillX;
-    let finalPillWidth = defaultPillWidth;
-
-    if (contentWidth !== undefined) {
-      const currentPadding = (defaultPillWidth - contentWidth) / 2;
-
-      if (currentPadding < MIN_CONTENT_PADDING) {
-        // Content too tight - expand pill
-        finalPillWidth = contentWidth + MIN_CONTENT_PADDING * 2;
-        const contentX = tabX + (tabWidth - contentWidth) / 2;
-        finalPillX = contentX - MIN_CONTENT_PADDING;
-      }
-    }
+    const pillWidth = Math.max(contentWidth + PILL_HORIZONTAL_PADDING * 2, MIN_PILL_WIDTH);
+    const pillX = tabX + (tabWidth - pillWidth) / 2;
 
     if (animate) {
-      // Animate to default first
-      indicatorX.value = withTiming(defaultPillX, TIMING_CONFIG);
-      indicatorWidth.value = withTiming(defaultPillWidth, TIMING_CONFIG);
-
-      // If expansion needed, animate after landing with bounce
-      if (finalPillX !== defaultPillX || finalPillWidth !== defaultPillWidth) {
-        setTimeout(() => {
-          indicatorX.value = withSpring(finalPillX, EXPAND_SPRING_CONFIG);
-          indicatorWidth.value = withSpring(finalPillWidth, EXPAND_SPRING_CONFIG);
-        }, TIMING_CONFIG.duration);
-      }
+      indicatorX.value = withTiming(pillX, TIMING_CONFIG);
+      indicatorWidth.value = withTiming(pillWidth, TIMING_CONFIG);
     } else {
-      // Initial render - set final values immediately (no two-phase on load)
-      indicatorX.value = finalPillX;
-      indicatorWidth.value = finalPillWidth;
+      indicatorX.value = pillX;
+      indicatorWidth.value = pillWidth;
     }
   };
 
@@ -216,7 +282,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
       {/* Tab buttons */}
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
-        const label = options.tabBarLabel ?? options.title ?? route.name;
+        const label = (options.tabBarLabel ?? options.title ?? route.name) as string;
         const isFocused = state.index === index;
         const iconConfig = TAB_ICONS[route.name] || TAB_ICONS.Home;
 
@@ -239,48 +305,35 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
           });
         };
 
+        const a11yLabel = route.name === 'Chat' && totalUnread > 0
+          ? `Chat, ${totalUnread} unread message${totalUnread === 1 ? '' : 's'}`
+          : options.tabBarAccessibilityLabel;
+
         return (
-          <TouchableOpacity
+          <TabButton
             key={route.key}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
+            route={route}
+            index={index}
+            isFocused={isFocused}
+            iconConfig={iconConfig}
+            label={label}
+            colors={colors}
+            totalUnread={totalUnread}
+            accessibilityLabel={a11yLabel}
             onPress={onPress}
             onLongPress={onLongPress}
-            hitSlop={{ top: 20, bottom: 20, left: 8, right: 8 }}
-            style={styles.tabButton}
-            onLayout={(e) => {
-              const { x, width } = e.nativeEvent.layout;
-              handleTabLayout(index, x, width);
-            }}
-          >
-            <View
-              style={styles.tabButtonContent}
-              onLayout={(e) => {
-                handleContentLayout(index, e.nativeEvent.layout.width);
-              }}
-            >
-              <View style={styles.iconContainer}>
-                <Ionicons
-                  name={iconConfig.icon}
-                  size={iconConfig.size}
-                  color={isFocused ? colors.primary : colors.tabBarInactive}
-                />
-              </View>
-              <Text
-                style={[
-                  styles.tabLabel,
-                  { color: isFocused ? colors.primary : colors.tabBarInactive },
-                ]}
-              >
-                {typeof label === 'string' ? label : route.name}
-              </Text>
-            </View>
-          </TouchableOpacity>
+            onTabLayout={handleTabLayout}
+            onContentLayout={handleContentLayout}
+          />
         );
       })}
     </View>
   );
+
+  // Check if the active screen has a custom background image
+  const activeRoute = state.routes[state.index];
+  const activeDescriptor = descriptors[activeRoute.key];
+  const hasBackgroundImage = (activeDescriptor?.options as any)?.hasBackgroundImage ?? false;
 
   const containerStyle = [
     styles.tabBarContainer,
@@ -297,13 +350,13 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
             {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.15,
+              shadowOpacity: colorScheme === 'dark' ? 0.4 : (hasBackgroundImage ? 0.4 : 0.15),
               shadowRadius: 12,
             },
           ]}
         >
           <BlurView
-            intensity={50}
+            intensity={80}
             tint="default"
             style={styles.tabBar}
           >
@@ -311,8 +364,8 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
               styles.frostedOverlay,
               {
                 backgroundColor: colorScheme === 'dark'
-                  ? 'rgba(30, 30, 30, 0.8)'
-                  : 'rgba(255, 255, 255, 0.75)'
+                  ? 'rgba(20, 20, 20, 0.88)'
+                  : 'rgba(255, 255, 255, 0.85)'
               }
             ]}>
               <TabBarContent />
@@ -326,7 +379,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   // Android translucent fallback
   return (
     <GestureDetector gesture={panGesture}>
-      <View style={[containerStyle, { elevation: 8 }]}>
+      <View style={[containerStyle, { elevation: hasBackgroundImage ? 16 : 8 }]}>
         <View style={[
           styles.tabBar,
           {
@@ -348,8 +401,8 @@ const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
     bottom: 0,
-    left: '5%',
-    right: '5%',
+    left: '2%',
+    right: '2%',
   },
   tabBar: {
     borderRadius: 100,
@@ -358,11 +411,11 @@ const styles = StyleSheet.create({
   },
   frostedOverlay: {
     borderRadius: 100,
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
   },
   tabBarContent: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
     position: 'relative',
   },
@@ -391,6 +444,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  tabBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   tabLabel: {
     fontSize: 11,
     marginTop: 4,
@@ -401,6 +471,7 @@ const styles = StyleSheet.create({
 export default function TabNavigator() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+  const [chatTabEnabled] = useFeatureFlag(FEATURE_FLAGS.CHAT_TAB, true);
 
   return (
     <Tab.Navigator
@@ -442,6 +513,16 @@ export default function TabNavigator() {
           tabBarLabel: 'Leaderboards',
         }}
       />
+      {chatTabEnabled && (
+        <Tab.Screen
+          name="Chat"
+          component={ChatScreen}
+          options={{
+            title: 'Chat',
+            tabBarLabel: 'Chat',
+          }}
+        />
+      )}
       <Tab.Screen
         name="Menu"
         component={MenuScreen}

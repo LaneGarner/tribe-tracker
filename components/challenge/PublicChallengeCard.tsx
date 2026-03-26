@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Challenge } from '../../types';
@@ -47,6 +48,109 @@ export default function PublicChallengeCard({
 
   const colors = gradientColors || CARD_GRADIENTS[0];
 
+  const cardContent = (
+    <>
+      {/* Header with title */}
+      <View style={styles.header}>
+        <View style={styles.titleSection}>
+          <Text style={styles.name} numberOfLines={2}>
+            {challenge.name}
+          </Text>
+          {challenge.creatorName && (
+            <Text style={styles.creator}>
+              by {challenge.creatorName}
+            </Text>
+          )}
+        </View>
+        <View style={styles.chevronContainer}>
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
+        </View>
+      </View>
+
+      {/* Stats row */}
+      <View style={styles.statsRow}>
+        <View style={styles.statItem}>
+          <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.statText}>{challenge.durationDays} days</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Ionicons name="checkbox-outline" size={16} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.statText}>{challenge.habits.length} habits</Text>
+        </View>
+        {challenge.participantCount !== undefined && challenge.participantCount > 0 && (
+          <View style={styles.statItem}>
+            <Ionicons name="people-outline" size={16} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.statText}>{challenge.participantCount}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Status badge */}
+      <View style={styles.statusRow}>
+        {status === 'active' && (
+          <>
+            <View style={styles.statusBadge}>
+              <View style={styles.activeDot} />
+              <Text style={styles.statusText}>Active</Text>
+            </View>
+            {daysRemaining > 0 && (
+              <Text style={styles.daysRemaining}>
+                {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left
+              </Text>
+            )}
+          </>
+        )}
+        {status === 'upcoming' && (
+          <View style={styles.statusBadge}>
+            <Ionicons name="time-outline" size={12} color="#fff" />
+            <Text style={styles.statusText}>Starting soon</Text>
+          </View>
+        )}
+        {status === 'completed' && (
+          <View style={styles.statusBadge}>
+            <Ionicons name="checkmark-circle-outline" size={12} color="#fff" />
+            <Text style={styles.statusText}>Completed</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Progress bar for active challenges */}
+      {status === 'active' && (
+        <View style={styles.progressBar}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${progressPercent}%` },
+            ]}
+          />
+        </View>
+      )}
+    </>
+  );
+
+  if (challenge.backgroundImageUrl) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
+        <View style={styles.imageContainer}>
+          <ExpoImage
+            source={{ uri: challenge.backgroundImageUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            cachePolicy="disk"
+          />
+          <LinearGradient
+            colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.65)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.scrim}
+          >
+            {cardContent}
+          </LinearGradient>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
       <LinearGradient
@@ -55,81 +159,7 @@ export default function PublicChallengeCard({
         end={{ x: 1, y: 1 }}
         style={styles.container}
       >
-        {/* Header with title */}
-        <View style={styles.header}>
-          <View style={styles.titleSection}>
-            <Text style={styles.name} numberOfLines={2}>
-              {challenge.name}
-            </Text>
-            {challenge.creatorName && (
-              <Text style={styles.creator}>
-                by {challenge.creatorName}
-              </Text>
-            )}
-          </View>
-          <View style={styles.chevronContainer}>
-            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
-          </View>
-        </View>
-
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.statText}>{challenge.durationDays} days</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons name="checkbox-outline" size={16} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.statText}>{challenge.habits.length} habits</Text>
-          </View>
-          {challenge.participantCount !== undefined && challenge.participantCount > 0 && (
-            <View style={styles.statItem}>
-              <Ionicons name="people-outline" size={16} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.statText}>{challenge.participantCount}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Status badge */}
-        <View style={styles.statusRow}>
-          {status === 'active' && (
-            <>
-              <View style={styles.statusBadge}>
-                <View style={styles.activeDot} />
-                <Text style={styles.statusText}>Active</Text>
-              </View>
-              {daysRemaining > 0 && (
-                <Text style={styles.daysRemaining}>
-                  {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left
-                </Text>
-              )}
-            </>
-          )}
-          {status === 'upcoming' && (
-            <View style={styles.statusBadge}>
-              <Ionicons name="time-outline" size={12} color="#fff" />
-              <Text style={styles.statusText}>Starting soon</Text>
-            </View>
-          )}
-          {status === 'completed' && (
-            <View style={styles.statusBadge}>
-              <Ionicons name="checkmark-circle-outline" size={12} color="#fff" />
-              <Text style={styles.statusText}>Completed</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Progress bar for active challenges */}
-        {status === 'active' && (
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${progressPercent}%` },
-              ]}
-            />
-          </View>
-        )}
+        {cardContent}
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -140,6 +170,14 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     marginBottom: 12,
+  },
+  imageContainer: {
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  scrim: {
+    padding: 16,
   },
   header: {
     flexDirection: 'row',

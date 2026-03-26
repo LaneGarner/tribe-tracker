@@ -56,7 +56,9 @@ import DateCarousel from '../components/ui/DateCarousel';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import Skeleton from '../components/ui/Skeleton';
 import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCalendar';
+import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 
@@ -88,10 +90,8 @@ export default function HomeScreen() {
     dayjs(getToday()).format('YYYY-MM')
   );
   const [challengeOrder, setChallengeOrder] = useState<string[]>([]);
-  const [showHelpTooltip, setShowHelpTooltip] = useState(false);
-  const [helpButtonPosition, setHelpButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const helpButtonRef = useRef<View>(null);
   const scrollOffsetRef = useRef(0);
+  const scrollViewRef = useRef<any>(null);
   const carouselLayoutYRef = useRef(0);
 
   // Ref for swipeable animations
@@ -100,6 +100,8 @@ export default function HomeScreen() {
   const challengeSwipeRef = useRef<SwipeableViewRef>(null);
   const pillsScrollRef = useRef<ScrollView | any>(null);
   const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
+  const hasAutoSelected = useRef(false);
+  const [challengeCalendarMode] = useFeatureFlag(FEATURE_FLAGS.CHALLENGE_CALENDAR, true);
 
   // Points badge swipe state
   const [badgeHidden, setBadgeHidden] = useState(false);
@@ -214,18 +216,43 @@ export default function HomeScreen() {
 
   // Logo scales from 1 to 0.6 over first 80px of scroll
   const logoScale = scrollY.interpolate({
-    inputRange: [0, 80],
+    inputRange: [0, 40],
     outputRange: [1, 0.6],
     extrapolate: 'clamp',
   });
 
   // Header height shrinks as logo shrinks (uses JS driver since height can't use native)
   const headerHeight = scrollYLayout.interpolate({
-    inputRange: [0, 80],
-    outputRange: [72, 40],
+    inputRange: [0, 40],
+    outputRange: [72, 48],
     extrapolate: 'clamp',
   });
 
+  // Text container collapses when outside ScrollView (background image mode)
+  const textContainerHeight = scrollYLayout.interpolate({
+    inputRange: [0, 40],
+    outputRange: [48, 0],
+    extrapolate: 'clamp',
+  });
+
+  // Snap header when released without velocity (no momentum will follow)
+  const handleScrollEndDrag = useCallback((event: any) => {
+    const velocity = event.nativeEvent.velocity?.y ?? 0;
+    if (Math.abs(velocity) < 0.1) {
+      const offset = scrollOffsetRef.current;
+      if (offset > 0 && offset < 40) {
+        scrollViewRef.current?.scrollTo({ y: offset <= 10 ? 0 : 40, animated: true });
+      }
+    }
+  }, []);
+
+  // Snap header after momentum settles in the animation zone
+  const handleMomentumEnd = useCallback(() => {
+    const offset = scrollOffsetRef.current;
+    if (offset > 0 && offset < 40) {
+      scrollViewRef.current?.scrollTo({ y: offset <= 10 ? 0 : 40, animated: true });
+    }
+  }, []);
 
   // Load data on mount - storage first, then server
   useEffect(() => {
@@ -326,9 +353,10 @@ export default function HomeScreen() {
     }
   }, [orderedChallenges, saveOrder]);
 
-  // Set initial selected challenge - only from user's joined challenges
+  // Set initial selected challenge - always pick first on mount
   useEffect(() => {
-    if (orderedChallenges.length > 0 && !selectedChallengeId) {
+    if (orderedChallenges.length > 0 && !hasAutoSelected.current) {
+      hasAutoSelected.current = true;
       setSelectedChallengeId(orderedChallenges[0].id);
     } else if (
       orderedChallenges.length > 0 &&
@@ -421,14 +449,18 @@ export default function HomeScreen() {
     return colorMap;
   }, [activeChallenges]);
 
-  // Calculate month range from active challenges
+  // Calculate month range scoped to calendar challenges
   const { minMonth, maxMonth } = useMemo(() => {
-    if (activeChallenges.length === 0) return { minMonth: null, maxMonth: null };
+    const scopedChallenges = challengeCalendarMode && selectedChallenge
+      ? [selectedChallenge]
+      : activeChallenges;
 
-    const earliest = activeChallenges.reduce((min, c) =>
-      c.startDate < min ? c.startDate : min, activeChallenges[0].startDate);
+    if (scopedChallenges.length === 0) return { minMonth: null, maxMonth: null };
 
-    const latest = activeChallenges.reduce((max, c) => {
+    const earliest = scopedChallenges.reduce((min, c) =>
+      c.startDate < min ? c.startDate : min, scopedChallenges[0].startDate);
+
+    const latest = scopedChallenges.reduce((max, c) => {
       const end = c.endDate || today;
       return end > max ? end : max;
     }, today);
@@ -437,7 +469,7 @@ export default function HomeScreen() {
       minMonth: dayjs(earliest).format('YYYY-MM'),
       maxMonth: dayjs(latest).format('YYYY-MM'),
     };
-  }, [activeChallenges, today]);
+  }, [challengeCalendarMode, selectedChallenge, activeChallenges, today]);
 
   // Calendar month swipe handlers
   const handleCalendarSwipeLeft = () => {
@@ -465,6 +497,14 @@ export default function HomeScreen() {
     }
   };
 
+  // Clamp displayMonth when challenge scope changes in focused calendar mode
+  useEffect(() => {
+    if (challengeCalendarMode && minMonth && maxMonth) {
+      if (displayMonth < minMonth) setDisplayMonth(minMonth);
+      else if (displayMonth > maxMonth) setDisplayMonth(maxMonth);
+    }
+  }, [challengeCalendarMode, minMonth, maxMonth, selectedChallengeId]);
+
   // Challenge carousel handlers
   const currentChallengeIndex = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
   const canSwipeNextChallenge = currentChallengeIndex < orderedChallenges.length - 1;
@@ -473,22 +513,24 @@ export default function HomeScreen() {
   const scrollPillIntoView = useCallback((challengeId: string, index: number) => {
     if (!pillsScrollRef.current) return;
 
-    // For DraggableFlatList (production builds), use scrollToIndex
     if (pillsScrollRef.current.scrollToIndex) {
-      pillsScrollRef.current.scrollToIndex({
-        index,
-        animated: true,
-        viewPosition: 0.5 // Center the item
-      });
+      if (index === orderedChallenges.length - 1) {
+        pillsScrollRef.current.scrollToEnd({ animated: true });
+      } else {
+        pillsScrollRef.current.scrollToIndex({
+          index,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      }
     } else if (pillsScrollRef.current.scrollTo) {
-      // For ScrollView (Expo Go), use pixel-based scrolling
       const pos = pillPositions.current[challengeId];
       if (pos) {
         const offset = Math.max(0, pos.x - 100);
         pillsScrollRef.current.scrollTo({ x: offset, animated: true });
       }
     }
-  }, []);
+  }, [orderedChallenges.length]);
 
   const handleChallengeSwipeLeft = useCallback(() => {
     // Swipe left = go to next challenge
@@ -514,6 +556,25 @@ export default function HomeScreen() {
   const userCheckins = useMemo(() => {
     return checkins.filter(c => c.userId === user?.id);
   }, [checkins, user?.id]);
+
+  // Calendar data scoped to selected challenge when in focused mode
+  const calendarChallenges = useMemo(() => {
+    if (challengeCalendarMode && selectedChallenge) {
+      return [selectedChallenge];
+    }
+    return activeChallenges;
+  }, [challengeCalendarMode, selectedChallenge, activeChallenges]);
+
+  const calendarCheckins = useMemo(() => {
+    if (challengeCalendarMode && selectedChallengeId) {
+      return userCheckins.filter(c => c.challengeId === selectedChallengeId);
+    }
+    return userCheckins;
+  }, [challengeCalendarMode, selectedChallengeId, userCheckins]);
+
+  const selectedChallengeColor = selectedChallengeId
+    ? challengeColors[selectedChallengeId]
+    : undefined;
 
   // Calculate today's points for the floating badge
   const todayPoints = useMemo(() => {
@@ -541,27 +602,134 @@ export default function HomeScreen() {
 
   const backgroundImage = selectedChallenge?.backgroundImageUrl;
 
+  // Expose background image state to tab bar via screen options
+  useEffect(() => {
+    navigation.setOptions({ hasBackgroundImage: !!backgroundImage });
+  }, [backgroundImage, navigation]);
 
-  const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
+  const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.35)';
+  const onScrimTextColor = backgroundImage ? '#FFFFFF' : colors.text;
+  const onScrimSecondaryColor = backgroundImage ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary;
 
   const pillStyle = backgroundImage ? {
     backgroundColor: colorScheme === 'dark'
       ? 'rgba(24, 24, 27, 0.72)'
-      : 'rgba(255, 255, 255, 0.78)',
+      : 'rgba(255, 255, 255, 0.88)',
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colorScheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(0, 0, 0, 0.08)',
+      : 'rgba(255, 255, 255, 0.25)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     alignSelf: 'flex-start' as const,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.3,
     shadowRadius: 4,
     elevation: 2,
-  } : null;
+  } : {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start' as const,
+  };
+
+  const headerTextStyle = backgroundImage ? {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    textShadowColor: colorScheme === 'dark'
+      ? 'rgba(0, 0, 0, 0.3)'
+      : 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  } : undefined;
+
+  const pillsSection = orderedChallenges.length > 1 ? (
+    <View
+      style={[
+        styles.stickyCarouselContainer,
+        {
+          backgroundColor: backgroundImage ? 'transparent' : colors.background,
+          ...(backgroundImage ? {
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: colorScheme === 'dark'
+              ? 'rgba(255, 255, 255, 0.15)'
+              : 'rgba(255, 255, 255, 0.15)',
+          } : {}),
+        },
+      ]}
+      onLayout={(event) => {
+        carouselLayoutYRef.current = event.nativeEvent.layout.y;
+      }}
+    >
+      {isExpoGo || !DraggableFlatList ? (
+        <ScrollView
+          ref={pillsScrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.challengeSelector}
+          contentContainerStyle={styles.challengeSelectorContent}
+        >
+          {orderedChallenges.map((challenge, index) => (
+            <ChallengeChip
+              key={challenge.id}
+              name={challenge.name}
+              isSelected={selectedChallengeId === challenge.id}
+              onPress={() => {
+                setSelectedChallengeId(challenge.id);
+                scrollPillIntoView(challenge.id, index);
+              }}
+              onLayout={(e) => {
+                pillPositions.current[challenge.id] = {
+                  x: e.nativeEvent.layout.x,
+                  width: e.nativeEvent.layout.width,
+                };
+              }}
+              showArrows
+              onMoveLeft={() => moveChallengeLeft(challenge.id)}
+              onMoveRight={() => moveChallengeRight(challenge.id)}
+              isFirst={index === 0}
+              isLast={index === orderedChallenges.length - 1}
+            />
+          ))}
+        </ScrollView>
+      ) : (
+        <View style={styles.challengeSelector}>
+          <DraggableFlatList
+            ref={pillsScrollRef}
+            horizontal
+            data={orderedChallenges}
+            keyExtractor={(item: Challenge) => item.id}
+            onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.challengeSelectorContent}
+            renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
+              const isSelected = selectedChallengeId === challenge.id;
+              const content = (
+                <ChallengeChip
+                  name={challenge.name}
+                  isSelected={isSelected}
+                  onPress={() => {
+                    setSelectedChallengeId(challenge.id);
+                    scrollPillIntoView(challenge.id, getIndex() ?? 0);
+                  }}
+                  onLongPress={drag}
+                  disabled={isActive}
+                  onLayout={(e) => {
+                    pillPositions.current[challenge.id] = {
+                      x: e.nativeEvent.layout.x,
+                      width: e.nativeEvent.layout.width,
+                    };
+                  }}
+                />
+              );
+              return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
+            }}
+          />
+        </View>
+      )}
+    </View>
+  ) : null;
 
   const screenContent = (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -585,16 +753,27 @@ export default function HomeScreen() {
         edges={['top']}
       >
       {/* Sticky logo header */}
-      <Animated.View style={[styles.stickyHeader, { backgroundColor: colors.background, height: headerHeight }]}>
+      <Animated.View style={[styles.stickyHeader, { backgroundColor: backgroundImage ? 'transparent' : colors.background, height: headerHeight }]}>
         <Animated.View style={{ transform: [{ scale: logoScale }] }}>
           <Image
             source={require('../assets/images/TT-logo.png')}
-            style={[styles.logo, { tintColor: colorScheme === 'dark' ? '#fff' : '#000' }]}
+            style={[styles.logo, { tintColor: backgroundImage ? '#fff' : (colorScheme === 'dark' ? '#fff' : '#000') }]}
           />
         </Animated.View>
       </Animated.View>
 
+      {/* Text + pills outside ScrollView when background image - content clips at ScrollView top edge */}
+      {backgroundImage && (
+        <Animated.View style={{ height: textContainerHeight, overflow: 'hidden', transform: [{ translateY: -10 }], paddingHorizontal: 20, zIndex: 12 }}>
+          <Animated.Text style={[styles.logoText, { color: onScrimTextColor, opacity: textOpacity, marginBottom: 0 }]}>
+            TribeTracker
+          </Animated.Text>
+        </Animated.View>
+      )}
+      {backgroundImage && pillsSection}
+
       <Animated.ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -607,128 +786,22 @@ export default function HomeScreen() {
           scrollY.setValue(offsetY);
           scrollYLayout.setValue(offsetY);
         }}
+        onScrollEndDrag={handleScrollEndDrag}
+        onMomentumScrollEnd={handleMomentumEnd}
         scrollEventThrottle={16}
-        stickyHeaderIndices={orderedChallenges.length > 1 ? [1] : undefined}
+        stickyHeaderIndices={!backgroundImage && orderedChallenges.length > 1 ? [1] : undefined}
       >
-        {/* TribeTracker text - scrolls away and fades */}
-        <View style={{ backgroundColor: colors.background }}>
-          <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity }]}>
-            TribeTracker
-          </Animated.Text>
-          <Animated.Text style={[styles.logoSubtitle, { color: colors.textSecondary, opacity: textOpacity }]}>
-            Build your streak today.
-          </Animated.Text>
-        </View>
-
-        {/* Challenge selector - sticks to top when scrolling */}
-        {orderedChallenges.length > 1 && (
-          <View
-            style={[styles.stickyCarouselContainer, { backgroundColor: colors.background }]}
-            onLayout={(event) => {
-              carouselLayoutYRef.current = event.nativeEvent.layout.y;
-            }}
-          >
-            <View style={styles.selectorHeader}>
-              <Text style={[styles.selectorTitle, { color: colors.text }]}>
-                Challenges
-              </Text>
-              <View ref={helpButtonRef}>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (showHelpTooltip) {
-                      setShowHelpTooltip(false);
-                    } else {
-                      helpButtonRef.current?.measureInWindow((buttonX, buttonY, buttonWidth, buttonHeight) => {
-                        // When sticky, measureInWindow can return incorrect Y values
-                        // Use a minimum Y based on where the sticky header actually appears
-                        const isSticky = scrollOffsetRef.current > carouselLayoutYRef.current;
-                        // When sticky: safe area + collapsed header height (30)
-                        const minStickyY = insets.top + 30;
-                        const correctedY = isSticky ? Math.max(buttonY, minStickyY) : buttonY;
-                        setHelpButtonPosition({ x: buttonX, y: correctedY, width: buttonWidth, height: buttonHeight });
-                        setShowHelpTooltip(true);
-                      });
-                    }
-                  }}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={styles.helpButton}
-                  accessibilityLabel="Help"
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="help-circle-outline" size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-            {isExpoGo || !DraggableFlatList ? (
-              // Expo Go: arrows inside chips for reordering
-              <ScrollView
-                ref={pillsScrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.challengeSelector}
-                contentContainerStyle={styles.challengeSelectorContent}
-              >
-                {orderedChallenges.map((challenge, index) => (
-                  <ChallengeChip
-                    key={challenge.id}
-                    name={challenge.name}
-                    isSelected={selectedChallengeId === challenge.id}
-                    onPress={() => {
-                      setSelectedChallengeId(challenge.id);
-                      scrollPillIntoView(challenge.id, index);
-                    }}
-                    onLayout={(e) => {
-                      pillPositions.current[challenge.id] = {
-                        x: e.nativeEvent.layout.x,
-                        width: e.nativeEvent.layout.width,
-                      };
-                    }}
-                    showArrows
-                    onMoveLeft={() => moveChallengeLeft(challenge.id)}
-                    onMoveRight={() => moveChallengeRight(challenge.id)}
-                    isFirst={index === 0}
-                    isLast={index === orderedChallenges.length - 1}
-                  />
-                ))}
-              </ScrollView>
-            ) : (
-              // Production build: draggable with long press
-              <View style={styles.challengeSelector}>
-                <DraggableFlatList
-                  ref={pillsScrollRef}
-                  horizontal
-                  data={orderedChallenges}
-                  keyExtractor={(item: Challenge) => item.id}
-                  onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.challengeSelectorContent}
-                  renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
-                    const isSelected = selectedChallengeId === challenge.id;
-                    const content = (
-                      <ChallengeChip
-                        name={challenge.name}
-                        isSelected={isSelected}
-                        onPress={() => {
-                          setSelectedChallengeId(challenge.id);
-                          scrollPillIntoView(challenge.id, getIndex() ?? 0);
-                        }}
-                        onLongPress={drag}
-                        disabled={isActive}
-                        onLayout={(e) => {
-                          pillPositions.current[challenge.id] = {
-                            x: e.nativeEvent.layout.x,
-                            width: e.nativeEvent.layout.width,
-                          };
-                        }}
-                      />
-                    );
-                    return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
-                  }}
-                />
-              </View>
-            )}
+        {/* TribeTracker text - scrolls away and fades (inside ScrollView only when no background) */}
+        {!backgroundImage && (
+          <View style={{ backgroundColor: colors.background, transform: [{ translateY: -10 }], paddingHorizontal: 20, height: 48 }}>
+            <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 0 }]}>
+              TribeTracker
+            </Animated.Text>
           </View>
         )}
+
+        {/* Challenge selector - inside ScrollView only when no background image */}
+        {!backgroundImage && pillsSection}
 
         {/* Selected challenge card */}
         {isInitialLoad ? (
@@ -767,40 +840,63 @@ export default function HomeScreen() {
                 />
               </TouchableOpacity>
 
-            </SwipeableView>
-
-            {selectedStatus === 'active' ? (
-              <>
-                {/* Leaderboard Link */}
+              {selectedStatus === 'active' && (
                 <TouchableOpacity
                   style={[
                     styles.leaderboardLink,
                     pillStyle,
-                    backgroundImage && { paddingHorizontal: 16, alignSelf: 'center' as const },
+                    { paddingHorizontal: 20, paddingVertical: 12, alignSelf: 'center' as const },
                   ]}
                   onPress={() => navigation.navigate('Leaderboard', { challengeId: selectedChallengeId || undefined })}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="View leaderboard"
                 >
-                  <Ionicons name="trophy-outline" size={16} color={colors.primary} />
-                  <Text style={[styles.leaderboardLinkText, { color: colors.primary }]}>
+                  <Ionicons name="trophy" size={18} color={colorScheme === 'dark' ? '#FFFFFF' : colors.text} />
+                  <Text style={[styles.leaderboardLinkText, { color: colorScheme === 'dark' ? '#FFFFFF' : colors.text }]}>
                     View Leaderboard
                   </Text>
-                  <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                  <Ionicons name="chevron-forward" size={16} color={colorScheme === 'dark' ? '#FFFFFF' : colors.text} />
                 </TouchableOpacity>
+              )}
+              <View style={{ paddingBottom: 8 }} />
+            </SwipeableView>
+
+            {selectedStatus === 'active' ? (
+              <>
                 {/* Swipeable date section */}
                 <View style={styles.dateSection}>
                   {/* Habits header and date - fixed above swipeable content */}
                   <View style={styles.section}>
                     <View style={styles.sectionTitleRow}>
-                      <View style={[pillStyle]}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      <View style={[!backgroundImage && pillStyle]}>
+                        <Text style={[styles.sectionTitle, { color: onScrimTextColor }, headerTextStyle]}>
                           {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
                         </Text>
-                        <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+                        <Text style={[styles.dateText, { color: onScrimSecondaryColor }, headerTextStyle && { textShadowColor: headerTextStyle.textShadowColor, textShadowOffset: headerTextStyle.textShadowOffset, textShadowRadius: headerTextStyle.textShadowRadius }]}>
                           {formatDate(selectedDate, 'dddd, MMMM D')}
                         </Text>
                       </View>
                       {!isToday(selectedDate) && (
-                        <View style={[styles.pastDayBadge, { borderColor: colors.primary }]}>
+                        <View style={[
+                          styles.pastDayBadge,
+                          backgroundImage
+                            ? {
+                                backgroundColor: colorScheme === 'dark'
+                                  ? 'rgba(24, 24, 27, 0.72)'
+                                  : 'rgba(255, 255, 255, 0.88)',
+                                borderWidth: StyleSheet.hairlineWidth,
+                                borderColor: colorScheme === 'dark'
+                                  ? 'rgba(255, 255, 255, 0.12)'
+                                  : 'rgba(255, 255, 255, 0.25)',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.3,
+                                shadowRadius: 4,
+                                elevation: 2,
+                              }
+                            : { borderColor: colors.primary },
+                        ]}>
                           <Text style={[styles.pastDayBadgeText, { color: colors.primary }]}>
                             Editing Past Day
                           </Text>
@@ -842,9 +938,9 @@ export default function HomeScreen() {
                 <View style={styles.calendarSection}>
                   <View style={[
                     { marginHorizontal: 20, marginBottom: 12 },
-                    pillStyle,
+                    !backgroundImage && pillStyle,
                   ]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
+                    <Text style={[styles.sectionTitle, { color: onScrimTextColor, marginBottom: 0 }, headerTextStyle]}>
                       Calendar
                     </Text>
                   </View>
@@ -856,8 +952,8 @@ export default function HomeScreen() {
                     canSwipeRight={!minMonth || dayjs(displayMonth + '-01').subtract(1, 'month').format('YYYY-MM') >= minMonth}
                   >
                     <ActivityCalendar
-                      challenges={activeChallenges}
-                      checkins={userCheckins}
+                      challenges={calendarChallenges}
+                      checkins={calendarCheckins}
                       selectedDate={selectedDate}
                       onDateSelect={handleDateSelect}
                       challengeColors={challengeColors}
@@ -868,6 +964,8 @@ export default function HomeScreen() {
                       onPrevious={() => calendarSwipeRef.current?.animateRight()}
                       onNext={() => calendarSwipeRef.current?.animateLeft()}
                       hasBackgroundImage={!!backgroundImage}
+                      mode={challengeCalendarMode ? 'single' : 'multi'}
+                      selectedChallengeColor={selectedChallengeColor}
                     />
                   </SwipeableView>
                 </View>
@@ -920,6 +1018,8 @@ export default function HomeScreen() {
 
       </Animated.ScrollView>
 
+      <TabBarGradientFade backgroundColor={backgroundImage ? '#000' : undefined} />
+
       {/* Floating Points Badge */}
       {activeChallenges.length > 0 && (
         <>
@@ -967,57 +1067,6 @@ export default function HomeScreen() {
         </>
       )}
 
-      {/* Help Tooltip - positioned based on help button */}
-      {showHelpTooltip && helpButtonPosition && (() => {
-        const tooltipWidth = 260;
-        const arrowSize = 8;
-        const buttonCenterX = helpButtonPosition.x + helpButtonPosition.width / 2;
-        const tooltipLeft = Math.max(16, Math.min(buttonCenterX - 40, 400 - tooltipWidth - 16));
-        const arrowLeft = buttonCenterX - tooltipLeft - arrowSize;
-        const tooltipTop = helpButtonPosition.y + helpButtonPosition.height + arrowSize;
-
-        return (
-        <>
-          <TouchableOpacity
-            style={styles.tooltipBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowHelpTooltip(false)}
-          />
-          <View
-            style={[
-              styles.helpTooltip,
-              {
-                top: tooltipTop,
-                left: tooltipLeft,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.helpTooltipArrow,
-                { left: arrowLeft },
-              ]}
-            />
-            <Text style={styles.helpTooltipText}>
-              Tap a challenge to select it, then check off habits below.{'\n\n'}
-              Tap the card for details or swipe to switch.{'\n\n'}
-              {isExpoGo || !DraggableFlatList
-                ? 'Use arrows to reorder challenges.'
-                : 'Hold and drag to reorder challenges.'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setShowHelpTooltip(false)}
-              style={styles.helpTooltipClose}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="Close tooltip"
-              accessibilityRole="button"
-            >
-              <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
-            </TouchableOpacity>
-          </View>
-        </>
-        );
-      })()}
     </SafeAreaView>
     </View>
   );
@@ -1059,7 +1108,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: TAB_BAR_HEIGHT + 32, // Extra padding for floating badge
+    paddingBottom: TAB_BAR_HEIGHT + 90, // Extra padding for floating badge
   },
   sectionTitleRow: {
     flexDirection: 'row',
@@ -1080,67 +1129,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  selectorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 0,
-    marginBottom: 2,
-  },
-  selectorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  helpButton: {
-    marginLeft: 2,
-    padding: 2,
-  },
-  tooltipBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 99,
-  },
-  helpTooltip: {
-    position: 'absolute',
-    zIndex: 100,
-    backgroundColor: '#1F2937',
-    padding: 14,
-    paddingRight: 36,
-    borderRadius: 10,
-    width: 260,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  helpTooltipText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#F3F4F6',
-  },
-  helpTooltipClose: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-  },
-  helpTooltipArrow: {
-    position: 'absolute',
-    top: -8,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderBottomWidth: 8,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#1F2937',
-  },
   challengeSelector: {
-    marginTop: 8,
+    marginTop: 0,
   },
   challengeSelectorContent: {
     paddingHorizontal: 20,
@@ -1214,13 +1204,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    marginTop: 16,
-    paddingVertical: 8,
+    gap: 8,
+    marginTop: 12,
+    marginHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
   },
   leaderboardLinkText: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
   },
   pointsBadgeContainer: {
     position: 'absolute',

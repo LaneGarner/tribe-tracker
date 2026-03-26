@@ -7,7 +7,7 @@ import { RootState } from '../../redux/store';
 import * as Crypto from 'expo-crypto';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { AppDispatch } from '../../redux/store';
-import { addCheckin, updateHabitCompletion } from '../../redux/slices/checkinsSlice';
+import { addCheckin, updateHabitCompletion, deleteCheckin } from '../../redux/slices/checkinsSlice';
 import { updateParticipantStats } from '../../redux/slices/participantsSlice';
 import { useAuth } from '../../context/AuthContext';
 import { Challenge, HabitCheckin, ChallengeParticipant } from '../../types';
@@ -34,14 +34,14 @@ export default function HabitChecklist({
   const glassStyle: ViewStyle | undefined = hasBackgroundImage ? {
     backgroundColor: colorScheme === 'dark'
       ? 'rgba(24, 24, 27, 0.72)'
-      : 'rgba(255, 255, 255, 0.78)',
+      : 'rgba(255, 255, 255, 0.88)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colorScheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(0, 0, 0, 0.08)',
+      : 'rgba(255, 255, 255, 0.25)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.3,
     shadowRadius: 4,
     elevation: 2,
   } : undefined;
@@ -132,22 +132,28 @@ export default function HabitChecklist({
     if (!canEdit) return;
 
     if (checkin) {
-      // Update existing checkin
-      dispatch(
-        updateHabitCompletion({
-          checkinId: checkin.id,
-          habitIndex,
-          completed: !checkin.habitsCompleted[habitIndex],
-        })
-      );
-
-      // Calculate updated stats with the modified checkin
       const updatedHabits = [...checkin.habitsCompleted];
       updatedHabits[habitIndex] = !updatedHabits[habitIndex];
-      const updatedCheckins = allCheckins.map(c =>
-        c.id === checkin.id ? { ...c, habitsCompleted: updatedHabits } : c
-      );
-      updateStats(updatedCheckins);
+
+      if (updatedHabits.every(h => !h)) {
+        // All habits unchecked — delete the checkin entirely
+        dispatch(deleteCheckin(checkin.id));
+        const updatedCheckins = allCheckins.filter(c => c.id !== checkin.id);
+        updateStats(updatedCheckins);
+      } else {
+        // Update existing checkin
+        dispatch(
+          updateHabitCompletion({
+            checkinId: checkin.id,
+            habitIndex,
+            completed: !checkin.habitsCompleted[habitIndex],
+          })
+        );
+        const updatedCheckins = allCheckins.map(c =>
+          c.id === checkin.id ? { ...c, habitsCompleted: updatedHabits } : c
+        );
+        updateStats(updatedCheckins);
+      }
     } else {
       // Create new checkin
       const habitsCompleted = challenge.habits.map((_, i) => i === habitIndex);

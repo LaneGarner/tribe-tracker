@@ -56,8 +56,10 @@ export default function NotificationsScreen() {
   const colors = getColors(colorScheme);
 
   const profile = useSelector((state: RootState) => state.profile.data);
-  const settings: NotificationSettings =
-    profile?.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS;
+  const settings: NotificationSettings = {
+    ...DEFAULT_NOTIFICATION_SETTINGS,
+    ...(profile?.notificationSettings ?? {}),
+  };
 
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState<'reminder' | 'streak' | null>(null);
@@ -341,6 +343,52 @@ export default function NotificationsScreen() {
               onValueChange={v => updateSettings({ challengeEndEnabled: v })}
               disabled={pushDisabled}
               accessibilityLabel="Toggle challenge ending notification"
+            />
+          </View>
+        </View>
+
+        {/* Chat Notifications Card */}
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Chat Notifications
+            </Text>
+          </View>
+
+          <View style={[styles.settingRow, pushDisabled && styles.dimmed]}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                Direct Messages
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Get notified when someone sends you a DM
+              </Text>
+            </View>
+            <Toggle
+              value={settings.chatDmEnabled}
+              onValueChange={v => updateSettings({ chatDmEnabled: v })}
+              disabled={pushDisabled}
+              accessibilityLabel="Toggle direct message notifications"
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={[styles.settingRow, pushDisabled && styles.dimmed]}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                Group Messages
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Get notified for new messages in challenge group chats
+              </Text>
+            </View>
+            <Toggle
+              value={settings.chatGroupEnabled}
+              onValueChange={v => updateSettings({ chatGroupEnabled: v })}
+              disabled={pushDisabled}
+              accessibilityLabel="Toggle group message notifications"
             />
           </View>
         </View>

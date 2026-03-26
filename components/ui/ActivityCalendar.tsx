@@ -31,6 +31,8 @@ interface ActivityCalendarProps {
   onPrevious?: () => void;      // for arrow button animation sync
   onNext?: () => void;
   hasBackgroundImage?: boolean;
+  mode?: 'multi' | 'single';   // 'multi' = dots per challenge, 'single' = intensity dot
+  selectedChallengeColor?: string;
 }
 
 export default function ActivityCalendar({
@@ -46,6 +48,8 @@ export default function ActivityCalendar({
   onPrevious,
   onNext,
   hasBackgroundImage,
+  mode = 'multi',
+  selectedChallengeColor,
 }: ActivityCalendarProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -53,17 +57,36 @@ export default function ActivityCalendar({
   const glassStyle: ViewStyle | undefined = hasBackgroundImage ? {
     backgroundColor: colorScheme === 'dark'
       ? 'rgba(24, 24, 27, 0.72)'
-      : 'rgba(255, 255, 255, 0.78)',
+      : 'rgba(255, 255, 255, 0.88)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colorScheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(0, 0, 0, 0.08)',
+      : 'rgba(255, 255, 255, 0.25)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.3,
     shadowRadius: 4,
     elevation: 2,
   } : undefined;
+
+  const headerContainerStyle: ViewStyle = hasBackgroundImage
+    ? {
+        backgroundColor: colorScheme === 'dark'
+          ? 'rgba(255, 255, 255, 0.05)'
+          : 'rgba(255, 255, 255, 0.08)',
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        marginBottom: 12,
+      }
+    : {
+        backgroundColor: colors.surfaceSecondary,
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        marginBottom: 12,
+      };
+
   const today = getToday();
 
   // Generate challenge colors if not provided
@@ -218,6 +241,21 @@ export default function ActivityCalendar({
       .slice(0, 3); // Max 3 dots
   };
 
+  const getIntensityDot = (day: number): { color: string; opacity: number } | null => {
+    const dateStr = getDateString(day);
+    const dayCheckin = checkins.find(c => c.checkinDate === dateStr);
+    if (!dayCheckin) return null;
+
+    const completed = dayCheckin.habitsCompleted.filter(h => h).length;
+    if (completed === 0) return null;
+
+    const total = dayCheckin.habitsCompleted.length;
+    const ratio = completed / total;
+    const opacity = 0.3 + ratio * 0.7;
+
+    return { color: selectedChallengeColor || '#3B82F6', opacity };
+  };
+
   const isPerfectDay = (day: number) => {
     const dateStr = getDateString(day);
     return perfectDayMap[dateStr] === true;
@@ -228,49 +266,48 @@ export default function ActivityCalendar({
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }, glassStyle]}>
       {/* Month header with navigation */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity
-          style={[
-            styles.monthArrowButton,
-            { borderColor: colors.border },
-            !canGoBack && styles.monthArrowButtonDisabled,
-          ]}
-          onPress={handlePreviousMonth}
-          disabled={!canGoBack}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={18}
-            color={canGoBack ? colors.text : colors.textTertiary}
-          />
-        </TouchableOpacity>
+      <View style={headerContainerStyle}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={[
+              styles.monthArrowButton,
+              { borderColor: colors.border },
+              !canGoBack && styles.monthArrowButtonDisabled,
+            ]}
+            onPress={handlePreviousMonth}
+            disabled={!canGoBack}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={canGoBack ? colors.text : colors.textTertiary}
+            />
+          </TouchableOpacity>
 
-        <View style={styles.monthInfo}>
-          <Ionicons name="calendar-outline" size={18} color={colors.primary} style={{ marginRight: 6 }} />
-          <Text style={[styles.monthHeader, { color: colors.text }]}>
-            {displayMonth.format('MMMM YYYY')}
-          </Text>
+          <View style={styles.monthInfo}>
+            <Ionicons name="calendar-outline" size={18} color={colors.primary} style={{ marginRight: 6 }} />
+            <Text style={[styles.monthHeader, { color: colors.text }]}>
+              {displayMonth.format('MMMM YYYY')}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.monthArrowButton,
+              { borderColor: colors.border },
+              !canGoForward && styles.monthArrowButtonDisabled,
+            ]}
+            onPress={handleNextMonth}
+            disabled={!canGoForward}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={canGoForward ? colors.text : colors.textTertiary}
+            />
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={[
-            styles.monthArrowButton,
-            { borderColor: colors.border },
-            !canGoForward && styles.monthArrowButtonDisabled,
-          ]}
-          onPress={handleNextMonth}
-          disabled={!canGoForward}
-        >
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={canGoForward ? colors.text : colors.textTertiary}
-          />
-        </TouchableOpacity>
       </View>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Click a date to view/edit that day
-      </Text>
 
       {/* Day labels */}
       <View style={styles.dayLabelsRow}>
@@ -344,19 +381,38 @@ export default function ActivityCalendar({
                   </Text>
                   {/* Activity dots inside box */}
                   <View style={styles.dotsContainer}>
-                    {hasActivity ? (
-                      dots.map((dotColor, dotIndex) => (
-                        <View
-                          key={dotIndex}
-                          style={[
-                            styles.dot,
-                            { backgroundColor: selected ? 'rgba(255,255,255,0.9)' : dotColor },
-                          ]}
-                        />
-                      ))
-                    ) : !isDisabled ? (
-                      <View style={styles.dotPlaceholder} />
-                    ) : null}
+                    {mode === 'single' ? (
+                      (() => {
+                        const intensityDot = getIntensityDot(day);
+                        return intensityDot ? (
+                          <View
+                            style={[
+                              styles.intensityDot,
+                              {
+                                backgroundColor: selected ? 'rgba(255,255,255,0.9)' : intensityDot.color,
+                                opacity: selected ? 1 : intensityDot.opacity,
+                              },
+                            ]}
+                          />
+                        ) : !isDisabled ? (
+                          <View style={styles.dotPlaceholder} />
+                        ) : null;
+                      })()
+                    ) : (
+                      hasActivity ? (
+                        dots.map((dotColor, dotIndex) => (
+                          <View
+                            key={dotIndex}
+                            style={[
+                              styles.dot,
+                              { backgroundColor: selected ? 'rgba(255,255,255,0.9)' : dotColor },
+                            ]}
+                          />
+                        ))
+                      ) : !isDisabled ? (
+                        <View style={styles.dotPlaceholder} />
+                      ) : null
+                    )}
                   </View>
                 </View>
               </TouchableOpacity>
@@ -365,9 +421,9 @@ export default function ActivityCalendar({
         </View>
       ))}
 
-      {/* Challenge legend */}
-      {challenges.length > 0 && (
-        <View style={styles.legend}>
+      {/* Challenge legend - only in multi-challenge mode */}
+      {mode !== 'single' && challenges.length > 0 && (
+        <View style={[styles.legend, { borderTopColor: colors.border }]}>
           {challenges.map(challenge => (
             <View key={challenge.id} style={styles.legendItem}>
               <View
@@ -409,23 +465,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   monthHeader: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600',
   },
   monthArrowButton: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   monthArrowButtonDisabled: {
     opacity: 0.4,
-  },
-  subtitle: {
-    fontSize: 13,
-    marginBottom: 16,
   },
   dayLabelsRow: {
     flexDirection: 'row',
@@ -487,6 +539,11 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
   },
+  intensityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
   dotPlaceholder: {
     width: 6,
     height: 6,
@@ -494,8 +551,7 @@ const styles = StyleSheet.create({
   legend: {
     marginTop: 16,
     paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.08)',
+    borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 16,

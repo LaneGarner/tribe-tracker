@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
-
 export default function PreferencesScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);

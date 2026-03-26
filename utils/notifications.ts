@@ -1,8 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Linking, Alert } from 'react-native';
 import { NotificationSettings, Challenge, HabitCheckin, ChallengeParticipant } from '../types';
 import { getToday, subtractDays } from './dateUtils';
+import { store } from '../redux/store';
 import dayjs from 'dayjs';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -15,6 +17,8 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   streakProtectionTime: '21:00',
   challengeStartEnabled: true,
   challengeEndEnabled: true,
+  chatDmEnabled: true,
+  chatGroupEnabled: true,
 };
 
 // --- Permission Management ---
@@ -47,17 +51,32 @@ export function openNotificationSettings(): void {
 export function configureNotificationHandler(): void {
   if (isExpoGo) return;
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async (notification) => {
+      const data = notification.request.content.data;
+      if (data?.type === 'chat' && data?.conversationId) {
+        const activeConvId = store.getState().chat.activeConversationId;
+        if (activeConvId === data.conversationId) {
+          return { shouldShowBanner: false, shouldShowList: false, shouldPlaySound: false, shouldSetBadge: false };
+        }
+      }
+      return {
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      };
+    },
   });
 
   if (Platform.OS === 'android') {
     Notifications.setNotificationChannelAsync('habit-reminders', {
       name: 'Habit Reminders',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'default',
+      vibrationPattern: [0, 250, 250, 250],
+    });
+    Notifications.setNotificationChannelAsync('chat-messages', {
+      name: 'Chat Messages',
       importance: Notifications.AndroidImportance.HIGH,
       sound: 'default',
       vibrationPattern: [0, 250, 250, 250],
@@ -287,4 +306,25 @@ export function showPermissionExplanation(onProceed: () => void): void {
       { text: 'Enable', onPress: onProceed },
     ]
   );
+}
+
+// --- Permission Prompt Tracking ---
+
+const NOTIFICATION_PROMPT_KEY = 'tribe_notification_prompt_shown';
+
+export async function hasPromptedPermission(): Promise<boolean> {
+  try {
+    const value = await AsyncStorage.getItem(NOTIFICATION_PROMPT_KEY);
+    return value === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export async function markPermissionPrompted(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(NOTIFICATION_PROMPT_KEY, 'true');
+  } catch {
+    // Silent fail
+  }
 }

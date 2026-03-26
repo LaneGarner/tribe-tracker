@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
@@ -44,6 +46,7 @@ export default function ChallengeDetailScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
+  const headerHeight = useHeaderHeight();
 
   const { challengeId } = route.params;
 
@@ -189,8 +192,13 @@ export default function ChallengeDetailScreen() {
 
   // Set up header with chat, share, analytics, and creator menu buttons
   useLayoutEffect(() => {
+    const hasBackground = !!challenge?.backgroundImageUrl;
+    const headerIconColor = hasBackground ? '#FFFFFF' : colors.text;
     navigation.setOptions({
       title: '',
+      headerTransparent: hasBackground,
+      headerStyle: hasBackground ? { backgroundColor: 'transparent' } : undefined,
+      headerTintColor: headerIconColor,
       headerRight: () => (
         <View style={{ flexDirection: 'row', gap: 20, paddingHorizontal: 8 }}>
           {isJoined && groupConversation && (
@@ -205,14 +213,14 @@ export default function ChallengeDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel="Open group chat"
             >
-              <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+              <Ionicons name="chatbubble-outline" size={22} color={headerIconColor} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
             onPress={handleShare}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="share-outline" size={22} color={colors.text} />
+            <Ionicons name="share-outline" size={22} color={headerIconColor} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() =>
@@ -220,20 +228,20 @@ export default function ChallengeDetailScreen() {
             }
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="stats-chart" size={22} color={colors.text} />
+            <Ionicons name="stats-chart" size={22} color={headerIconColor} />
           </TouchableOpacity>
           {(isCreator || isJoined) && (
             <TouchableOpacity
               onPress={handleOptionsMenu}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
+              <Ionicons name="ellipsis-horizontal" size={22} color={headerIconColor} />
             </TouchableOpacity>
           )}
         </View>
       ),
     });
-  }, [navigation, colors.text, challenge?.name, challengeId, isCreator, isJoined, groupConversation]);
+  }, [navigation, colors.text, challenge?.name, challenge?.backgroundImageUrl, challengeId, isCreator, isJoined, groupConversation]);
 
   // Fetch fresh participant data when screen gains focus
   useFocusEffect(
@@ -332,24 +340,59 @@ export default function ChallengeDetailScreen() {
     ]);
   };
 
+  const backgroundImage = challenge.backgroundImageUrl;
+  const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.35)';
+  const onScrimTextColor = backgroundImage ? '#FFFFFF' : colors.text;
+  const onScrimSecondaryColor = backgroundImage ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary;
+
+  const glassStyle = backgroundImage ? {
+    backgroundColor: colorScheme === 'dark'
+      ? 'rgba(24, 24, 27, 0.72)'
+      : 'rgba(255, 255, 255, 0.88)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colorScheme === 'dark'
+      ? 'rgba(255, 255, 255, 0.12)'
+      : 'rgba(255, 255, 255, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.3,
+    shadowRadius: 4,
+    elevation: 2,
+  } : undefined;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {backgroundImage && (
+        <View
+          style={StyleSheet.absoluteFill}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <ExpoImage
+            source={{ uri: backgroundImage }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            cachePolicy="disk"
+          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]} />
+        </View>
+      )}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, backgroundImage && { paddingTop: headerHeight }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Challenge Info */}
-        <View style={styles.challengeInfo}>
-          <Text style={[styles.challengeName, { color: colors.text }]}>
+        <View style={[styles.challengeInfo, glassStyle && { ...glassStyle, borderRadius: 16, padding: 16 }]}>
+          <Text style={[styles.challengeName, { color: glassStyle ? colors.text : onScrimTextColor }]}>
             {challenge.name}
           </Text>
 
           {challenge.description && (
             <Text
-              style={[styles.description, { color: colors.textSecondary }]}
+              style={[styles.description, { color: glassStyle ? colors.textSecondary : onScrimSecondaryColor }]}
             >
               {challenge.description}
             </Text>
@@ -373,71 +416,71 @@ export default function ChallengeDetailScreen() {
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </Text>
             </View>
-            <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+            <Text style={[styles.metaText, { color: glassStyle ? colors.textSecondary : onScrimSecondaryColor }]}>
               {participants.length} participant{participants.length !== 1 ? 's' : ''}
             </Text>
           </View>
         </View>
 
-        {/* Progress */}
-        {status === 'active' && (
-          <View style={[styles.progressCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.progressTitle, { color: colors.text }]}>
-              Progress
-            </Text>
-            <View style={styles.progressRow}>
-              <Text style={[styles.progressDay, { color: colors.primary }]}>
-                Day {currentDay}
+        {/* Progress & Dates */}
+        <View style={[styles.progressCard, glassStyle || { backgroundColor: colors.surface }]}>
+          {status === 'active' && (
+            <>
+              <Text style={[styles.progressTitle, { color: colors.text }]}>
+                Progress
               </Text>
-              <Text style={[styles.progressTotal, { color: colors.textSecondary }]}>
-                of {totalDays}
-              </Text>
-            </View>
-            <View
-              style={[styles.progressBar, { backgroundColor: colors.border }]}
-            >
+              <View style={styles.progressRow}>
+                <Text style={[styles.progressDay, { color: colors.primary }]}>
+                  Day {currentDay}
+                </Text>
+                <Text style={[styles.progressTotal, { color: colors.textSecondary }]}>
+                  of {totalDays}
+                </Text>
+              </View>
               <View
-                style={[
-                  styles.progressFill,
-                  {
-                    backgroundColor: colors.primary,
-                    width: `${(currentDay / totalDays) * 100}%`,
-                  },
-                ]}
-              />
+                style={[styles.progressBar, { backgroundColor: colors.border, marginBottom: 20 }]}
+              >
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      backgroundColor: colors.primary,
+                      width: `${(currentDay / totalDays) * 100}%`,
+                    },
+                  ]}
+                />
+              </View>
+            </>
+          )}
+          <View style={{ flexDirection: 'row' }}>
+            <View style={styles.dateItem}>
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+              <View style={styles.dateInfo}>
+                <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
+                  {status === 'completed' ? 'Started' : 'Starts'}
+                </Text>
+                <Text style={[styles.dateValue, { color: colors.text }]}>
+                  {formatDate(challenge.startDate)}
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
-
-        {/* Dates */}
-        <View style={[styles.datesCard, { backgroundColor: colors.surface }]}>
-          <View style={styles.dateItem}>
-            <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-            <View style={styles.dateInfo}>
-              <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                {status === 'completed' ? 'Started' : 'Starts'}
-              </Text>
-              <Text style={[styles.dateValue, { color: colors.text }]}>
-                {formatDate(challenge.startDate)}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.dateDivider} />
-          <View style={styles.dateItem}>
-            <Ionicons name="flag-outline" size={20} color={colors.success} />
-            <View style={styles.dateInfo}>
-              <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                {status === 'completed' ? 'Ended' : 'Ends'}
-              </Text>
-              <Text style={[styles.dateValue, { color: colors.text }]}>
-                {formatDate(challenge.endDate || challenge.startDate)}
-              </Text>
+            <View style={styles.dateDivider} />
+            <View style={styles.dateItem}>
+              <Ionicons name="flag-outline" size={20} color={colors.success} />
+              <View style={styles.dateInfo}>
+                <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
+                  {status === 'completed' ? 'Ended' : 'Ends'}
+                </Text>
+                <Text style={[styles.dateValue, { color: colors.text }]}>
+                  {formatDate(challenge.endDate || challenge.startDate)}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
         {/* Habits */}
-        <View style={[styles.habitsCard, { backgroundColor: colors.surface }]}>
+        <View style={[styles.habitsCard, glassStyle || { backgroundColor: colors.surface }]}>
           <Text style={[styles.habitsTitle, { color: colors.text }]}>
             Daily Habits ({challenge.habits.length})
           </Text>
@@ -458,13 +501,10 @@ export default function ChallengeDetailScreen() {
           ))}
         </View>
 
-        {/* Leaderboard */}
-        <View style={styles.leaderboardSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Leaderboard
-          </Text>
+        {/* Leaderboard - Top 3 */}
+        {participants.length > 1 && (
           <Leaderboard
-            participants={participants}
+            participants={[...participants].sort((a, b) => b.totalPoints - a.totalPoints).slice(0, 3)}
             currentUserId={user?.id}
             onParticipantPress={participant =>
               navigation.navigate('ViewMember', { userId: participant.userId })
@@ -472,13 +512,42 @@ export default function ChallengeDetailScreen() {
             showPodium={false}
             challengeId={challenge?.id}
             challengeStartDate={challenge?.startDate}
+            headerTitle="Leaderboard"
+            listContainerStyle={{
+              marginHorizontal: 0,
+              ...(glassStyle || {}),
+            }}
+            footer={
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  paddingVertical: 12,
+                  marginTop: 4,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: colors.border,
+                }}
+                onPress={() => navigation.navigate('Main', { screen: 'Leaderboard', params: { challengeId: challenge.id } })}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="View full leaderboard"
+              >
+                <Ionicons name="trophy" size={18} color={colors.text} />
+                <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>
+                  View Full Leaderboard
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.text} />
+              </TouchableOpacity>
+            }
           />
-        </View>
+        )}
       </ScrollView>
 
       {/* Join Button */}
       {!isJoined && status !== 'completed' && (
-        <View style={[styles.footer, { backgroundColor: colors.background }]}>
+        <View style={[styles.footer, { backgroundColor: backgroundImage ? 'transparent' : colors.background }]}>
           <TouchableOpacity
             style={[styles.joinButton, { backgroundColor: colors.primary, opacity: isJoining ? 0.7 : 1 }]}
             onPress={handleJoin}

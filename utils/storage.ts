@@ -27,6 +27,8 @@ const KEYS = {
   CONVERSATIONS: 'tribe_conversations',
   MESSAGES: 'tribe_messages',
   BLOCKED_USERS: 'tribe_blocked_users',
+  FEATURE_FLAGS: 'tribe_feature_flags',
+  NOTIFICATION_PROMPT_SHOWN: 'tribe_notification_prompt_shown',
 };
 
 // Challenge storage functions
@@ -163,7 +165,7 @@ export const loadLastSyncTime = async (): Promise<string | null> => {
 
 // Pending sync queue storage
 export interface PendingSyncItem {
-  type: 'challenge' | 'participant' | 'checkin' | 'profile';
+  type: 'challenge' | 'participant' | 'checkin' | 'profile' | 'badges';
   action: 'create' | 'update' | 'delete';
   data: unknown;
   timestamp: string;

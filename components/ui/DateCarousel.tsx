@@ -34,14 +34,14 @@ export default function DateCarousel({
   const glassStyle: ViewStyle | undefined = hasBackgroundImage ? {
     backgroundColor: colorScheme === 'dark'
       ? 'rgba(24, 24, 27, 0.72)'
-      : 'rgba(255, 255, 255, 0.78)',
+      : 'rgba(255, 255, 255, 0.88)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colorScheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(0, 0, 0, 0.08)',
+      : 'rgba(255, 255, 255, 0.25)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.3,
     shadowRadius: 4,
     elevation: 2,
   } : undefined;

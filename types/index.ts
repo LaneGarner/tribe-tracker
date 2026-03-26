@@ -58,6 +58,8 @@ export interface NotificationSettings {
   streakProtectionTime: string; // "HH:mm", default "21:00"
   challengeStartEnabled: boolean;
   challengeEndEnabled: boolean;
+  chatDmEnabled: boolean;
+  chatGroupEnabled: boolean;
 }
 
 // User Profile
@@ -85,6 +87,7 @@ export interface UserProfile {
   pushNotifications: boolean;
   emailNotifications: boolean;
   notificationSettings?: NotificationSettings;
+  expoPushToken?: string;
   // Child account
   isChildAccount: boolean;
   parentUserId?: string;
@@ -234,5 +237,6 @@ export type TabParamList = {
   Home: { selectChallengeId?: string } | undefined;
   Challenges: undefined;
   Leaderboard: { challengeId?: string } | undefined;
+  Chat: undefined;
   Menu: undefined;
 };

@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Crown, Medal, Award, Trophy, Flame } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector } from 'react-redux';
@@ -16,6 +16,9 @@ interface LeaderboardProps {
   showPodium?: boolean;
   challengeId?: string;
   challengeStartDate?: string;
+  headerTitle?: string;
+  listContainerStyle?: ViewStyle;
+  footer?: React.ReactNode;
 }
 
 const PODIUM_COLORS = {
@@ -42,6 +45,9 @@ export default function Leaderboard({
   onParticipantPress,
   showPodium = true,
   challengeId,
+  headerTitle,
+  listContainerStyle,
+  footer,
   challengeStartDate,
 }: LeaderboardProps) {
   const { colorScheme } = useContext(ThemeContext);
@@ -256,12 +262,12 @@ export default function Leaderboard({
       )}
 
       <View
-        style={[styles.listContainer, { backgroundColor: colors.surface }]}
+        style={[styles.listContainer, { backgroundColor: colors.surface }, listContainerStyle]}
       >
         <View style={styles.listHeader}>
           <Trophy size={20} color={colors.primary} />
           <Text style={[styles.listHeaderText, { color: colors.text }]}>
-            All Participants ({sortedParticipants.length})
+            {headerTitle ?? `All Participants (${sortedParticipants.length})`}
           </Text>
         </View>
 
@@ -366,6 +372,7 @@ export default function Leaderboard({
             </TouchableOpacity>
           );
         })}
+        {footer}
       </View>
     </View>
   );
@@ -373,7 +380,6 @@ export default function Leaderboard({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 20,
   },
   emptyState: {
     alignItems: 'center',
