@@ -106,7 +106,7 @@ export default function AuthScreen() {
             style={[styles.logo, { tintColor: colorScheme === 'dark' ? '#fff' : '#000' }]}
           />
           <Text style={[styles.title, { color: colors.text }]}>
-            TribeTracker
+            Tribe Tracker
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Backend not configured. Please set up Supabase credentials.
@@ -132,7 +132,7 @@ export default function AuthScreen() {
           source={require('../assets/images/TT-logo.png')}
           style={[styles.logo, { tintColor: colorScheme === 'dark' ? '#fff' : '#000' }]}
         />
-        <Text style={[styles.title, { color: colors.text }]}>TribeTracker</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Tribe Tracker</Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Build your streak today.
         </Text>

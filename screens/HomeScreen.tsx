@@ -773,7 +773,7 @@ export default function HomeScreen() {
       {backgroundImage && (
         <Animated.View style={{ height: textContainerHeight, overflow: 'hidden', transform: [{ translateY: -10 }], paddingHorizontal: 20, zIndex: 12 }}>
           <Animated.Text style={[styles.logoText, { color: onScrimTextColor, opacity: textOpacity, marginBottom: 0 }]}>
-            TribeTracker
+            Tribe Tracker
           </Animated.Text>
         </Animated.View>
       )}
@@ -798,11 +798,11 @@ export default function HomeScreen() {
         scrollEventThrottle={16}
         stickyHeaderIndices={!backgroundImage && orderedChallenges.length > 1 ? [1] : undefined}
       >
-        {/* TribeTracker text - scrolls away and fades (inside ScrollView only when no background) */}
+        {/* Tribe Tracker text - scrolls away and fades (inside ScrollView only when no background) */}
         {!backgroundImage && (
           <View style={{ backgroundColor: colors.background, transform: [{ translateY: -10 }], paddingHorizontal: 20, height: 48 }}>
             <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 0 }]}>
-              TribeTracker
+              Tribe Tracker
             </Animated.Text>
           </View>
         )}
