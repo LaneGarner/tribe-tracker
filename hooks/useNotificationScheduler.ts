@@ -1,8 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { AppState } from 'react-native';
 import { RootState } from '../redux/store';
-import { evaluateAndScheduleNotifications, DEFAULT_NOTIFICATION_SETTINGS } from '../utils/notifications';
+import {
+  evaluateAndScheduleNotifications,
+  DEFAULT_NOTIFICATION_SETTINGS,
+  getPermissionStatus,
+  requestPermission,
+  showPermissionExplanation,
+  hasPromptedPermission,
+  markPermissionPrompted,
+} from '../utils/notifications';
 
 export default function useNotificationScheduler(): void {
   const profile = useSelector((state: RootState) => state.profile.data);
@@ -12,10 +20,10 @@ export default function useNotificationScheduler(): void {
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const scheduleNotifications = () => {
+  const scheduleNotifications = useCallback(() => {
     if (!profile?.id) return;
 
-    const settings = profile.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS;
+    const settings = { ...DEFAULT_NOTIFICATION_SETTINGS, ...(profile.notificationSettings ?? {}) };
 
     evaluateAndScheduleNotifications(
       settings,
@@ -24,7 +32,7 @@ export default function useNotificationScheduler(): void {
       participants,
       profile.id
     );
-  };
+  }, [profile, challenges, checkins, participants]);
 
   // Re-evaluate when relevant state changes
   useEffect(() => {
@@ -34,13 +42,7 @@ export default function useNotificationScheduler(): void {
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [
-    profile?.notificationSettings,
-    profile?.pushNotifications,
-    challenges,
-    checkins,
-    participants,
-  ]);
+  }, [scheduleNotifications]);
 
   // Re-evaluate when app comes to foreground
   useEffect(() => {
@@ -50,5 +52,32 @@ export default function useNotificationScheduler(): void {
       }
     });
     return () => subscription.remove();
-  }, [profile, challenges, checkins, participants]);
+  }, [scheduleNotifications]);
+
+  // One-time permission prompt when user has active challenges
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    const activeChallenges = challenges.filter(c => c.status === 'active');
+    if (activeChallenges.length === 0) return;
+
+    const promptIfNeeded = async () => {
+      const alreadyPrompted = await hasPromptedPermission();
+      if (alreadyPrompted) return;
+
+      const status = await getPermissionStatus();
+      if (status === 'granted' || status === 'denied') {
+        await markPermissionPrompted();
+        return;
+      }
+
+      showPermissionExplanation(async () => {
+        await requestPermission();
+        await markPermissionPrompted();
+        scheduleNotifications();
+      });
+    };
+
+    promptIfNeeded();
+  }, [profile?.id, challenges, scheduleNotifications]);
 }

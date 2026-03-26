@@ -28,6 +28,7 @@ const KEYS = {
   MESSAGES: 'tribe_messages',
   BLOCKED_USERS: 'tribe_blocked_users',
   FEATURE_FLAGS: 'tribe_feature_flags',
+  NOTIFICATION_PROMPT_SHOWN: 'tribe_notification_prompt_shown',
 };
 
 // Challenge storage functions
