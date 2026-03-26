@@ -165,7 +165,7 @@ export const loadLastSyncTime = async (): Promise<string | null> => {
 
 // Pending sync queue storage
 export interface PendingSyncItem {
-  type: 'challenge' | 'participant' | 'checkin' | 'profile';
+  type: 'challenge' | 'participant' | 'checkin' | 'profile' | 'badges';
   action: 'create' | 'update' | 'delete';
   data: unknown;
   timestamp: string;

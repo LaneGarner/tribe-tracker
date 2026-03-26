@@ -1,7 +1,9 @@
 import { Middleware, UnknownAction } from '@reduxjs/toolkit';
 import { API_URL } from '../config/api';
-import { Challenge, ChallengeParticipant, HabitCheckin, UserProfile, ChatMessage, BlockedUser } from '../types';
+import { Challenge, ChallengeParticipant, HabitCheckin, UserProfile, UserBadge, ChatMessage, BlockedUser } from '../types';
 import { addToPendingSync, PendingSyncItem } from '../utils/storage';
+import { evaluateNewBadges } from '../utils/badgeEvaluator';
+import { addEarnedBadge } from './slices/badgesSlice';
 
 // Type guard for actions with payload
 interface ActionWithPayload<T = unknown> extends UnknownAction {
@@ -113,12 +115,29 @@ const CHAT_SYNC_ACTIONS = [
   'chat/removeBlockedUser',
 ];
 
+// Badge action types to sync
+const BADGE_SYNC_ACTIONS = [
+  'badges/addEarnedBadge',
+];
+
+// Actions that should trigger badge evaluation
+const BADGE_TRIGGER_ACTIONS = [
+  'checkins/addCheckin',
+  'checkins/updateHabitCompletion',
+  'participants/updateParticipantStats',
+  'participants/addParticipant',
+  'challenges/addChallenge',
+  'profile/updateProfile',
+  'badges/fetchFromServer/fulfilled',
+];
+
 const ALL_SYNC_ACTIONS = [
   ...CHALLENGE_SYNC_ACTIONS,
   ...PARTICIPANT_SYNC_ACTIONS,
   ...CHECKIN_SYNC_ACTIONS,
   ...PROFILE_SYNC_ACTIONS,
   ...CHAT_SYNC_ACTIONS,
+  ...BADGE_SYNC_ACTIONS,
 ];
 
 export const syncMiddleware: Middleware = store => next => unknownAction => {
@@ -286,10 +305,35 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
           const blockedId = action.payload as string;
           await pushToServer(`users?resource=blocked&id=${blockedId}`, {}, 'DELETE');
         }
+
+        // Badge sync
+        else if (action.type === 'badges/addEarnedBadge') {
+          const badge = action.payload as UserBadge;
+          await pushToServer('badges', { badge });
+        }
       } catch (err) {
         console.error('Background sync failed:', err);
       }
     })();
+  }
+
+  // Badge evaluation — runs after relevant actions (including non-sync actions like fetchFromServer/fulfilled)
+  if (BADGE_TRIGGER_ACTIONS.includes(action.type) && isConfigured) {
+    const currentState = store.getState();
+    const userId = currentState.profile.data?.id;
+    if (userId && currentState.badges.definitions.length > 0) {
+      try {
+        const newBadges = evaluateNewBadges(currentState, userId);
+        for (const badge of newBadges) {
+          store.dispatch(addEarnedBadge(badge));
+        }
+        if (newBadges.length > 0) {
+          console.log(`[Badges] Awarded ${newBadges.length} new badge(s)`);
+        }
+      } catch (err) {
+        console.error('[Badges] Evaluation failed:', err);
+      }
+    }
   }
 
   return result;
