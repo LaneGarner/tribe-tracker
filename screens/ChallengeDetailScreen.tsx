@@ -483,21 +483,23 @@ export default function ChallengeDetailScreen() {
         </View>
 
         {/* Leaderboard */}
-        <View style={styles.leaderboardSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Leaderboard
-          </Text>
-          <Leaderboard
-            participants={participants}
-            currentUserId={user?.id}
-            onParticipantPress={participant =>
-              navigation.navigate('ViewMember', { userId: participant.userId })
-            }
-            showPodium={false}
-            challengeId={challenge?.id}
-            challengeStartDate={challenge?.startDate}
-          />
-        </View>
+        {participants.length > 1 && (
+          <View style={styles.leaderboardSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Leaderboard
+            </Text>
+            <Leaderboard
+              participants={participants}
+              currentUserId={user?.id}
+              onParticipantPress={participant =>
+                navigation.navigate('ViewMember', { userId: participant.userId })
+              }
+              showPodium={false}
+              challengeId={challenge?.id}
+              challengeStartDate={challenge?.startDate}
+            />
+          </View>
+        )}
       </ScrollView>
 
       {/* Join Button */}

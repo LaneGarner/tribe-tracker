@@ -56,6 +56,7 @@ import DateCarousel from '../components/ui/DateCarousel';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import Skeleton from '../components/ui/Skeleton';
 import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCalendar';
+import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
@@ -101,6 +102,7 @@ export default function HomeScreen() {
   const pillsScrollRef = useRef<ScrollView | any>(null);
   const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
   const hasAutoSelected = useRef(false);
+  const [challengeCalendarMode] = useFeatureFlag(FEATURE_FLAGS.CHALLENGE_CALENDAR, true);
 
   // Points badge swipe state
   const [badgeHidden, setBadgeHidden] = useState(false);
@@ -430,14 +432,18 @@ export default function HomeScreen() {
     return colorMap;
   }, [activeChallenges]);
 
-  // Calculate month range from active challenges
+  // Calculate month range scoped to calendar challenges
   const { minMonth, maxMonth } = useMemo(() => {
-    if (activeChallenges.length === 0) return { minMonth: null, maxMonth: null };
+    const scopedChallenges = challengeCalendarMode && selectedChallenge
+      ? [selectedChallenge]
+      : activeChallenges;
 
-    const earliest = activeChallenges.reduce((min, c) =>
-      c.startDate < min ? c.startDate : min, activeChallenges[0].startDate);
+    if (scopedChallenges.length === 0) return { minMonth: null, maxMonth: null };
 
-    const latest = activeChallenges.reduce((max, c) => {
+    const earliest = scopedChallenges.reduce((min, c) =>
+      c.startDate < min ? c.startDate : min, scopedChallenges[0].startDate);
+
+    const latest = scopedChallenges.reduce((max, c) => {
       const end = c.endDate || today;
       return end > max ? end : max;
     }, today);
@@ -446,7 +452,7 @@ export default function HomeScreen() {
       minMonth: dayjs(earliest).format('YYYY-MM'),
       maxMonth: dayjs(latest).format('YYYY-MM'),
     };
-  }, [activeChallenges, today]);
+  }, [challengeCalendarMode, selectedChallenge, activeChallenges, today]);
 
   // Calendar month swipe handlers
   const handleCalendarSwipeLeft = () => {
@@ -473,6 +479,14 @@ export default function HomeScreen() {
       setDisplayMonth(dateMonth);
     }
   };
+
+  // Clamp displayMonth when challenge scope changes in focused calendar mode
+  useEffect(() => {
+    if (challengeCalendarMode && minMonth && maxMonth) {
+      if (displayMonth < minMonth) setDisplayMonth(minMonth);
+      else if (displayMonth > maxMonth) setDisplayMonth(maxMonth);
+    }
+  }, [challengeCalendarMode, minMonth, maxMonth, selectedChallengeId]);
 
   // Challenge carousel handlers
   const currentChallengeIndex = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
@@ -523,6 +537,25 @@ export default function HomeScreen() {
   const userCheckins = useMemo(() => {
     return checkins.filter(c => c.userId === user?.id);
   }, [checkins, user?.id]);
+
+  // Calendar data scoped to selected challenge when in focused mode
+  const calendarChallenges = useMemo(() => {
+    if (challengeCalendarMode && selectedChallenge) {
+      return [selectedChallenge];
+    }
+    return activeChallenges;
+  }, [challengeCalendarMode, selectedChallenge, activeChallenges]);
+
+  const calendarCheckins = useMemo(() => {
+    if (challengeCalendarMode && selectedChallengeId) {
+      return userCheckins.filter(c => c.challengeId === selectedChallengeId);
+    }
+    return userCheckins;
+  }, [challengeCalendarMode, selectedChallengeId, userCheckins]);
+
+  const selectedChallengeColor = selectedChallengeId
+    ? challengeColors[selectedChallengeId]
+    : undefined;
 
   // Calculate today's points for the floating badge
   const todayPoints = useMemo(() => {
@@ -585,8 +618,8 @@ export default function HomeScreen() {
           ...(backgroundImage ? {
             borderBottomWidth: StyleSheet.hairlineWidth,
             borderBottomColor: colorScheme === 'dark'
-              ? 'rgba(255, 255, 255, 0.15)'
-              : 'rgba(0, 0, 0, 0.1)',
+              ? 'rgba(0, 0, 0, 0.15)'
+              : 'rgba(255, 255, 255, 0.15)',
           } : {}),
         },
       ]}
@@ -891,8 +924,8 @@ export default function HomeScreen() {
                     canSwipeRight={!minMonth || dayjs(displayMonth + '-01').subtract(1, 'month').format('YYYY-MM') >= minMonth}
                   >
                     <ActivityCalendar
-                      challenges={activeChallenges}
-                      checkins={userCheckins}
+                      challenges={calendarChallenges}
+                      checkins={calendarCheckins}
                       selectedDate={selectedDate}
                       onDateSelect={handleDateSelect}
                       challengeColors={challengeColors}
@@ -903,6 +936,8 @@ export default function HomeScreen() {
                       onPrevious={() => calendarSwipeRef.current?.animateRight()}
                       onNext={() => calendarSwipeRef.current?.animateLeft()}
                       hasBackgroundImage={!!backgroundImage}
+                      mode={challengeCalendarMode ? 'single' : 'multi'}
+                      selectedChallengeColor={selectedChallengeColor}
                     />
                   </SwipeableView>
                 </View>

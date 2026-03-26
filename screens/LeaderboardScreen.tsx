@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useHeaderHeight } from '@react-navigation/elements';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -62,7 +62,7 @@ export default function LeaderboardScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
-  const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const participants = useSelector((state: RootState) => state.participants.data);
@@ -84,7 +84,8 @@ export default function LeaderboardScreen() {
   const activeChallenges = challenges.filter(
     c =>
       userChallengeIds.has(c.id) &&
-      getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
+      getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active' &&
+      participants.filter(p => p.challengeId === c.id).length > 1
   );
 
   // Sort active challenges by saved order
@@ -250,10 +251,9 @@ export default function LeaderboardScreen() {
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerTransparent: !!backgroundImage,
-      headerStyle: backgroundImage ? { backgroundColor: 'transparent' } : undefined,
+      headerShown: false,
     });
-  }, [navigation, backgroundImage]);
+  }, [navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -272,9 +272,22 @@ export default function LeaderboardScreen() {
           <View style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]} />
         </View>
       )}
+      {/* Sticky header */}
+      <View style={[styles.stickyHeader, {
+        paddingTop: insets.top,
+        backgroundColor: backgroundImage ? 'transparent' : colors.background,
+        ...(backgroundImage ? {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colorScheme === 'dark'
+            ? 'rgba(0, 0, 0, 0.15)'
+            : 'rgba(255, 255, 255, 0.15)',
+        } : {}),
+      }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>
+      </View>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, backgroundImage && { paddingTop: headerHeight }]}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -441,6 +454,16 @@ export default function LeaderboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  stickyHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    zIndex: 10,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,

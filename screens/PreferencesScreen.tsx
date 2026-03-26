@@ -15,6 +15,7 @@ export default function PreferencesScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const [chatTabEnabled, setChatTabEnabled] = useFeatureFlag(FEATURE_FLAGS.CHAT_TAB, true);
+  const [challengeCalendarEnabled, setChallengeCalendarEnabled] = useFeatureFlag(FEATURE_FLAGS.CHALLENGE_CALENDAR, true);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -44,6 +45,32 @@ export default function PreferencesScreen() {
               value={chatTabEnabled}
               onValueChange={setChatTabEnabled}
               accessibilityLabel="Show Chat in tab bar"
+            />
+          </View>
+        </View>
+
+        {/* Home Screen Section */}
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="home-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Home Screen
+            </Text>
+          </View>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>
+                Focused Calendar
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Show activity for the selected challenge only instead of all challenges
+              </Text>
+            </View>
+            <Toggle
+              value={challengeCalendarEnabled}
+              onValueChange={setChallengeCalendarEnabled}
+              accessibilityLabel="Show calendar for selected challenge only"
             />
           </View>
         </View>
