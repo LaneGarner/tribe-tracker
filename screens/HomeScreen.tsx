@@ -91,6 +91,7 @@ export default function HomeScreen() {
   );
   const [challengeOrder, setChallengeOrder] = useState<string[]>([]);
   const scrollOffsetRef = useRef(0);
+  const scrollViewRef = useRef<any>(null);
   const carouselLayoutYRef = useRef(0);
 
   // Ref for swipeable animations
@@ -234,6 +235,24 @@ export default function HomeScreen() {
     extrapolate: 'clamp',
   });
 
+  // Snap header when released without velocity (no momentum will follow)
+  const handleScrollEndDrag = useCallback((event: any) => {
+    const velocity = event.nativeEvent.velocity?.y ?? 0;
+    if (Math.abs(velocity) < 0.1) {
+      const offset = scrollOffsetRef.current;
+      if (offset > 0 && offset < 40) {
+        scrollViewRef.current?.scrollTo({ y: offset <= 10 ? 0 : 40, animated: true });
+      }
+    }
+  }, []);
+
+  // Snap header after momentum settles in the animation zone
+  const handleMomentumEnd = useCallback(() => {
+    const offset = scrollOffsetRef.current;
+    if (offset > 0 && offset < 40) {
+      scrollViewRef.current?.scrollTo({ y: offset <= 10 ? 0 : 40, animated: true });
+    }
+  }, []);
 
   // Load data on mount - storage first, then server
   useEffect(() => {
@@ -746,6 +765,7 @@ export default function HomeScreen() {
       {backgroundImage && pillsSection}
 
       <Animated.ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -758,6 +778,8 @@ export default function HomeScreen() {
           scrollY.setValue(offsetY);
           scrollYLayout.setValue(offsetY);
         }}
+        onScrollEndDrag={handleScrollEndDrag}
+        onMomentumScrollEnd={handleMomentumEnd}
         scrollEventThrottle={16}
         stickyHeaderIndices={!backgroundImage && orderedChallenges.length > 1 ? [1] : undefined}
       >

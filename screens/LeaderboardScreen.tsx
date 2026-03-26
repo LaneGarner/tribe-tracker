@@ -261,6 +261,80 @@ export default function LeaderboardScreen() {
       }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>
       </View>
+      {/* Challenge selector tabs - sticky outside ScrollView */}
+      {orderedChallenges.length > 1 && (
+        <View style={[styles.challengeSelectorSticky, { backgroundColor: colors.background }]}>
+          {isExpoGo || !DraggableFlatList ? (
+            // Expo Go: arrows inside chips for reordering
+            <ScrollView
+              ref={pillsScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.challengeSelector}
+              contentContainerStyle={styles.challengeSelectorContent}
+            >
+              {orderedChallenges.map((challenge, index) => (
+                <ChallengeChip
+                  key={challenge.id}
+                  name={challenge.name}
+                  isSelected={selectedChallengeId === challenge.id}
+                  onPress={() => {
+                    setSelectedChallengeId(challenge.id);
+                    scrollPillIntoView(challenge.id, index);
+                  }}
+                  onLayout={(e) => {
+                    pillPositions.current[challenge.id] = {
+                      x: e.nativeEvent.layout.x,
+                      width: e.nativeEvent.layout.width,
+                    };
+                  }}
+                  showArrows
+                  onMoveLeft={() => moveChallengeLeft(challenge.id)}
+                  onMoveRight={() => moveChallengeRight(challenge.id)}
+                  isFirst={index === 0}
+                  isLast={index === orderedChallenges.length - 1}
+                />
+              ))}
+            </ScrollView>
+          ) : (
+          // Production build: draggable with long press
+            <View style={styles.challengeSelector}>
+              <DraggableFlatList
+                ref={pillsScrollRef}
+                horizontal
+                data={orderedChallenges}
+                extraData={selectedChallengeId}
+                keyExtractor={(item: Challenge) => item.id}
+                onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.challengeSelectorContent}
+                renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
+                  const isSelected = selectedChallengeId === challenge.id;
+                  const content = (
+                    <ChallengeChip
+                      name={challenge.name}
+                      isSelected={isSelected}
+                      onPress={() => {
+                        setSelectedChallengeId(challenge.id);
+                        scrollPillIntoView(challenge.id, getIndex() ?? 0);
+                      }}
+                      onLongPress={drag}
+                      disabled={isActive}
+                      onLayout={(e) => {
+                        pillPositions.current[challenge.id] = {
+                          x: e.nativeEvent.layout.x,
+                          width: e.nativeEvent.layout.width,
+                        };
+                      }}
+                    />
+                  );
+                  return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
+                }}
+              />
+            </View>
+          )}
+        </View>
+      )}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -268,81 +342,6 @@ export default function LeaderboardScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Challenge selector tabs (only show if multiple challenges) */}
-        {orderedChallenges.length > 1 && (
-          <>
-            {isExpoGo || !DraggableFlatList ? (
-              // Expo Go: arrows inside chips for reordering
-              <ScrollView
-                ref={pillsScrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.challengeSelector}
-                contentContainerStyle={styles.challengeSelectorContent}
-              >
-                {orderedChallenges.map((challenge, index) => (
-                  <ChallengeChip
-                    key={challenge.id}
-                    name={challenge.name}
-                    isSelected={selectedChallengeId === challenge.id}
-                    onPress={() => {
-                      setSelectedChallengeId(challenge.id);
-                      scrollPillIntoView(challenge.id, index);
-                    }}
-                    onLayout={(e) => {
-                      pillPositions.current[challenge.id] = {
-                        x: e.nativeEvent.layout.x,
-                        width: e.nativeEvent.layout.width,
-                      };
-                    }}
-                    showArrows
-                    onMoveLeft={() => moveChallengeLeft(challenge.id)}
-                    onMoveRight={() => moveChallengeRight(challenge.id)}
-                    isFirst={index === 0}
-                    isLast={index === orderedChallenges.length - 1}
-                  />
-                ))}
-              </ScrollView>
-            ) : (
-            // Production build: draggable with long press
-              <View style={styles.challengeSelector}>
-                <DraggableFlatList
-                  ref={pillsScrollRef}
-                  horizontal
-                  data={orderedChallenges}
-                  extraData={selectedChallengeId}
-                  keyExtractor={(item: Challenge) => item.id}
-                  onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.challengeSelectorContent}
-                  renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
-                    const isSelected = selectedChallengeId === challenge.id;
-                    const content = (
-                      <ChallengeChip
-                        name={challenge.name}
-                        isSelected={isSelected}
-                        onPress={() => {
-                          setSelectedChallengeId(challenge.id);
-                          scrollPillIntoView(challenge.id, getIndex() ?? 0);
-                        }}
-                        onLongPress={drag}
-                        disabled={isActive}
-                        onLayout={(e) => {
-                          pillPositions.current[challenge.id] = {
-                            x: e.nativeEvent.layout.x,
-                            width: e.nativeEvent.layout.width,
-                          };
-                        }}
-                      />
-                    );
-                    return ScaleDecorator ? <ScaleDecorator>{content}</ScaleDecorator> : content;
-                  }}
-                />
-              </View>
-            )}
-          </>
-        )}
-
         {/* Challenge info */}
         {orderedChallenges.length > 0 ? (
           <SwipeableView
@@ -426,8 +425,11 @@ const styles = StyleSheet.create({
   },
   stickyHeader: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 12,
     zIndex: 10,
+  },
+  challengeSelectorSticky: {
+    paddingBottom: 8,
   },
   headerTitle: {
     fontSize: 24,
