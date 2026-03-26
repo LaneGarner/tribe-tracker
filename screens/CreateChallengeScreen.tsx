@@ -81,13 +81,14 @@ export default function CreateChallengeScreen() {
   );
   const isEditMode = Boolean(editChallengeId && existingChallenge);
   const isActiveChallenge = existingChallenge?.status === 'active';
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
   // Fetch public challenges when in browse mode
   useEffect(() => {
     if (mode === 'browse') {
       const token = getAccessToken();
       if (token) {
-        dispatch(fetchPublicChallenges(token));
+        dispatch(fetchPublicChallenges(token)).finally(() => setInitialFetchDone(true));
       }
     }
   }, [mode, dispatch, getAccessToken]);
@@ -584,7 +585,7 @@ export default function CreateChallengeScreen() {
         Public Challenges
       </Text>
 
-      {challengesLoading ? (
+      {!initialFetchDone && challengesLoading ? (
         <PublicChallengeListSkeleton count={3} />
       ) : activePublicChallenges.length === 0 ? (
         <View style={styles.emptyState}>
