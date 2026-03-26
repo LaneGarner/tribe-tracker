@@ -157,20 +157,23 @@ export default function LeaderboardScreen() {
 
     // For DraggableFlatList (production builds), use scrollToIndex
     if (pillsScrollRef.current.scrollToIndex) {
-      pillsScrollRef.current.scrollToIndex({
-        index,
-        animated: true,
-        viewPosition: 0.5 // Center the item
-      });
+      if (index === orderedChallenges.length - 1) {
+        pillsScrollRef.current.scrollToEnd({ animated: true });
+      } else {
+        pillsScrollRef.current.scrollToIndex({
+          index,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      }
     } else if (pillsScrollRef.current.scrollTo) {
-      // For ScrollView (Expo Go), use pixel-based scrolling
       const pos = pillPositions.current[challengeId];
       if (pos) {
         const offset = Math.max(0, pos.x - 100);
         pillsScrollRef.current.scrollTo({ x: offset, animated: true });
       }
     }
-  }, []);
+  }, [orderedChallenges.length]);
 
   // Challenge swipe handlers
   const handleChallengeSwipeLeft = useCallback(() => {
@@ -446,8 +449,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   challengeSelectorContent: {
-    paddingLeft: 16,
-    paddingRight: 120,
+    paddingHorizontal: 16,
   },
   selectedChallengeHeader: {
     paddingHorizontal: 16,

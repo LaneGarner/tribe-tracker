@@ -513,22 +513,24 @@ export default function HomeScreen() {
   const scrollPillIntoView = useCallback((challengeId: string, index: number) => {
     if (!pillsScrollRef.current) return;
 
-    // For DraggableFlatList (production builds), use scrollToIndex
     if (pillsScrollRef.current.scrollToIndex) {
-      pillsScrollRef.current.scrollToIndex({
-        index,
-        animated: true,
-        viewPosition: 0.5 // Center the item
-      });
+      if (index === orderedChallenges.length - 1) {
+        pillsScrollRef.current.scrollToEnd({ animated: true });
+      } else {
+        pillsScrollRef.current.scrollToIndex({
+          index,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      }
     } else if (pillsScrollRef.current.scrollTo) {
-      // For ScrollView (Expo Go), use pixel-based scrolling
       const pos = pillPositions.current[challengeId];
       if (pos) {
         const offset = Math.max(0, pos.x - 100);
         pillsScrollRef.current.scrollTo({ x: offset, animated: true });
       }
     }
-  }, []);
+  }, [orderedChallenges.length]);
 
   const handleChallengeSwipeLeft = useCallback(() => {
     // Swipe left = go to next challenge
