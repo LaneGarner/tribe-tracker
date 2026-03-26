@@ -100,6 +100,7 @@ export default function HomeScreen() {
   const challengeSwipeRef = useRef<SwipeableViewRef>(null);
   const pillsScrollRef = useRef<ScrollView | any>(null);
   const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
+  const hasAutoSelected = useRef(false);
 
   // Points badge swipe state
   const [badgeHidden, setBadgeHidden] = useState(false);
@@ -333,9 +334,10 @@ export default function HomeScreen() {
     }
   }, [orderedChallenges, saveOrder]);
 
-  // Set initial selected challenge - only from user's joined challenges
+  // Set initial selected challenge - always pick first on mount
   useEffect(() => {
-    if (orderedChallenges.length > 0 && !selectedChallengeId) {
+    if (orderedChallenges.length > 0 && !hasAutoSelected.current) {
+      hasAutoSelected.current = true;
       setSelectedChallengeId(orderedChallenges[0].id);
     } else if (
       orderedChallenges.length > 0 &&
@@ -802,15 +804,18 @@ export default function HomeScreen() {
                   style={[
                     styles.leaderboardLink,
                     pillStyle,
-                    backgroundImage && { paddingHorizontal: 16, alignSelf: 'center' as const },
+                    backgroundImage && { paddingHorizontal: 20, paddingVertical: 12, alignSelf: 'center' as const },
                   ]}
                   onPress={() => navigation.navigate('Leaderboard', { challengeId: selectedChallengeId || undefined })}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="View leaderboard"
                 >
-                  <Ionicons name="trophy-outline" size={16} color={colors.primary} />
-                  <Text style={[styles.leaderboardLinkText, { color: colors.primary }]}>
+                  <Ionicons name="trophy" size={18} color={colorScheme === 'dark' ? '#FFFFFF' : colors.primary} />
+                  <Text style={[styles.leaderboardLinkText, { color: colorScheme === 'dark' ? '#FFFFFF' : colors.primary }]}>
                     View Leaderboard
                   </Text>
-                  <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+                  <Ionicons name="chevron-forward" size={16} color={colorScheme === 'dark' ? '#FFFFFF' : colors.primary} />
                 </TouchableOpacity>
                 {/* Swipeable date section */}
                 <View style={styles.dateSection}>
@@ -1240,13 +1245,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    marginTop: 16,
-    paddingVertical: 8,
+    gap: 8,
+    marginTop: 12,
+    marginHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
   },
   leaderboardLinkText: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
   },
   pointsBadgeContainer: {
     position: 'absolute',
