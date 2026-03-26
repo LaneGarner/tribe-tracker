@@ -13,13 +13,17 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
 import CreateChallengeScreen from '../screens/CreateChallengeScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import MenuScreen from '../screens/MenuScreen';
+import ChatScreen from '../screens/ChatScreen';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { TabParamList } from '../types';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { selectTotalUnreadCount } from '../redux/slices/chatSlice';
+import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -28,6 +32,7 @@ const TAB_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; size: nu
   Home: { icon: 'home', size: 22 },
   Challenges: { icon: 'flag', size: 22 },
   Leaderboard: { icon: 'trophy', size: 22 },
+  Chat: { icon: 'chatbubble', size: 22 },
   Menu: { icon: 'menu', size: 26 },
 };
 
@@ -82,12 +87,26 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const insets = useSafeAreaInsets();
+  const totalUnread = useSelector(selectTotalUnreadCount);
 
   // Track tab widths and positions for the sliding indicator
   const tabWidths = useRef<number[]>([]);
   const tabPositions = useRef<number[]>([]);
   const contentWidths = useRef<number[]>([]);
   const [indicatorReady, setIndicatorReady] = useState(false);
+
+  // Reset indicator measurements when tab count changes (feature flag toggle)
+  const routeCount = state.routes.length;
+  const prevRouteCount = useRef(routeCount);
+  useEffect(() => {
+    if (prevRouteCount.current !== routeCount) {
+      prevRouteCount.current = routeCount;
+      setIndicatorReady(false);
+      tabWidths.current = [];
+      tabPositions.current = [];
+      contentWidths.current = [];
+    }
+  }, [routeCount]);
   const indicatorX = useSharedValue(0);
   const indicatorWidth = useSharedValue(0);
 
@@ -266,6 +285,13 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
                   size={iconConfig.size}
                   color={isFocused ? colors.primary : colors.tabBarInactive}
                 />
+                {route.name === 'Chat' && totalUnread > 0 && (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>
+                      {totalUnread > 99 ? '99+' : totalUnread}
+                    </Text>
+                  </View>
+                )}
               </View>
               <Text
                 style={[
@@ -391,6 +417,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  tabBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   tabLabel: {
     fontSize: 11,
     marginTop: 4,
@@ -401,6 +444,7 @@ const styles = StyleSheet.create({
 export default function TabNavigator() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+  const [chatTabEnabled] = useFeatureFlag(FEATURE_FLAGS.CHAT_TAB, true);
 
   return (
     <Tab.Navigator
@@ -442,6 +486,16 @@ export default function TabNavigator() {
           tabBarLabel: 'Leaderboards',
         }}
       />
+      {chatTabEnabled && (
+        <Tab.Screen
+          name="Chat"
+          component={ChatScreen}
+          options={{
+            title: 'Chat',
+            tabBarLabel: 'Chat',
+          }}
+        />
+      )}
       <Tab.Screen
         name="Menu"
         component={MenuScreen}

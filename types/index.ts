@@ -234,5 +234,6 @@ export type TabParamList = {
   Home: { selectChallengeId?: string } | undefined;
   Challenges: undefined;
   Leaderboard: { challengeId?: string } | undefined;
+  Chat: undefined;
   Menu: undefined;
 };

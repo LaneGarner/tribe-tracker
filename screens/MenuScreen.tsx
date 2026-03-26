@@ -20,6 +20,7 @@ import { selectTotalUnreadCount, loadChatFromStorage } from '../redux/slices/cha
 import SegmentedControl from '../components/SegmentedControl';
 import Avatar from '../components/Avatar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -39,10 +40,13 @@ export default function MenuScreen() {
   const { user, signOut, getAccessToken } = useAuth();
   const profile = useSelector((state: RootState) => state.profile.data);
   const totalUnread = useSelector(selectTotalUnreadCount);
+  const [chatTabEnabled] = useFeatureFlag(FEATURE_FLAGS.CHAT_TAB, true);
 
   const featureItems: MenuItem[] = [
     { id: 'badges', label: 'Badges', icon: 'ribbon-outline', screen: 'Badges' },
-    { id: 'chat', label: 'Chat', icon: 'chatbubble-outline', screen: 'Chat' },
+    ...(!chatTabEnabled
+      ? [{ id: 'chat', label: 'Chat', icon: 'chatbubble-outline' as const, screen: 'Chat' as const }]
+      : []),
     { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching' },
   ];
 

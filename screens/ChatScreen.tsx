@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { CompositeNavigationProp } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
@@ -21,12 +23,15 @@ import {
 } from '../redux/slices/chatSlice';
 import { useChatListRealtime } from '../hooks/useChatListRealtime';
 import { isBackendConfigured } from '../config/api';
-import { RootStackParamList, Conversation } from '../types';
+import { RootStackParamList, TabParamList, Conversation } from '../types';
 import ConversationRow from '../components/chat/ConversationRow';
 import EmptyChat from '../components/chat/EmptyChat';
 import Skeleton from '../components/ui/Skeleton';
 
-type ChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Chat'>;
+type ChatNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<TabParamList, 'Chat'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 export default function ChatScreen() {
   const navigation = useNavigation<ChatNavigationProp>();
