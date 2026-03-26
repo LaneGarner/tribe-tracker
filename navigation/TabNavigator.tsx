@@ -532,7 +532,7 @@ export default function TabNavigator() {
           name="Chat"
           component={ChatScreen}
           options={{
-            title: 'Chat',
+            title: 'Tribe Chat',
             tabBarLabel: 'Chat',
           }}
         />

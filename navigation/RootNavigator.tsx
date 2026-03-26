@@ -142,7 +142,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="Chat"
             component={ChatScreen}
-            options={{ title: 'Chat' }}
+            options={{ title: 'Tribe Chat' }}
           />
           <Stack.Screen
             name="GroupChat"
