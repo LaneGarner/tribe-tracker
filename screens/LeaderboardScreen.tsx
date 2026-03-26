@@ -172,17 +172,6 @@ export default function LeaderboardScreen() {
     }
   }, []);
 
-  // Auto-scroll pill into view whenever selection changes
-  const prevSelectedId = useRef<string | null>(null);
-  useEffect(() => {
-    if (!selectedChallengeId || selectedChallengeId === prevSelectedId.current) return;
-    prevSelectedId.current = selectedChallengeId;
-    const index = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
-    if (index !== -1) {
-      setTimeout(() => scrollPillIntoView(selectedChallengeId, index), 100);
-    }
-  }, [selectedChallengeId, orderedChallenges, scrollPillIntoView]);
-
   // Challenge swipe handlers
   const handleChallengeSwipeLeft = useCallback(() => {
     if (canSwipeNextChallenge) {
@@ -221,6 +210,7 @@ export default function LeaderboardScreen() {
       !orderedChallenges.some(c => c.id === selectedChallengeId)
     ) {
       setSelectedChallengeId(orderedChallenges[0].id);
+      setTimeout(() => scrollPillIntoView(orderedChallenges[0].id, 0), 100);
     }
   }, [orderedChallenges, selectedChallengeId]);
 
