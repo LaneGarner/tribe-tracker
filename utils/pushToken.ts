@@ -42,7 +42,7 @@ export async function savePushTokenToServer(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ expoPushToken: token }),
+      body: JSON.stringify({ profile: { expoPushToken: token } }),
     });
   } catch (err) {
     console.warn('Failed to save push token to server:', err);
