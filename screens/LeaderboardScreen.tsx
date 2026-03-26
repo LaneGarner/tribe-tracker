@@ -44,6 +44,7 @@ import Leaderboard from '../components/challenge/Leaderboard';
 import ChallengeChip from '../components/challenge/ChallengeChip';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
 
@@ -419,6 +420,7 @@ export default function LeaderboardScreen() {
               }
               challengeId={selectedChallenge?.id}
               challengeStartDate={selectedChallenge?.startDate}
+              hasBackgroundImage={!!backgroundImage}
             />
           </SwipeableView>
         ) : (
@@ -433,6 +435,7 @@ export default function LeaderboardScreen() {
           </View>
         )}
       </ScrollView>
+      <TabBarGradientFade backgroundColor={backgroundImage ? overlayColor : undefined} />
     </View>
   );
 }

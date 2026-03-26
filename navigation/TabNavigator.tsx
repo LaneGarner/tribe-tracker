@@ -300,7 +300,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
           ]}
         >
           <BlurView
-            intensity={50}
+            intensity={80}
             tint="default"
             style={styles.tabBar}
           >
@@ -308,8 +308,8 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
               styles.frostedOverlay,
               {
                 backgroundColor: colorScheme === 'dark'
-                  ? 'rgba(30, 30, 30, 0.8)'
-                  : 'rgba(255, 255, 255, 0.75)'
+                  ? 'rgba(20, 20, 20, 0.88)'
+                  : 'rgba(255, 255, 255, 0.85)'
               }
             ]}>
               <TabBarContent />

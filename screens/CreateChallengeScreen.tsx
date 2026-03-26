@@ -54,6 +54,7 @@ import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '.
 import Toggle from '../components/Toggle';
 import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 import { pickImage, uploadChallengeBackground, deleteChallengeBackground } from '../utils/imageUpload';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
@@ -1141,6 +1142,7 @@ export default function CreateChallengeScreen() {
         {mode === 'browse' && renderBrowse()}
         {mode === 'join' && renderJoin()}
       </ScrollView>
+      <TabBarGradientFade />
     </SafeAreaView>
   );
 }

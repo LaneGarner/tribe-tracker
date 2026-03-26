@@ -58,6 +58,7 @@ import Skeleton from '../components/ui/Skeleton';
 import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCalendar';
 import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 
@@ -956,6 +957,8 @@ export default function HomeScreen() {
         )}
 
       </Animated.ScrollView>
+
+      <TabBarGradientFade />
 
       {/* Floating Points Badge */}
       {activeChallenges.length > 0 && (

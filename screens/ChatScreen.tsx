@@ -27,6 +27,7 @@ import { RootStackParamList, TabParamList, Conversation } from '../types';
 import ConversationRow from '../components/chat/ConversationRow';
 import EmptyChat from '../components/chat/EmptyChat';
 import Skeleton from '../components/ui/Skeleton';
+import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 
 type ChatNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'Chat'>,
@@ -124,6 +125,8 @@ export default function ChatScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       />
+
+      <TabBarGradientFade />
 
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary }]}
