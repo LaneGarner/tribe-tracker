@@ -172,6 +172,15 @@ export default function LeaderboardScreen() {
     }
   }, []);
 
+  // Auto-scroll pill into view whenever selection changes
+  useEffect(() => {
+    if (!selectedChallengeId) return;
+    const index = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
+    if (index !== -1) {
+      setTimeout(() => scrollPillIntoView(selectedChallengeId, index), 100);
+    }
+  }, [selectedChallengeId, orderedChallenges, scrollPillIntoView]);
+
   // Challenge swipe handlers
   const handleChallengeSwipeLeft = useCallback(() => {
     if (canSwipeNextChallenge) {

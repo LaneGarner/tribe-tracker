@@ -241,7 +241,7 @@ export default function HomeScreen() {
     if (Math.abs(velocity) < 0.1) {
       const offset = scrollOffsetRef.current;
       if (offset > 0 && offset < 40) {
-        scrollViewRef.current?.scrollTo({ y: offset <= 10 ? 0 : 40, animated: true });
+        scrollViewRef.current?.scrollTo({ y: offset <= 6 ? 0 : 40, animated: true });
       }
     }
   }, []);
@@ -250,7 +250,7 @@ export default function HomeScreen() {
   const handleMomentumEnd = useCallback(() => {
     const offset = scrollOffsetRef.current;
     if (offset > 0 && offset < 40) {
-      scrollViewRef.current?.scrollTo({ y: offset <= 10 ? 0 : 40, animated: true });
+      scrollViewRef.current?.scrollTo({ y: offset <= 6 ? 0 : 40, animated: true });
     }
   }, []);
 
@@ -529,6 +529,15 @@ export default function HomeScreen() {
       }
     }
   }, []);
+
+  // Auto-scroll pill into view whenever selection changes
+  useEffect(() => {
+    if (!selectedChallengeId) return;
+    const index = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
+    if (index !== -1) {
+      setTimeout(() => scrollPillIntoView(selectedChallengeId, index), 100);
+    }
+  }, [selectedChallengeId, orderedChallenges, scrollPillIntoView]);
 
   const handleChallengeSwipeLeft = useCallback(() => {
     // Swipe left = go to next challenge
