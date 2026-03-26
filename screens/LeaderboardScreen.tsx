@@ -263,7 +263,7 @@ export default function LeaderboardScreen() {
         paddingTop: insets.top + 16,
         backgroundColor: colors.background,
       }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboard</Text>
       </View>
       {/* Challenge selector tabs - sticky outside ScrollView */}
       {orderedChallenges.length > 1 && (

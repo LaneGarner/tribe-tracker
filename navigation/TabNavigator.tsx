@@ -49,6 +49,13 @@ const PILL_HORIZONTAL_PADDING = 16; // padding on each side of content
 const MIN_PILL_WIDTH = 72;
 
 
+// Scale tab label font size based on screen width
+const useTabLabelFontSize = () => {
+  const { width } = useWindowDimensions();
+  // 11pt at 390+ width, scaling down to ~9pt on SE (320)
+  return Math.min(11, Math.max(8, width * 0.028));
+};
+
 // Tab button component
 const TabButton = ({
   route,
@@ -77,6 +84,7 @@ const TabButton = ({
   onTabLayout: (index: number, x: number, width: number) => void;
   onContentLayout: (index: number, width: number) => void;
 }) => {
+  const tabFontSize = useTabLabelFontSize();
 
   return (
     <TouchableOpacity
@@ -116,10 +124,11 @@ const TabButton = ({
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit
-          minimumFontScale={0.7}
+          minimumFontScale={0.5}
           style={[
             styles.tabLabel,
             {
+              fontSize: tabFontSize,
               color: isFocused ? colors.tabBarActive : colors.tabBarInactive,
               fontWeight: isFocused ? '700' : '500',
             },
@@ -514,8 +523,8 @@ export default function TabNavigator() {
         name="Leaderboard"
         component={LeaderboardScreen}
         options={{
-          title: 'Leaderboards',
-          tabBarLabel: 'Leaderboards',
+          title: 'Leaderboard',
+          tabBarLabel: 'Leaderboard',
         }}
       />
       {chatTabEnabled && (
