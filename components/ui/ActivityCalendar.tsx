@@ -307,9 +307,6 @@ export default function ActivityCalendar({
             />
           </TouchableOpacity>
         </View>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Click a date to view/edit that day
-        </Text>
       </View>
 
       {/* Day labels */}
@@ -481,10 +478,6 @@ const styles = StyleSheet.create({
   },
   monthArrowButtonDisabled: {
     opacity: 0.4,
-  },
-  subtitle: {
-    fontSize: 13,
-    marginTop: 2,
   },
   dayLabelsRow: {
     flexDirection: 'row',

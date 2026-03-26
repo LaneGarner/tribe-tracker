@@ -607,6 +607,16 @@ export default function HomeScreen() {
     alignSelf: 'flex-start' as const,
   };
 
+  const headerTextStyle = backgroundImage ? {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    textShadowColor: colorScheme === 'dark'
+      ? 'rgba(0, 0, 0, 0.3)'
+      : 'rgba(0, 0, 0, 0.15)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  } : undefined;
+
   const pillsSection = orderedChallenges.length > 1 ? (
     <View
       style={[
@@ -827,16 +837,34 @@ export default function HomeScreen() {
                   {/* Habits header and date - fixed above swipeable content */}
                   <View style={styles.section}>
                     <View style={styles.sectionTitleRow}>
-                      <View style={[pillStyle]}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                      <View style={[!backgroundImage && pillStyle]}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }, headerTextStyle]}>
                           {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
                         </Text>
-                        <Text style={[styles.dateText, { color: colors.textSecondary }]}>
+                        <Text style={[styles.dateText, { color: colors.textSecondary }, headerTextStyle && { textShadowColor: headerTextStyle.textShadowColor, textShadowOffset: headerTextStyle.textShadowOffset, textShadowRadius: headerTextStyle.textShadowRadius }]}>
                           {formatDate(selectedDate, 'dddd, MMMM D')}
                         </Text>
                       </View>
                       {!isToday(selectedDate) && (
-                        <View style={[styles.pastDayBadge, { borderColor: colors.primary }]}>
+                        <View style={[
+                          styles.pastDayBadge,
+                          backgroundImage
+                            ? {
+                                backgroundColor: colorScheme === 'dark'
+                                  ? 'rgba(24, 24, 27, 0.72)'
+                                  : 'rgba(255, 255, 255, 0.78)',
+                                borderWidth: StyleSheet.hairlineWidth,
+                                borderColor: colorScheme === 'dark'
+                                  ? 'rgba(255, 255, 255, 0.12)'
+                                  : 'rgba(0, 0, 0, 0.08)',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+                                shadowRadius: 4,
+                                elevation: 2,
+                              }
+                            : { borderColor: colors.primary },
+                        ]}>
                           <Text style={[styles.pastDayBadgeText, { color: colors.primary }]}>
                             Editing Past Day
                           </Text>
@@ -878,9 +906,9 @@ export default function HomeScreen() {
                 <View style={styles.calendarSection}>
                   <View style={[
                     { marginHorizontal: 20, marginBottom: 12 },
-                    pillStyle,
+                    !backgroundImage && pillStyle,
                   ]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
+                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }, headerTextStyle]}>
                       Calendar
                     </Text>
                   </View>
