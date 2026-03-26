@@ -215,15 +215,15 @@ export default function HomeScreen() {
 
   // Logo scales from 1 to 0.6 over first 80px of scroll
   const logoScale = scrollY.interpolate({
-    inputRange: [0, 80],
+    inputRange: [0, 40],
     outputRange: [1, 0.6],
     extrapolate: 'clamp',
   });
 
   // Header height shrinks as logo shrinks (uses JS driver since height can't use native)
   const headerHeight = scrollYLayout.interpolate({
-    inputRange: [0, 80],
-    outputRange: [72, 40],
+    inputRange: [0, 40],
+    outputRange: [72, 48],
     extrapolate: 'clamp',
   });
 
@@ -727,8 +727,8 @@ export default function HomeScreen() {
 
       {/* Text + pills outside ScrollView when background image - content clips at ScrollView top edge */}
       {backgroundImage && (
-        <Animated.View style={{ height: textContainerHeight, overflow: 'hidden', transform: [{ translateY: -6 }], paddingHorizontal: 20, zIndex: 12 }}>
-          <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 4 }]}>
+        <Animated.View style={{ height: textContainerHeight, overflow: 'hidden', transform: [{ translateY: -10 }], paddingHorizontal: 20, zIndex: 12 }}>
+          <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 0 }]}>
             TribeTracker
           </Animated.Text>
         </Animated.View>
@@ -753,8 +753,8 @@ export default function HomeScreen() {
       >
         {/* TribeTracker text - scrolls away and fades (inside ScrollView only when no background) */}
         {!backgroundImage && (
-          <View style={{ backgroundColor: colors.background, transform: [{ translateY: -6 }], paddingHorizontal: 20, height: 48 }}>
-            <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 4 }]}>
+          <View style={{ backgroundColor: colors.background, transform: [{ translateY: -10 }], paddingHorizontal: 20, height: 48 }}>
+            <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 0 }]}>
               TribeTracker
             </Animated.Text>
           </View>
@@ -1070,7 +1070,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   challengeSelector: {
-    marginTop: 8,
+    marginTop: 0,
   },
   challengeSelectorContent: {
     paddingHorizontal: 20,
