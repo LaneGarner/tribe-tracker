@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -114,6 +114,9 @@ const TabButton = ({
           )}
         </View>
         <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
           style={[
             styles.tabLabel,
             {
@@ -160,6 +163,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const totalUnread = useSelector(selectTotalUnreadCount);
 
   // Track tab widths and positions for the sliding indicator
@@ -335,9 +339,10 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const activeDescriptor = descriptors[activeRoute.key];
   const hasBackgroundImage = (activeDescriptor?.options as any)?.hasBackgroundImage ?? false;
 
+  const horizontalMargin = screenWidth < 380 ? '1%' : '2%';
   const containerStyle = [
     styles.tabBarContainer,
-    { paddingBottom: insets.bottom > 0 ? insets.bottom - 16 : 4 },
+    { left: horizontalMargin, right: horizontalMargin, paddingBottom: insets.bottom > 0 ? insets.bottom - 16 : 4 },
   ];
 
   // iOS with blur
