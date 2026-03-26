@@ -339,6 +339,11 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
     </View>
   );
 
+  // Check if the active screen has a custom background image
+  const activeRoute = state.routes[state.index];
+  const activeDescriptor = descriptors[activeRoute.key];
+  const hasBackgroundImage = (activeDescriptor?.options as any)?.hasBackgroundImage ?? false;
+
   const containerStyle = [
     styles.tabBarContainer,
     { paddingBottom: insets.bottom > 0 ? insets.bottom - 16 : 4 },
@@ -354,7 +359,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
             {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.15,
+              shadowOpacity: colorScheme === 'dark' ? 0.4 : (hasBackgroundImage ? 0.4 : 0.15),
               shadowRadius: 12,
             },
           ]}
@@ -383,7 +388,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   // Android translucent fallback
   return (
     <GestureDetector gesture={panGesture}>
-      <View style={[containerStyle, { elevation: 8 }]}>
+      <View style={[containerStyle, { elevation: hasBackgroundImage ? 16 : 8 }]}>
         <View style={[
           styles.tabBar,
           {

@@ -57,14 +57,14 @@ export default function ActivityCalendar({
   const glassStyle: ViewStyle | undefined = hasBackgroundImage ? {
     backgroundColor: colorScheme === 'dark'
       ? 'rgba(24, 24, 27, 0.72)'
-      : 'rgba(255, 255, 255, 0.78)',
+      : 'rgba(255, 255, 255, 0.88)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colorScheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(0, 0, 0, 0.08)',
+      : 'rgba(255, 255, 255, 0.25)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.3,
     shadowRadius: 4,
     elevation: 2,
   } : undefined;
@@ -73,7 +73,7 @@ export default function ActivityCalendar({
     ? {
         backgroundColor: colorScheme === 'dark'
           ? 'rgba(255, 255, 255, 0.05)'
-          : 'rgba(0, 0, 0, 0.03)',
+          : 'rgba(255, 255, 255, 0.08)',
         borderRadius: 10,
         paddingHorizontal: 10,
         paddingVertical: 8,

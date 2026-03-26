@@ -602,24 +602,30 @@ export default function HomeScreen() {
 
   const backgroundImage = selectedChallenge?.backgroundImageUrl;
 
+  // Expose background image state to tab bar via screen options
+  useEffect(() => {
+    navigation.setOptions({ hasBackgroundImage: !!backgroundImage });
+  }, [backgroundImage, navigation]);
 
-  const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
+  const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.35)';
+  const onScrimTextColor = backgroundImage ? '#FFFFFF' : colors.text;
+  const onScrimSecondaryColor = backgroundImage ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary;
 
   const pillStyle = backgroundImage ? {
     backgroundColor: colorScheme === 'dark'
       ? 'rgba(24, 24, 27, 0.72)'
-      : 'rgba(255, 255, 255, 0.78)',
+      : 'rgba(255, 255, 255, 0.88)',
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colorScheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(0, 0, 0, 0.08)',
+      : 'rgba(255, 255, 255, 0.25)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     alignSelf: 'flex-start' as const,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+    shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.3,
     shadowRadius: 4,
     elevation: 2,
   } : {
@@ -633,7 +639,7 @@ export default function HomeScreen() {
     fontWeight: '700' as const,
     textShadowColor: colorScheme === 'dark'
       ? 'rgba(0, 0, 0, 0.3)'
-      : 'rgba(0, 0, 0, 0.15)',
+      : 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   } : undefined;
@@ -648,7 +654,7 @@ export default function HomeScreen() {
             borderBottomWidth: StyleSheet.hairlineWidth,
             borderBottomColor: colorScheme === 'dark'
               ? 'rgba(255, 255, 255, 0.15)'
-              : 'rgba(0, 0, 0, 0.1)',
+              : 'rgba(255, 255, 255, 0.15)',
           } : {}),
         },
       ]}
@@ -751,7 +757,7 @@ export default function HomeScreen() {
         <Animated.View style={{ transform: [{ scale: logoScale }] }}>
           <Image
             source={require('../assets/images/TT-logo.png')}
-            style={[styles.logo, { tintColor: colorScheme === 'dark' ? '#fff' : '#000' }]}
+            style={[styles.logo, { tintColor: backgroundImage ? '#fff' : (colorScheme === 'dark' ? '#fff' : '#000') }]}
           />
         </Animated.View>
       </Animated.View>
@@ -759,7 +765,7 @@ export default function HomeScreen() {
       {/* Text + pills outside ScrollView when background image - content clips at ScrollView top edge */}
       {backgroundImage && (
         <Animated.View style={{ height: textContainerHeight, overflow: 'hidden', transform: [{ translateY: -10 }], paddingHorizontal: 20, zIndex: 12 }}>
-          <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 0 }]}>
+          <Animated.Text style={[styles.logoText, { color: onScrimTextColor, opacity: textOpacity, marginBottom: 0 }]}>
             TribeTracker
           </Animated.Text>
         </Animated.View>
@@ -864,10 +870,10 @@ export default function HomeScreen() {
                   <View style={styles.section}>
                     <View style={styles.sectionTitleRow}>
                       <View style={[!backgroundImage && pillStyle]}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }, headerTextStyle]}>
+                        <Text style={[styles.sectionTitle, { color: onScrimTextColor }, headerTextStyle]}>
                           {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
                         </Text>
-                        <Text style={[styles.dateText, { color: colors.textSecondary }, headerTextStyle && { textShadowColor: headerTextStyle.textShadowColor, textShadowOffset: headerTextStyle.textShadowOffset, textShadowRadius: headerTextStyle.textShadowRadius }]}>
+                        <Text style={[styles.dateText, { color: onScrimSecondaryColor }, headerTextStyle && { textShadowColor: headerTextStyle.textShadowColor, textShadowOffset: headerTextStyle.textShadowOffset, textShadowRadius: headerTextStyle.textShadowRadius }]}>
                           {formatDate(selectedDate, 'dddd, MMMM D')}
                         </Text>
                       </View>
@@ -878,14 +884,14 @@ export default function HomeScreen() {
                             ? {
                                 backgroundColor: colorScheme === 'dark'
                                   ? 'rgba(24, 24, 27, 0.72)'
-                                  : 'rgba(255, 255, 255, 0.78)',
+                                  : 'rgba(255, 255, 255, 0.88)',
                                 borderWidth: StyleSheet.hairlineWidth,
                                 borderColor: colorScheme === 'dark'
                                   ? 'rgba(255, 255, 255, 0.12)'
-                                  : 'rgba(0, 0, 0, 0.08)',
+                                  : 'rgba(255, 255, 255, 0.25)',
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 1 },
-                                shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.12,
+                                shadowOpacity: colorScheme === 'dark' ? 0.4 : 0.3,
                                 shadowRadius: 4,
                                 elevation: 2,
                               }
@@ -934,7 +940,7 @@ export default function HomeScreen() {
                     { marginHorizontal: 20, marginBottom: 12 },
                     !backgroundImage && pillStyle,
                   ]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }, headerTextStyle]}>
+                    <Text style={[styles.sectionTitle, { color: onScrimTextColor, marginBottom: 0 }, headerTextStyle]}>
                       Calendar
                     </Text>
                   </View>
@@ -1012,7 +1018,7 @@ export default function HomeScreen() {
 
       </Animated.ScrollView>
 
-      <TabBarGradientFade />
+      <TabBarGradientFade backgroundColor={backgroundImage ? '#000' : undefined} />
 
       {/* Floating Points Badge */}
       {activeChallenges.length > 0 && (

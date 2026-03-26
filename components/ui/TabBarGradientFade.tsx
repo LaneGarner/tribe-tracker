@@ -12,10 +12,11 @@ export function TabBarGradientFade({ backgroundColor }: TabBarGradientFadeProps)
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const bg = backgroundColor ?? (colorScheme === 'dark' ? '#000' : '#fff');
+  const useDark = colorScheme === 'dark' || backgroundColor === '#000';
 
   return (
     <LinearGradient
-      colors={[colorScheme === 'dark' ? 'rgba(0,0,0,0)' : 'rgba(255,255,255,0)', bg]}
+      colors={[useDark ? 'rgba(0,0,0,0)' : 'rgba(255,255,255,0)', bg]}
       locations={[0, 1]}
       style={styles.gradient}
       pointerEvents="none"
