@@ -531,8 +531,10 @@ export default function HomeScreen() {
   }, []);
 
   // Auto-scroll pill into view whenever selection changes
+  const prevSelectedId = useRef<string | null>(null);
   useEffect(() => {
-    if (!selectedChallengeId) return;
+    if (!selectedChallengeId || selectedChallengeId === prevSelectedId.current) return;
+    prevSelectedId.current = selectedChallengeId;
     const index = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
     if (index !== -1) {
       setTimeout(() => scrollPillIntoView(selectedChallengeId, index), 100);
