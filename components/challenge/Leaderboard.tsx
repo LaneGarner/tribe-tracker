@@ -16,7 +16,6 @@ interface LeaderboardProps {
   showPodium?: boolean;
   challengeId?: string;
   challengeStartDate?: string;
-  hasBackgroundImage?: boolean;
 }
 
 const PODIUM_COLORS = {
@@ -44,16 +43,9 @@ export default function Leaderboard({
   showPodium = true,
   challengeId,
   challengeStartDate,
-  hasBackgroundImage,
 }: LeaderboardProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-
-  const glassStyle = hasBackgroundImage ? {
-    backgroundColor: colorScheme === 'dark'
-      ? 'rgba(24, 24, 27, 0.45)'
-      : 'rgba(255, 255, 255, 0.5)',
-  } : undefined;
 
   // Get all checkins for this challenge to calculate active streaks
   const allCheckins = useSelector((state: RootState) => state.checkins.data);
@@ -264,7 +256,7 @@ export default function Leaderboard({
       )}
 
       <View
-        style={[styles.listContainer, glassStyle ?? { backgroundColor: colors.surface }]}
+        style={[styles.listContainer, { backgroundColor: colors.surface }]}
       >
         <View style={styles.listHeader}>
           <Trophy size={20} color={colors.primary} />

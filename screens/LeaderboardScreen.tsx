@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -39,7 +38,7 @@ import { loadParticipantsFromStorage, fetchParticipantsFromServer } from '../red
 import { useAuth } from '../context/AuthContext';
 import { isBackendConfigured } from '../config/api';
 import { RootStackParamList, TabParamList, Challenge } from '../types';
-import { getChallengeStatus } from '../utils/dateUtils';
+import { getChallengeStatus, getDaysRemaining } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import ChallengeChip from '../components/challenge/ChallengeChip';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
@@ -247,9 +246,6 @@ export default function LeaderboardScreen() {
     : null;
   const myPoints = currentUserParticipant?.totalPoints ?? 0;
 
-  const backgroundImage = selectedChallenge?.backgroundImageUrl;
-  const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
-
   useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: false,
@@ -258,25 +254,10 @@ export default function LeaderboardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {backgroundImage && (
-        <View
-          style={StyleSheet.absoluteFill}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <ExpoImage
-            source={{ uri: backgroundImage }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            cachePolicy="disk"
-          />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]} />
-        </View>
-      )}
       {/* Sticky header */}
       <View style={[styles.stickyHeader, {
         paddingTop: insets.top + 16,
-        backgroundColor: backgroundImage ? 'transparent' : colors.background,
+        backgroundColor: colors.background,
       }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>
       </View>
@@ -377,7 +358,7 @@ export default function LeaderboardScreen() {
                   {selectedChallenge.name}
                 </Text>
                 <Text style={[styles.selectedChallengeDuration, { color: colors.textSecondary }]}>
-                  {selectedChallenge.durationDays} day challenge
+                  {selectedChallenge.durationDays} day challenge · {getDaysRemaining(selectedChallenge.endDate || selectedChallenge.startDate)} days remaining
                 </Text>
               </View>
             )}
@@ -420,7 +401,6 @@ export default function LeaderboardScreen() {
               }
               challengeId={selectedChallenge?.id}
               challengeStartDate={selectedChallenge?.startDate}
-              hasBackgroundImage={!!backgroundImage}
             />
           </SwipeableView>
         ) : (
@@ -435,7 +415,7 @@ export default function LeaderboardScreen() {
           </View>
         )}
       </ScrollView>
-      <TabBarGradientFade backgroundColor={backgroundImage ? overlayColor : undefined} />
+      <TabBarGradientFade />
     </View>
   );
 }
