@@ -49,7 +49,7 @@ const PILL_HORIZONTAL_PADDING = 16; // padding on each side of content
 const MIN_PILL_WIDTH = 72;
 
 
-// Animated tab button with scale effect on active state
+// Tab button component
 const TabButton = ({
   route,
   index,
@@ -77,15 +77,6 @@ const TabButton = ({
   onTabLayout: (index: number, x: number, width: number) => void;
   onContentLayout: (index: number, width: number) => void;
 }) => {
-  const scale = useSharedValue(1);
-
-  useEffect(() => {
-    scale.value = withTiming(isFocused ? 1.15 : 1, TIMING_CONFIG);
-  }, [isFocused]);
-
-  const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
 
   return (
     <TouchableOpacity
@@ -108,7 +99,7 @@ const TabButton = ({
           onContentLayout(index, e.nativeEvent.layout.width);
         }}
       >
-        <Animated.View style={[styles.iconContainer, animatedIconStyle]}>
+        <View style={styles.iconContainer}>
           <Ionicons
             name={iconConfig.icon}
             size={iconConfig.size}
@@ -121,7 +112,7 @@ const TabButton = ({
               </Text>
             </View>
           )}
-        </Animated.View>
+        </View>
         <Text
           style={[
             styles.tabLabel,
