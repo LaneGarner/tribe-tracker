@@ -834,11 +834,7 @@ export default function HomeScreen() {
                 />
               </TouchableOpacity>
 
-            </SwipeableView>
-
-            {selectedStatus === 'active' ? (
-              <>
-                {/* Leaderboard Link */}
+              {selectedStatus === 'active' && (
                 <TouchableOpacity
                   style={[
                     styles.leaderboardLink,
@@ -856,6 +852,12 @@ export default function HomeScreen() {
                   </Text>
                   <Ionicons name="chevron-forward" size={16} color={colorScheme === 'dark' ? '#FFFFFF' : colors.text} />
                 </TouchableOpacity>
+              )}
+              <View style={{ paddingBottom: 8 }} />
+            </SwipeableView>
+
+            {selectedStatus === 'active' ? (
+              <>
                 {/* Swipeable date section */}
                 <View style={styles.dateSection}>
                   {/* Habits header and date - fixed above swipeable content */}
