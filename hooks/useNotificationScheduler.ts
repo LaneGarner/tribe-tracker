@@ -11,6 +11,7 @@ import {
   hasPromptedPermission,
   markPermissionPrompted,
 } from '../utils/notifications';
+import { registerAndSavePushToken } from '../utils/pushToken';
 
 export default function useNotificationScheduler(): void {
   const profile = useSelector((state: RootState) => state.profile.data);
@@ -72,9 +73,12 @@ export default function useNotificationScheduler(): void {
       }
 
       showPermissionExplanation(async () => {
-        await requestPermission();
+        const granted = await requestPermission();
         await markPermissionPrompted();
-        scheduleNotifications();
+        if (granted) {
+          scheduleNotifications();
+          registerAndSavePushToken();
+        }
       });
     };
 
