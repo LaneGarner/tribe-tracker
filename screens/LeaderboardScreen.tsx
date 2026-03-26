@@ -14,7 +14,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { Trophy } from 'lucide-react-native';
+import { Trophy, ChevronRight } from 'lucide-react-native';
 
 // Check if running in Expo Go vs a build
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
@@ -366,6 +366,23 @@ export default function LeaderboardScreen() {
               </View>
             )}
 
+            {/* View Challenge Link */}
+            {selectedChallenge && (
+              <TouchableOpacity
+                style={styles.viewDetailsLink}
+                onPress={() => navigation.navigate('ChallengeDetail', { challengeId: selectedChallenge.id })}
+                activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="View challenge details"
+              >
+                <Text style={[styles.viewDetailsText, { color: colors.text }]}>
+                  View Challenge
+                </Text>
+                <ChevronRight size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+
             {/* Stats summary - gradient card */}
             {selectedChallenge && (
               <View style={styles.statsCardShadow}>
@@ -467,8 +484,8 @@ const styles = StyleSheet.create({
   },
   statsCardShadow: {
     marginHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: 14,
+    marginBottom: 28,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -497,6 +514,20 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  viewDetailsLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingVertical: 6,
+    marginLeft: 20,
+    marginTop: 8,
+    minHeight: 44,
+  },
+  viewDetailsText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
