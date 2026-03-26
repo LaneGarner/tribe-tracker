@@ -1048,7 +1048,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: TAB_BAR_HEIGHT + 32, // Extra padding for floating badge
+    paddingBottom: TAB_BAR_HEIGHT + 90, // Extra padding for floating badge
   },
   sectionTitleRow: {
     flexDirection: 'row',
