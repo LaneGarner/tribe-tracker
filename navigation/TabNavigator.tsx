@@ -8,7 +8,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
@@ -41,19 +40,13 @@ const TIMING_CONFIG = {
   easing: Easing.out(Easing.cubic),
 };
 
-const EXPAND_SPRING_CONFIG = {
-  damping: 7,
-  stiffness: 300,
-  mass: 0.4,
-};
-
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 500;
 
 const TAB_BAR_PADDING = 0;
 const SELECTION_PILL_PADDING = 6;
-const SELECTION_PILL_HORIZONTAL_INSET = 4;  // Original default inset from tab edges
-const MIN_CONTENT_PADDING = 20;              // Minimum padding around content
+const PILL_HORIZONTAL_PADDING = 16; // padding on each side of content
+const MIN_PILL_WIDTH = 72;
 
 
 // Selection indicator component for the floating pill
@@ -118,49 +111,23 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
     }
   };
 
-  // Calculate indicator position - uses default size, expands if content too tight
+  // Calculate indicator position - sized to content with padding
   const calculateIndicatorPosition = (index: number, animate: boolean) => {
     const tabX = tabPositions.current[index];
     const tabWidth = tabWidths.current[index];
     const contentWidth = contentWidths.current[index];
 
-    if (tabX === undefined || tabWidth === undefined) return;
+    if (tabX === undefined || tabWidth === undefined || contentWidth === undefined) return;
 
-    // Default pill size (original behavior - minimum size)
-    const defaultPillX = tabX + SELECTION_PILL_HORIZONTAL_INSET;
-    const defaultPillWidth = tabWidth - SELECTION_PILL_HORIZONTAL_INSET * 2;
-
-    // Check if content needs more room
-    let finalPillX = defaultPillX;
-    let finalPillWidth = defaultPillWidth;
-
-    if (contentWidth !== undefined) {
-      const currentPadding = (defaultPillWidth - contentWidth) / 2;
-
-      if (currentPadding < MIN_CONTENT_PADDING) {
-        // Content too tight - expand pill
-        finalPillWidth = contentWidth + MIN_CONTENT_PADDING * 2;
-        const contentX = tabX + (tabWidth - contentWidth) / 2;
-        finalPillX = contentX - MIN_CONTENT_PADDING;
-      }
-    }
+    const pillWidth = Math.max(contentWidth + PILL_HORIZONTAL_PADDING * 2, MIN_PILL_WIDTH);
+    const pillX = tabX + (tabWidth - pillWidth) / 2;
 
     if (animate) {
-      // Animate to default first
-      indicatorX.value = withTiming(defaultPillX, TIMING_CONFIG);
-      indicatorWidth.value = withTiming(defaultPillWidth, TIMING_CONFIG);
-
-      // If expansion needed, animate after landing with bounce
-      if (finalPillX !== defaultPillX || finalPillWidth !== defaultPillWidth) {
-        setTimeout(() => {
-          indicatorX.value = withSpring(finalPillX, EXPAND_SPRING_CONFIG);
-          indicatorWidth.value = withSpring(finalPillWidth, EXPAND_SPRING_CONFIG);
-        }, TIMING_CONFIG.duration);
-      }
+      indicatorX.value = withTiming(pillX, TIMING_CONFIG);
+      indicatorWidth.value = withTiming(pillWidth, TIMING_CONFIG);
     } else {
-      // Initial render - set final values immediately (no two-phase on load)
-      indicatorX.value = finalPillX;
-      indicatorWidth.value = finalPillWidth;
+      indicatorX.value = pillX;
+      indicatorWidth.value = pillWidth;
     }
   };
 
@@ -258,12 +225,16 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
           });
         };
 
+        const accessibilityLabel = route.name === 'Chat' && totalUnread > 0
+          ? `Chat, ${totalUnread} unread message${totalUnread === 1 ? '' : 's'}`
+          : options.tabBarAccessibilityLabel;
+
         return (
           <TouchableOpacity
             key={route.key}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isFocused }}
+            accessibilityLabel={accessibilityLabel}
             onPress={onPress}
             onLongPress={onLongPress}
             hitSlop={{ top: 20, bottom: 20, left: 8, right: 8 }}
@@ -374,8 +345,8 @@ const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
     bottom: 0,
-    left: '5%',
-    right: '5%',
+    left: '2%',
+    right: '2%',
   },
   tabBar: {
     borderRadius: 100,
@@ -384,11 +355,11 @@ const styles = StyleSheet.create({
   },
   frostedOverlay: {
     borderRadius: 100,
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
   },
   tabBarContent: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
     position: 'relative',
   },
