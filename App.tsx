@@ -41,8 +41,7 @@ import { RootStackParamList } from './types';
 import { setPendingInviteCode, consumePendingInviteCode, setPendingChallengeId, consumePendingChallengeId } from './utils/pendingInvite';
 import { configureNotificationHandler } from './utils/notifications';
 import useNotificationScheduler from './hooks/useNotificationScheduler';
-import { registerForPushNotifications, savePushTokenToServer } from './utils/pushToken';
-import { API_URL } from './config/api';
+import { registerAndSavePushToken } from './utils/pushToken';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -100,12 +99,8 @@ function AppContent() {
       dispatch(fetchProfileFromServer(token));
       dispatch(fetchBadgesFromServer(token));
 
-      // Register push token after login
-      registerForPushNotifications().then(pushToken => {
-        if (pushToken) {
-          savePushTokenToServer(pushToken, token, API_URL);
-        }
-      });
+      // Register push token after login (only if permission already granted)
+      registerAndSavePushToken();
     }
   }, [user, session, dispatch]);
 

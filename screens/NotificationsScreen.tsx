@@ -24,6 +24,7 @@ import {
   showPermissionExplanation,
   cancelAllNotifications,
 } from '../utils/notifications';
+import { registerAndSavePushToken } from '../utils/pushToken';
 
 function timeStringToDate(time: string): Date {
   const [hour, minute] = time.split(':').map(Number);
@@ -97,6 +98,7 @@ export default function NotificationsScreen() {
           const granted = await requestPermission();
           if (granted) {
             updateSettings({ pushEnabled: true });
+            registerAndSavePushToken();
           } else {
             setPermissionDenied(true);
           }
@@ -104,6 +106,7 @@ export default function NotificationsScreen() {
         return;
       }
       updateSettings({ pushEnabled: true });
+      registerAndSavePushToken();
     } else {
       // Disabling -- cancel all
       await cancelAllNotifications();
