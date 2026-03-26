@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
@@ -242,8 +243,26 @@ export default function LeaderboardScreen() {
     : null;
   const myPoints = currentUserParticipant?.totalPoints ?? 0;
 
+  const backgroundImage = selectedChallenge?.backgroundImageUrl;
+  const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {backgroundImage && (
+        <View
+          style={StyleSheet.absoluteFill}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <ExpoImage
+            source={{ uri: backgroundImage }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            cachePolicy="disk"
+          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]} />
+        </View>
+      )}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
