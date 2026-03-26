@@ -72,6 +72,7 @@ export default function LeaderboardScreen() {
   const challengeSwipeRef = useRef<SwipeableViewRef>(null);
   const pillsScrollRef = useRef<ScrollView | any>(null);
   const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
+  const hasAutoSelected = useRef(false);
 
   // Filter to only show active challenges the user has joined
   const userChallengeIds = new Set(
@@ -186,21 +187,27 @@ export default function LeaderboardScreen() {
     }
   }, [canSwipePrevChallenge, currentChallengeIndex, orderedChallenges, scrollPillIntoView]);
 
-  // Set initial selected challenge - prioritize route param if provided
+  // Set initial selected challenge - only on first mount
   useEffect(() => {
-    if (initialChallengeId) {
-      const index = orderedChallenges.findIndex(c => c.id === initialChallengeId);
-      if (index !== -1) {
-        setSelectedChallengeId(initialChallengeId);
-        // Scroll chip into view after a brief delay to ensure layout is ready
-        setTimeout(() => scrollPillIntoView(initialChallengeId, index), 100);
-        return;
+    if (orderedChallenges.length > 0 && !hasAutoSelected.current) {
+      hasAutoSelected.current = true;
+      if (initialChallengeId) {
+        const index = orderedChallenges.findIndex(c => c.id === initialChallengeId);
+        if (index !== -1) {
+          setSelectedChallengeId(initialChallengeId);
+          setTimeout(() => scrollPillIntoView(initialChallengeId, index), 100);
+          return;
+        }
       }
-    }
-    if (orderedChallenges.length > 0 && !selectedChallengeId) {
+      setSelectedChallengeId(orderedChallenges[0].id);
+    } else if (
+      orderedChallenges.length > 0 &&
+      selectedChallengeId &&
+      !orderedChallenges.some(c => c.id === selectedChallengeId)
+    ) {
       setSelectedChallengeId(orderedChallenges[0].id);
     }
-  }, [orderedChallenges, selectedChallengeId, initialChallengeId, scrollPillIntoView]);
+  }, [orderedChallenges, selectedChallengeId]);
 
   const onRefresh = async () => {
     setRefreshing(true);
