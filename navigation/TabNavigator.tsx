@@ -49,6 +49,95 @@ const PILL_HORIZONTAL_PADDING = 16; // padding on each side of content
 const MIN_PILL_WIDTH = 72;
 
 
+// Animated tab button with scale effect on active state
+const TabButton = ({
+  route,
+  index,
+  isFocused,
+  iconConfig,
+  label,
+  colors,
+  totalUnread,
+  accessibilityLabel,
+  onPress,
+  onLongPress,
+  onTabLayout,
+  onContentLayout,
+}: {
+  route: { key: string; name: string };
+  index: number;
+  isFocused: boolean;
+  iconConfig: { icon: keyof typeof Ionicons.glyphMap; size: number };
+  label: string;
+  colors: ReturnType<typeof getColors>;
+  totalUnread: number;
+  accessibilityLabel?: string;
+  onPress: () => void;
+  onLongPress: () => void;
+  onTabLayout: (index: number, x: number, width: number) => void;
+  onContentLayout: (index: number, width: number) => void;
+}) => {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    scale.value = withTiming(isFocused ? 1.15 : 1, TIMING_CONFIG);
+  }, [isFocused]);
+
+  const animatedIconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <TouchableOpacity
+      key={route.key}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isFocused }}
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      hitSlop={{ top: 20, bottom: 20, left: 8, right: 8 }}
+      style={styles.tabButton}
+      onLayout={(e) => {
+        const { x, width } = e.nativeEvent.layout;
+        onTabLayout(index, x, width);
+      }}
+    >
+      <View
+        style={styles.tabButtonContent}
+        onLayout={(e) => {
+          onContentLayout(index, e.nativeEvent.layout.width);
+        }}
+      >
+        <Animated.View style={[styles.iconContainer, animatedIconStyle]}>
+          <Ionicons
+            name={iconConfig.icon}
+            size={iconConfig.size}
+            color={isFocused ? colors.tabBarActive : colors.tabBarInactive}
+          />
+          {route.name === 'Chat' && totalUnread > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+        <Text
+          style={[
+            styles.tabLabel,
+            {
+              color: isFocused ? colors.tabBarActive : colors.tabBarInactive,
+              fontWeight: isFocused ? '700' : '500',
+            },
+          ]}
+        >
+          {typeof label === 'string' ? label : route.name}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 // Selection indicator component for the floating pill
 const SelectionIndicator = ({
   indicatorStyle,
@@ -202,7 +291,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
       {/* Tab buttons */}
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
-        const label = options.tabBarLabel ?? options.title ?? route.name;
+        const label = (options.tabBarLabel ?? options.title ?? route.name) as string;
         const isFocused = state.index === index;
         const iconConfig = TAB_ICONS[route.name] || TAB_ICONS.Home;
 
@@ -225,55 +314,26 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
           });
         };
 
-        const accessibilityLabel = route.name === 'Chat' && totalUnread > 0
+        const a11yLabel = route.name === 'Chat' && totalUnread > 0
           ? `Chat, ${totalUnread} unread message${totalUnread === 1 ? '' : 's'}`
           : options.tabBarAccessibilityLabel;
 
         return (
-          <TouchableOpacity
+          <TabButton
             key={route.key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isFocused }}
-            accessibilityLabel={accessibilityLabel}
+            route={route}
+            index={index}
+            isFocused={isFocused}
+            iconConfig={iconConfig}
+            label={label}
+            colors={colors}
+            totalUnread={totalUnread}
+            accessibilityLabel={a11yLabel}
             onPress={onPress}
             onLongPress={onLongPress}
-            hitSlop={{ top: 20, bottom: 20, left: 8, right: 8 }}
-            style={styles.tabButton}
-            onLayout={(e) => {
-              const { x, width } = e.nativeEvent.layout;
-              handleTabLayout(index, x, width);
-            }}
-          >
-            <View
-              style={styles.tabButtonContent}
-              onLayout={(e) => {
-                handleContentLayout(index, e.nativeEvent.layout.width);
-              }}
-            >
-              <View style={styles.iconContainer}>
-                <Ionicons
-                  name={iconConfig.icon}
-                  size={iconConfig.size}
-                  color={isFocused ? colors.primary : colors.tabBarInactive}
-                />
-                {route.name === 'Chat' && totalUnread > 0 && (
-                  <View style={styles.tabBadge}>
-                    <Text style={styles.tabBadgeText}>
-                      {totalUnread > 99 ? '99+' : totalUnread}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <Text
-                style={[
-                  styles.tabLabel,
-                  { color: isFocused ? colors.primary : colors.tabBarInactive },
-                ]}
-              >
-                {typeof label === 'string' ? label : route.name}
-              </Text>
-            </View>
-          </TouchableOpacity>
+            onTabLayout={handleTabLayout}
+            onContentLayout={handleContentLayout}
+          />
         );
       })}
     </View>

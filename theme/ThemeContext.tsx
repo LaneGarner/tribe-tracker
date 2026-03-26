@@ -84,6 +84,7 @@ export const colors = {
     tabBar: '#E0E0E0',
     tabBarBorder: '#E5E7EB',
     tabBarInactive: '#374151',
+    tabBarActive: '#000000',
   },
   dark: {
     background: '#000000',
@@ -101,6 +102,7 @@ export const colors = {
     tabBar: '#18181B',
     tabBarBorder: '#27272A',
     tabBarInactive: '#FFFFFF',
+    tabBarActive: '#FFFFFF',
   },
 };
 
