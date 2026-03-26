@@ -108,12 +108,14 @@ export default function ChallengeCard({
                 </Text>
               </View>
             )}
-            <View style={styles.streakBadge}>
-              <Ionicons name="flame" size={16} color="#fff" />
-              <Text style={styles.streakBadgeText}>
-                {activeStreak} day{'\n'}streak
-              </Text>
-            </View>
+            {activeStreak > 0 && (
+              <View style={styles.streakBadge}>
+                <Ionicons name="flame" size={16} color="#fff" />
+                <Text style={styles.streakBadgeText}>
+                  {activeStreak} day{'\n'}streak
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </View>
