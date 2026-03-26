@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
+  Keyboard,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -22,7 +23,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useDispatch, useSelector } from 'react-redux';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 
@@ -52,8 +53,10 @@ import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
 import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
-import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
+import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
+import ColorThemePicker from '../components/challenge/ColorThemePicker';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { CARD_GRADIENTS, getGradientForIndex } from '../constants/gradients';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 import { pickImage, uploadChallengeBackground, deleteChallengeBackground } from '../utils/imageUpload';
 
@@ -71,6 +74,16 @@ export default function CreateChallengeScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, getAccessToken } = useAuth();
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
 
   const [mode, setMode] = useState<'browse' | 'create' | 'join'>(route.params?.mode || 'browse');
 
@@ -111,6 +124,9 @@ export default function CreateChallengeScreen() {
   const [gapDays, setGapDays] = useState('0');
   const [backgroundImageUri, setBackgroundImageUri] = useState<string | null>(null);
   const [isUploadingBackground, setIsUploadingBackground] = useState(false);
+  const [themeColor, setThemeColor] = useState<number>(0);
+  const [customThemeColor, setCustomThemeColor] = useState<string | null>(null);
+  const [useBackgroundImage, setUseBackgroundImage] = useState(true);
   const [inviteCode, setInviteCode] = useState(route.params?.inviteCode || '');
 
   // Pre-fill invite code from deep link
@@ -145,6 +161,9 @@ export default function CreateChallengeScreen() {
         else setRecurrencePreset('custom');
       }
       setBackgroundImageUri(existingChallenge.backgroundImageUrl || null);
+      setThemeColor(existingChallenge.themeColor ?? 0);
+      setCustomThemeColor(existingChallenge.customThemeColor ?? null);
+      setUseBackgroundImage(existingChallenge.useBackgroundImage ?? true);
     }
   }, [isEditMode, existingChallenge]);
 
@@ -346,6 +365,9 @@ export default function CreateChallengeScreen() {
         habits: validHabits,
         isPublic,
         backgroundImageUrl,
+        themeColor,
+        customThemeColor: customThemeColor || undefined,
+        useBackgroundImage,
         inviteCode: isPublic
           ? undefined
           : (existingChallenge.inviteCode || generateInviteCode()),
@@ -406,6 +428,9 @@ export default function CreateChallengeScreen() {
       endDate,
       habits: validHabits,
       backgroundImageUrl,
+      themeColor,
+      customThemeColor: customThemeColor || undefined,
+      useBackgroundImage,
       isPublic,
       inviteCode: isPublic ? undefined : generateInviteCode(),
       status: isFutureStart ? 'upcoming' : 'active',
@@ -433,6 +458,9 @@ export default function CreateChallengeScreen() {
       setEndDate(getChallengeEndDate(getToday(), 30));
       setHabits([makeHabitItem()]);
       setBackgroundImageUri(null);
+      setThemeColor(0);
+      setCustomThemeColor(null);
+      setUseBackgroundImage(true);
       setIsRecurring(false);
       setRecurrencePreset('weekly');
       setGapDays('0');
@@ -749,45 +777,84 @@ export default function CreateChallengeScreen() {
           numberOfLines={3}
         />
 
-        <Text style={[styles.label, { color: colors.text }]}>Background Image</Text>
-        <TouchableOpacity
-          style={[
-            styles.backgroundImagePicker,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-            },
-          ]}
-          onPress={handlePickBackground}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={backgroundImageUri ? 'Change background image' : 'Add background image'}
-          accessibilityHint="Opens image picker for challenge card background"
-        >
-          {backgroundImageUri ? (
-            <ExpoImage
-              source={{ uri: backgroundImageUri }}
-              style={styles.backgroundImagePreview}
-              contentFit="cover"
-              cachePolicy="disk"
-            />
-          ) : (
-            <View style={styles.backgroundImagePlaceholder}>
-              <Ionicons name="image-outline" size={32} color={colors.textTertiary} />
-              <Text style={[styles.backgroundImagePlaceholderText, { color: colors.textTertiary }]}>
-                Add a background image
-              </Text>
-            </View>
-          )}
-          {isUploadingBackground && (
-            <View style={styles.backgroundImageUploadingOverlay}>
-              <ActivityIndicator color="#fff" />
-            </View>
-          )}
-        </TouchableOpacity>
-        <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-          Shown behind the challenge card on the home screen
+        <View style={styles.toggleRow}>
+          <Text style={[styles.toggleLabel, { color: colors.text }]}>
+            Public challenge
+          </Text>
+          <Toggle
+            value={isPublic}
+            onValueChange={setIsPublic}
+            accessibilityLabel="Toggle challenge visibility"
+          />
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          Card Appearance
         </Text>
+
+        <View style={styles.toggleRow}>
+          <Text style={[styles.toggleLabel, { color: colors.text }]}>
+            Use color theme
+          </Text>
+          <Toggle
+            value={!useBackgroundImage}
+            onValueChange={(val) => setUseBackgroundImage(!val)}
+            accessibilityLabel="Toggle between color theme and background image"
+          />
+        </View>
+
+        {!useBackgroundImage ? (
+          <ColorThemePicker
+            selectedIndex={customThemeColor ? null : themeColor}
+            customColor={customThemeColor}
+            onSelectPreset={(index) => {
+              setThemeColor(index);
+              setCustomThemeColor(null);
+            }}
+            onSelectCustom={setCustomThemeColor}
+          />
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[
+                styles.backgroundImagePicker,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+              onPress={handlePickBackground}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={backgroundImageUri ? 'Change background image' : 'Add background image'}
+              accessibilityHint="Opens image picker for challenge card background"
+            >
+              {backgroundImageUri ? (
+                <ExpoImage
+                  source={{ uri: backgroundImageUri }}
+                  style={styles.backgroundImagePreview}
+                  contentFit="cover"
+                  cachePolicy="disk"
+                />
+              ) : (
+                <View style={styles.backgroundImagePlaceholder}>
+                  <Ionicons name="image-outline" size={32} color={colors.textTertiary} />
+                  <Text style={[styles.backgroundImagePlaceholderText, { color: colors.textTertiary }]}>
+                    Add a background image
+                  </Text>
+                </View>
+              )}
+              {isUploadingBackground && (
+                <View style={styles.backgroundImageUploadingOverlay}>
+                  <ActivityIndicator color="#fff" />
+                </View>
+              )}
+            </TouchableOpacity>
+            <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+              Shown behind the challenge card on the home screen
+            </Text>
+          </>
+        )}
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
           Schedule
@@ -980,8 +1047,12 @@ export default function CreateChallengeScreen() {
                   style={[
                     styles.presetChip,
                     {
-                      backgroundColor: recurrencePreset === key ? colors.primary : colors.surface,
-                      borderColor: recurrencePreset === key ? colors.primary : colors.border,
+                      backgroundColor: recurrencePreset === key
+                        ? (customThemeColor || CARD_GRADIENTS[themeColor]?.[0] || colors.primary)
+                        : colors.surface,
+                      borderColor: recurrencePreset === key
+                        ? (customThemeColor || CARD_GRADIENTS[themeColor]?.[0] || colors.primary)
+                        : colors.border,
                     },
                   ]}
                   onPress={() => {
@@ -1070,6 +1141,9 @@ export default function CreateChallengeScreen() {
                   updateHabit(habit.id, text);
                   if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
                 }}
+                onFocus={() => {
+                  setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 300);
+                }}
                 placeholder={`Habit ${index + 1}`}
                 placeholderTextColor={colors.textTertiary}
                 autoCapitalize="words"
@@ -1120,6 +1194,9 @@ export default function CreateChallengeScreen() {
                       updateHabit(habit.id, text);
                       if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
                     }}
+                    onFocus={() => {
+                      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 300);
+                    }}
                     placeholder={`Habit ${index + 1}`}
                     placeholderTextColor={colors.textTertiary}
                     autoCapitalize="words"
@@ -1150,19 +1227,9 @@ export default function CreateChallengeScreen() {
           </Text>
         </TouchableOpacity>
 
-        <View style={styles.toggleRow}>
-          <Text style={[styles.toggleLabel, { color: colors.text }]}>
-            Public challenge
-          </Text>
-          <Toggle
-            value={isPublic}
-            onValueChange={setIsPublic}
-            accessibilityLabel="Toggle challenge visibility"
-          />
-        </View>
       </FormScrollView>
 
-      <View style={[styles.fixedButtonContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+      <View style={[styles.fixedButtonContainer, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: keyboardVisible ? 12 : TAB_BAR_HEIGHT + insets.bottom + 25 }]}>
         <TouchableOpacity
           style={[styles.submitButton, { backgroundColor: colors.primary, marginBottom: 0, opacity: (isCreating || isUploadingBackground) ? 0.7 : 1 }]}
           onPress={handleCreate}
@@ -1235,7 +1302,7 @@ export default function CreateChallengeScreen() {
         style={[styles.container, { backgroundColor: colors.background }]}
         edges={['top']}
       >
-        <View style={[styles.scrollContent, styles.flex1]}>
+        <View style={styles.createModeContainer}>
           {renderCreate()}
         </View>
       </SafeAreaView>
@@ -1278,6 +1345,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: TAB_BAR_HEIGHT + 32,
+  },
+  createModeContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
@@ -1473,7 +1544,6 @@ const styles = StyleSheet.create({
   },
   fixedButtonContainer: {
     paddingTop: 12,
-    paddingBottom: 24,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   submitButton: {
@@ -1521,7 +1591,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 20,
     height: 140,
   },
   backgroundImagePreview: {

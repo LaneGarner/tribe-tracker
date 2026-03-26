@@ -41,6 +41,7 @@ import { RootStackParamList, TabParamList, Challenge } from '../types';
 import { getChallengeStatus, getDaysRemaining, getRecurringCycleInfo } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import ChallengeChip from '../components/challenge/ChallengeChip';
+import { getGradientForChallenge } from '../constants/gradients';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
@@ -319,6 +320,7 @@ export default function LeaderboardScreen() {
                       width: e.nativeEvent.layout.width,
                     };
                   }}
+                  gradientColors={getGradientForChallenge(challenge)}
                   showArrows
                   onMoveLeft={() => moveChallengeLeft(challenge.id)}
                   onMoveRight={() => moveChallengeRight(challenge.id)}
@@ -351,6 +353,7 @@ export default function LeaderboardScreen() {
                       }}
                       onLongPress={drag}
                       disabled={isActive}
+                      gradientColors={getGradientForChallenge(challenge)}
                       onLayout={(e) => {
                         pillPositions.current[challenge.id] = {
                           x: e.nativeEvent.layout.x,

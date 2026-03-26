@@ -9,27 +9,14 @@ import {
   getDaysRemaining,
   getCurrentChallengeDay,
 } from '../../utils/dateUtils';
+import { getGradientForChallenge, getGradientForIndex } from '../../constants/gradients';
+
+export { getGradientForIndex };
 
 interface PublicChallengeCardProps {
   challenge: Challenge;
   onPress: () => void;
   gradientColors?: [string, string];
-}
-
-// Gradient palette for variety
-const CARD_GRADIENTS: [string, string][] = [
-  ['#00B4DB', '#0083B0'], // cyan/teal
-  ['#667EEA', '#764BA2'], // purple/violet
-  ['#F093FB', '#F5576C'], // pink/rose
-  ['#4FACFE', '#00F2FE'], // light blue
-  ['#43E97B', '#38F9D7'], // green/teal
-  ['#FA709A', '#FEE140'], // pink/yellow
-  ['#A18CD1', '#FBC2EB'], // lavender/pink
-  ['#FF9A9E', '#FECFEF'], // coral/pink
-];
-
-export function getGradientForIndex(index: number): [string, string] {
-  return CARD_GRADIENTS[index % CARD_GRADIENTS.length];
 }
 
 export default function PublicChallengeCard({
@@ -48,7 +35,7 @@ export default function PublicChallengeCard({
   const daysRemaining = getDaysRemaining(challenge.endDate || challenge.startDate);
   const progressPercent = Math.min((currentDay / challenge.durationDays) * 100, 100);
 
-  const colors = gradientColors || CARD_GRADIENTS[0];
+  const colors = gradientColors || getGradientForChallenge(challenge);
 
   const cardContent = (
     <>

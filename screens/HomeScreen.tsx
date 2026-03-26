@@ -50,6 +50,7 @@ import { getToday, formatDate, getChallengeStatus, isToday, addDays, subtractDay
 import ChallengeCard from '../components/challenge/ChallengeCard';
 import ChallengeCardSkeleton from '../components/challenge/ChallengeCardSkeleton';
 import ChallengeChip from '../components/challenge/ChallengeChip';
+import { getGradientForChallenge } from '../constants/gradients';
 import HabitChecklist from '../components/challenge/HabitChecklist';
 import ReadOnlyHabitList from '../components/challenge/ReadOnlyHabitList';
 import DateCarousel from '../components/ui/DateCarousel';
@@ -710,6 +711,7 @@ export default function HomeScreen() {
                   width: e.nativeEvent.layout.width,
                 };
               }}
+              gradientColors={getGradientForChallenge(challenge)}
               showArrows
               onMoveLeft={() => moveChallengeLeft(challenge.id)}
               onMoveRight={() => moveChallengeRight(challenge.id)}
@@ -740,6 +742,7 @@ export default function HomeScreen() {
                   }}
                   onLongPress={drag}
                   disabled={isActive}
+                  gradientColors={getGradientForChallenge(challenge)}
                   onLayout={(e) => {
                     pillPositions.current[challenge.id] = {
                       x: e.nativeEvent.layout.x,

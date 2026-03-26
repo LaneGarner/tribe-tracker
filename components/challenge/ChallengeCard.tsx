@@ -16,6 +16,7 @@ import {
   getRecurringCycleInfo,
 } from '../../utils/dateUtils';
 import { calculateActiveStreak } from '../../utils/streakUtils';
+import { getGradientForChallenge } from '../../constants/gradients';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -28,9 +29,6 @@ function getOrdinal(n: number): string {
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
-
-// Default gradient - cyan/teal blue
-const DEFAULT_GRADIENT = ['#00B4DB', '#0083B0'];
 
 export default function ChallengeCard({
   challenge,
@@ -175,7 +173,9 @@ export default function ChallengeCard({
     </>
   );
 
-  if (challenge.backgroundImageUrl && !bgImageFailed) {
+  const showBgImage = challenge.backgroundImageUrl && !bgImageFailed && challenge.useBackgroundImage !== false;
+
+  if (showBgImage) {
     return (
       <View style={styles.container}>
         <ExpoImage
@@ -199,7 +199,7 @@ export default function ChallengeCard({
 
   return (
     <LinearGradient
-      colors={DEFAULT_GRADIENT as [string, string]}
+      colors={getGradientForChallenge(challenge)}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.container, styles.scrim]}

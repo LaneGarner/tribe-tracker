@@ -11,6 +11,9 @@ export interface Challenge {
   habits: string[];
   imageUrl?: string;
   backgroundImageUrl?: string;
+  themeColor?: number;
+  customThemeColor?: string;
+  useBackgroundImage?: boolean;
   isPublic: boolean;
   inviteCode?: string;
   status: 'upcoming' | 'active' | 'completed' | 'gap';
