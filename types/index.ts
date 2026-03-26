@@ -13,8 +13,15 @@ export interface Challenge {
   backgroundImageUrl?: string;
   isPublic: boolean;
   inviteCode?: string;
-  status: 'upcoming' | 'active' | 'completed';
+  status: 'upcoming' | 'active' | 'completed' | 'gap';
   participantCount: number;
+  // Recurring challenge fields
+  isRecurring?: boolean;
+  recurrenceIntervalDays?: number;
+  gapDays?: number;
+  currentCycle?: number;
+  cycleStartDate?: string;
+  cycleEndDate?: string;
   updatedAt?: string;
 }
 
@@ -46,6 +53,7 @@ export interface HabitCheckin {
   habitsCompleted: boolean[];
   pointsEarned: number;
   allHabitsCompleted: boolean;
+  cycle?: number;
   updatedAt?: string;
 }
 

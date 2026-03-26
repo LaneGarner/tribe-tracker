@@ -40,13 +40,13 @@ if (!isExpoGo) {
 }
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { loadChallengesFromStorage, fetchChallengesFromServer } from '../redux/slices/challengesSlice';
+import { loadChallengesFromStorage, fetchChallengesFromServer, updateChallenge } from '../redux/slices/challengesSlice';
 import { loadCheckinsFromStorage, fetchCheckinsFromServer } from '../redux/slices/checkinsSlice';
 import { loadParticipantsFromStorage, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { isBackendConfigured } from '../config/api';
 import { RootStackParamList, TabParamList, Challenge, HabitCheckin } from '../types';
-import { getToday, formatDate, getChallengeStatus, isToday, addDays, subtractDays } from '../utils/dateUtils';
+import { getToday, formatDate, getChallengeStatus, isToday, addDays, subtractDays, getRecurringCycleInfo } from '../utils/dateUtils';
 import ChallengeCard from '../components/challenge/ChallengeCard';
 import ChallengeCardSkeleton from '../components/challenge/ChallengeCardSkeleton';
 import ChallengeChip from '../components/challenge/ChallengeChip';
@@ -305,19 +305,38 @@ export default function HomeScreen() {
     participants.filter(p => p.userId === user?.id).map(p => p.challengeId)
   );
 
-  // Filter to only show active challenges the user has joined
+  // Filter to only show active challenges the user has joined (including recurring in gap)
   const activeChallenges = challenges.filter(
-    c =>
-      userChallengeIds.has(c.id) &&
-      getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
+    c => {
+      if (!userChallengeIds.has(c.id)) return false;
+      const status = getChallengeStatus(c.startDate, c.endDate || c.startDate, c);
+      return status === 'active' || status === 'gap';
+    }
   );
 
   // Filter upcoming challenges the user has joined
   const upcomingChallenges = challenges.filter(
     c =>
       userChallengeIds.has(c.id) &&
-      getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'upcoming'
+      getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'upcoming'
   );
+
+  // Cycle transition detection for recurring challenges
+  useEffect(() => {
+    activeChallenges.forEach(c => {
+      if (!c.isRecurring) return;
+      const info = getRecurringCycleInfo(c);
+      if (info && c.currentCycle !== info.currentCycle) {
+        dispatch(updateChallenge({
+          ...c,
+          currentCycle: info.currentCycle,
+          cycleStartDate: info.cycleStartDate,
+          cycleEndDate: info.cycleEndDate,
+          updatedAt: new Date().toISOString(),
+        }));
+      }
+    });
+  }, [activeChallenges.length]);
 
   // Show skeleton until initial fetch completes when there's no data
   const isInitialLoad = !initialFetchDone && activeChallenges.length === 0 && upcomingChallenges.length === 0;
@@ -391,7 +410,7 @@ export default function HomeScreen() {
   const selectedChallenge = challenges.find(c => c.id === selectedChallengeId);
 
   const selectedStatus = selectedChallenge
-    ? getChallengeStatus(selectedChallenge.startDate, selectedChallenge.endDate || selectedChallenge.startDate)
+    ? getChallengeStatus(selectedChallenge.startDate, selectedChallenge.endDate || selectedChallenge.startDate, selectedChallenge)
     : null;
 
   // Get checkin for selected date and challenge

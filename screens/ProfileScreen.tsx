@@ -158,7 +158,7 @@ export default function ProfileScreen() {
         : 0;
 
       // Derive status from dates rather than relying solely on stored value
-      let status: 'upcoming' | 'active' | 'completed' = challenge?.status || 'active';
+      let status: 'upcoming' | 'active' | 'completed' | 'gap' = challenge?.status || 'active';
       if (challenge?.endDate && dayjs(challenge.endDate).isBefore(dayjs(), 'day')) {
         status = 'completed';
       } else if (challenge?.startDate && dayjs(challenge.startDate).isAfter(dayjs(), 'day')) {

@@ -11,7 +11,7 @@ import { addCheckin, updateHabitCompletion, deleteCheckin } from '../../redux/sl
 import { updateParticipantStats } from '../../redux/slices/participantsSlice';
 import { useAuth } from '../../context/AuthContext';
 import { Challenge, HabitCheckin, ChallengeParticipant } from '../../types';
-import { getToday, isToday, isPast } from '../../utils/dateUtils';
+import { getToday, isToday, isPast, getRecurringCycleInfo, getCycleForDate } from '../../utils/dateUtils';
 import { calculateActiveStreak } from '../../utils/streakUtils';
 
 interface HabitChecklistProps {
@@ -157,6 +157,9 @@ export default function HabitChecklist({
     } else {
       // Create new checkin
       const habitsCompleted = challenge.habits.map((_, i) => i === habitIndex);
+      const cycle = challenge.isRecurring
+        ? getCycleForDate(challenge, checkinDate)
+        : undefined;
       const newCheckin: HabitCheckin = {
         id: Crypto.randomUUID(),
         challengeId: challenge.id,
@@ -166,6 +169,7 @@ export default function HabitChecklist({
         habitsCompleted,
         pointsEarned: 1,
         allHabitsCompleted: habitsCompleted.every(h => h),
+        cycle,
         updatedAt: new Date().toISOString(),
       };
       dispatch(addCheckin(newCheckin));

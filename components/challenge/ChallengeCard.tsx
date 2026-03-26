@@ -13,6 +13,7 @@ import {
   getCurrentChallengeDay,
   getDaysRemaining,
   formatDate,
+  getRecurringCycleInfo,
 } from '../../utils/dateUtils';
 import { calculateActiveStreak } from '../../utils/streakUtils';
 
@@ -69,13 +70,18 @@ export default function ChallengeCard({
     return index >= 0 ? index + 1 : null;
   }, [allParticipants, participation]);
 
+  const cycleInfo = getRecurringCycleInfo(challenge);
   const status = getChallengeStatus(
     challenge.startDate,
-    challenge.endDate || challenge.startDate
+    challenge.endDate || challenge.startDate,
+    challenge
   );
-  const currentDay =
-    status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0;
-  const daysRemaining = getDaysRemaining(challenge.endDate || challenge.startDate);
+  const currentDay = cycleInfo
+    ? cycleInfo.cycleDay
+    : (status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0);
+  const daysRemaining = cycleInfo
+    ? cycleInfo.cycleDaysRemaining
+    : getDaysRemaining(challenge.endDate || challenge.startDate);
   const progressPercent = Math.min((currentDay / challenge.durationDays) * 100, 100);
 
   const cardContent = (
@@ -86,20 +92,30 @@ export default function ChallengeCard({
           <Text style={styles.name} numberOfLines={2}>
             {challenge.name}
           </Text>
-          {status !== 'active' && (
+          {cycleInfo && (
+            <Text style={styles.daysRemaining}>
+              Cycle {cycleInfo.currentCycle}
+              {status === 'gap'
+                ? ` · Rest · Next in ${daysRemaining + 1} day${daysRemaining + 1 !== 1 ? 's' : ''}`
+                : status === 'active' && daysRemaining > 0
+                  ? ` · ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left`
+                  : ''}
+            </Text>
+          )}
+          {!cycleInfo && status !== 'active' && (
             <Text style={styles.daysRemaining}>
               {status === 'upcoming'
                 ? `Starts ${formatDate(challenge.startDate, 'MMM D')} (${getDaysRemaining(challenge.startDate)} day${getDaysRemaining(challenge.startDate) !== 1 ? 's' : ''})`
                 : 'Completed'}
             </Text>
           )}
-          {status === 'active' && daysRemaining > 0 && (
+          {!cycleInfo && status === 'active' && daysRemaining > 0 && (
             <Text style={styles.daysRemaining}>
               {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
             </Text>
           )}
         </View>
-        {participation && status !== 'upcoming' && (
+        {participation && status !== 'upcoming' && status !== 'gap' && (
           <View style={styles.badgeRow}>
             {userRank !== null && (
               <View style={styles.rankBadge}>
@@ -122,7 +138,7 @@ export default function ChallengeCard({
       </View>
 
       {/* Stats row */}
-      {participation && status !== 'upcoming' && (
+      {participation && status !== 'upcoming' && status !== 'gap' && (
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>My Points</Text>

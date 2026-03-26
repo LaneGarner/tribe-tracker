@@ -106,6 +106,9 @@ export default function CreateChallengeScreen() {
   });
   const [habits, setHabits] = useState<HabitItem[]>([makeHabitItem()]);
   const [isPublic, setIsPublic] = useState(true);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrencePreset, setRecurrencePreset] = useState<'weekly' | 'biweekly' | 'monthly' | 'custom'>('weekly');
+  const [gapDays, setGapDays] = useState('0');
   const [backgroundImageUri, setBackgroundImageUri] = useState<string | null>(null);
   const [isUploadingBackground, setIsUploadingBackground] = useState(false);
   const [inviteCode, setInviteCode] = useState(route.params?.inviteCode || '');
@@ -132,6 +135,15 @@ export default function CreateChallengeScreen() {
           : [makeHabitItem()]
       );
       setIsPublic(existingChallenge.isPublic);
+      if (existingChallenge.isRecurring) {
+        setIsRecurring(true);
+        setGapDays(String(existingChallenge.gapDays ?? 0));
+        const days = existingChallenge.durationDays;
+        if (days === 7) setRecurrencePreset('weekly');
+        else if (days === 14) setRecurrencePreset('biweekly');
+        else if (days === 30) setRecurrencePreset('monthly');
+        else setRecurrencePreset('custom');
+      }
       setBackgroundImageUri(existingChallenge.backgroundImageUrl || null);
     }
   }, [isEditMode, existingChallenge]);
@@ -326,6 +338,7 @@ export default function CreateChallengeScreen() {
         backgroundImageUrl = undefined;
       }
 
+      const parsedDuration = parseInt(durationDays) || existingChallenge.durationDays;
       const updatedChallenge: Challenge = {
         ...existingChallenge,
         name: name.trim(),
@@ -339,8 +352,14 @@ export default function CreateChallengeScreen() {
         // Only update schedule if challenge hasn't started yet
         ...(existingChallenge.status === 'upcoming' && {
           startDate,
-          durationDays: parseInt(durationDays) || existingChallenge.durationDays,
+          durationDays: parsedDuration,
           endDate,
+        }),
+        // Recurring fields (can update gap even when active)
+        isRecurring: isRecurring || undefined,
+        ...(isRecurring && {
+          recurrenceIntervalDays: parsedDuration,
+          gapDays: parseInt(gapDays) || 0,
         }),
         updatedAt: new Date().toISOString(),
       };
@@ -375,13 +394,14 @@ export default function CreateChallengeScreen() {
 
     const today = getToday();
     const isFutureStart = dayjs(startDate).isAfter(dayjs(today), 'day');
+    const parsedDuration = parseInt(durationDays) || 30;
     const newChallenge: Challenge = {
       id: challengeId,
       name: name.trim(),
       description: description.trim() || undefined,
       creatorId: user?.id || 'anonymous',
       creatorName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
-      durationDays: parseInt(durationDays) || 30,
+      durationDays: parsedDuration,
       startDate,
       endDate,
       habits: validHabits,
@@ -390,6 +410,14 @@ export default function CreateChallengeScreen() {
       inviteCode: isPublic ? undefined : generateInviteCode(),
       status: isFutureStart ? 'upcoming' : 'active',
       participantCount: 0,
+      ...(isRecurring && {
+        isRecurring: true,
+        recurrenceIntervalDays: parsedDuration,
+        gapDays: parseInt(gapDays) || 0,
+        currentCycle: 1,
+        cycleStartDate: startDate,
+        cycleEndDate: endDate,
+      }),
       updatedAt: new Date().toISOString(),
     };
 
@@ -405,6 +433,9 @@ export default function CreateChallengeScreen() {
       setEndDate(getChallengeEndDate(getToday(), 30));
       setHabits([makeHabitItem()]);
       setBackgroundImageUri(null);
+      setIsRecurring(false);
+      setRecurrencePreset('weekly');
+      setGapDays('0');
       setErrors({});
     };
 
@@ -911,6 +942,92 @@ export default function CreateChallengeScreen() {
           />
         )}
 
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          Recurrence
+        </Text>
+
+        <View style={[styles.toggleRow, isRecurring && { marginBottom: 12 }]}>
+          <Text style={[styles.toggleLabel, { color: colors.text }]}>
+            Recurring Challenge
+          </Text>
+          <Toggle
+            value={isRecurring}
+            onValueChange={(val) => {
+              setIsRecurring(val);
+              if (val && recurrencePreset !== 'custom') {
+                const presetDays = recurrencePreset === 'weekly' ? 7 : recurrencePreset === 'biweekly' ? 14 : 30;
+                setDurationDays(String(presetDays));
+                setEndDate(getChallengeEndDate(startDate, presetDays));
+              }
+            }}
+            accessibilityLabel="Toggle recurring challenge"
+            disabled={isScheduleLocked}
+          />
+        </View>
+
+        {isRecurring && (
+          <>
+            <Text style={[styles.label, { color: colors.text }]}>Repeat Every</Text>
+            <View style={styles.presetRow}>
+              {([
+                { key: 'weekly' as const, label: 'Weekly', days: 7 },
+                { key: 'biweekly' as const, label: 'Biweekly', days: 14 },
+                { key: 'monthly' as const, label: 'Monthly', days: 30 },
+                { key: 'custom' as const, label: 'Custom', days: null },
+              ]).map(({ key, label, days }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.presetChip,
+                    {
+                      backgroundColor: recurrencePreset === key ? colors.primary : colors.surface,
+                      borderColor: recurrencePreset === key ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    setRecurrencePreset(key);
+                    if (days && !isScheduleLocked) {
+                      setDurationDays(String(days));
+                      setEndDate(getChallengeEndDate(startDate, days));
+                    }
+                  }}
+                  disabled={isScheduleLocked}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: recurrencePreset === key }}
+                >
+                  <Text style={[
+                    styles.presetChipText,
+                    { color: recurrencePreset === key ? '#fff' : colors.text },
+                  ]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.label, { color: colors.text }]}>Rest Period Between Cycles (days)</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: isScheduleLocked ? colors.textTertiary : colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              value={gapDays}
+              onChangeText={setGapDays}
+              placeholder="0"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="number-pad"
+              editable={!isScheduleLocked}
+            />
+            <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+              0 = next cycle starts immediately
+            </Text>
+          </>
+        )}
+
         <Text style={[styles.label, { color: colors.text }]}>
           Daily Habits <Text style={{ color: colors.error }}>*</Text>
         </Text>
@@ -1327,6 +1444,22 @@ const styles = StyleSheet.create({
   pickerDoneText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  presetRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+  },
+  presetChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  presetChipText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   toggleRow: {
     flexDirection: 'row',

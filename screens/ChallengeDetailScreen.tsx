@@ -29,6 +29,7 @@ import {
   getChallengeStatus,
   getCurrentChallengeDay,
   getDaysBetween,
+  getRecurringCycleInfo,
 } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
@@ -278,12 +279,29 @@ export default function ChallengeDetailScreen() {
     );
   }
 
+  const cycleInfo = getRecurringCycleInfo(challenge);
   const status = getChallengeStatus(
     challenge.startDate,
-    challenge.endDate || challenge.startDate
+    challenge.endDate || challenge.startDate,
+    challenge
   );
-  const currentDay = status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0;
+  const currentDay = cycleInfo
+    ? cycleInfo.cycleDay
+    : (status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0);
   const totalDays = challenge.durationDays;
+
+  // Cycle transition detection: update challenge if cycle advanced
+  React.useEffect(() => {
+    if (cycleInfo && challenge.currentCycle !== cycleInfo.currentCycle) {
+      dispatch(updateChallenge({
+        ...challenge,
+        currentCycle: cycleInfo.currentCycle,
+        cycleStartDate: cycleInfo.cycleStartDate,
+        cycleEndDate: cycleInfo.cycleEndDate,
+        updatedAt: new Date().toISOString(),
+      }));
+    }
+  }, [cycleInfo?.currentCycle]);
 
   const handleJoin = async () => {
     if (isJoined || isJoining) return;
@@ -410,14 +428,21 @@ export default function ChallengeDetailScreen() {
                       ? colors.success
                       : status === 'upcoming'
                         ? colors.warning
-                        : colors.textTertiary,
+                        : status === 'gap'
+                          ? colors.primary
+                          : colors.textTertiary,
                 },
               ]}
             >
               <Text style={styles.statusText}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {status === 'gap' ? 'Rest Period' : status.charAt(0).toUpperCase() + status.slice(1)}
               </Text>
             </View>
+            {cycleInfo && (
+              <Text style={[styles.metaText, { color: glassStyle ? colors.textSecondary : onScrimSecondaryColor }]}>
+                Cycle {cycleInfo.currentCycle}
+              </Text>
+            )}
             <Text style={[styles.metaText, { color: glassStyle ? colors.textSecondary : onScrimSecondaryColor }]}>
               {participants.length} participant{participants.length !== 1 ? 's' : ''}
             </Text>
@@ -454,15 +479,26 @@ export default function ChallengeDetailScreen() {
               </View>
             </>
           )}
+          {status === 'gap' && cycleInfo && (
+            <View style={{ marginBottom: 20 }}>
+              <Text style={[styles.progressTitle, { color: colors.text }]}>
+                Rest Period
+              </Text>
+              <Text style={[{ color: colors.textSecondary, fontSize: 14, marginTop: 4 }]}>
+                Next cycle starts {formatDate(cycleInfo.cycleStartDate, 'MMM D')}
+                {cycleInfo.cycleDaysRemaining > 0 ? ` (${cycleInfo.cycleDaysRemaining + 1} day${cycleInfo.cycleDaysRemaining + 1 !== 1 ? 's' : ''})` : ''}
+              </Text>
+            </View>
+          )}
           <View style={{ flexDirection: 'row' }}>
             <View style={styles.dateItem}>
               <Ionicons name="calendar-outline" size={20} color={colors.primary} />
               <View style={styles.dateInfo}>
                 <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                  {status === 'completed' ? 'Started' : 'Starts'}
+                  {cycleInfo ? 'Cycle Starts' : status === 'completed' ? 'Started' : 'Starts'}
                 </Text>
                 <Text style={[styles.dateValue, { color: colors.text }]}>
-                  {formatDate(challenge.startDate)}
+                  {formatDate(cycleInfo ? cycleInfo.cycleStartDate : challenge.startDate)}
                 </Text>
               </View>
             </View>
@@ -471,10 +507,10 @@ export default function ChallengeDetailScreen() {
               <Ionicons name="flag-outline" size={20} color={colors.success} />
               <View style={styles.dateInfo}>
                 <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                  {status === 'completed' ? 'Ended' : 'Ends'}
+                  {cycleInfo ? 'Cycle Ends' : status === 'completed' ? 'Ended' : 'Ends'}
                 </Text>
                 <Text style={[styles.dateValue, { color: colors.text }]}>
-                  {formatDate(challenge.endDate || challenge.startDate)}
+                  {formatDate(cycleInfo ? cycleInfo.cycleEndDate : (challenge.endDate || challenge.startDate))}
                 </Text>
               </View>
             </View>

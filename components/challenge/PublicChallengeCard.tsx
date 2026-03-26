@@ -40,10 +40,11 @@ export default function PublicChallengeCard({
   const [bgImageFailed, setBgImageFailed] = useState(false);
   const status = getChallengeStatus(
     challenge.startDate,
-    challenge.endDate || challenge.startDate
+    challenge.endDate || challenge.startDate,
+    challenge
   );
   const currentDay =
-    status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0;
+    (status === 'active' || status === 'gap') ? getCurrentChallengeDay(challenge.startDate, challenge) : 0;
   const daysRemaining = getDaysRemaining(challenge.endDate || challenge.startDate);
   const progressPercent = Math.min((currentDay / challenge.durationDays) * 100, 100);
 

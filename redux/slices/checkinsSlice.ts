@@ -54,12 +54,13 @@ const checkinsSlice = createSlice({
       saveCheckins(action.payload);
     },
     addCheckin: (state, action: PayloadAction<HabitCheckin>) => {
-      // Check if checkin already exists for this user/challenge/date
+      // Check if checkin already exists for this user/challenge/date/cycle
       const existingIndex = state.data.findIndex(
         c =>
           c.challengeId === action.payload.challengeId &&
           c.userId === action.payload.userId &&
-          c.checkinDate === action.payload.checkinDate
+          c.checkinDate === action.payload.checkinDate &&
+          (c.cycle ?? 1) === (action.payload.cycle ?? 1)
       );
       if (existingIndex !== -1) {
         // Update existing checkin
