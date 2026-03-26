@@ -274,14 +274,8 @@ export default function LeaderboardScreen() {
       )}
       {/* Sticky header */}
       <View style={[styles.stickyHeader, {
-        paddingTop: insets.top,
+        paddingTop: insets.top + 16,
         backgroundColor: backgroundImage ? 'transparent' : colors.background,
-        ...(backgroundImage ? {
-          borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor: colorScheme === 'dark'
-            ? 'rgba(0, 0, 0, 0.15)'
-            : 'rgba(255, 255, 255, 0.15)',
-        } : {}),
       }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>
       </View>
@@ -295,14 +289,6 @@ export default function LeaderboardScreen() {
         {/* Challenge selector tabs (only show if multiple challenges) */}
         {orderedChallenges.length > 1 && (
           <>
-            <Text style={[styles.selectorTitle, { color: colors.text }]}>
-              Active Challenges
-            </Text>
-            <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
-              {isExpoGo || !DraggableFlatList
-                ? 'Use arrows to reorder'
-                : 'Hold and drag to reorder'}
-            </Text>
             {isExpoGo || !DraggableFlatList ? (
               // Expo Go: arrows inside chips for reordering
               <ScrollView
@@ -456,32 +442,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stickyHeader: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
     zIndex: 10,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: TAB_BAR_HEIGHT + 32,
-  },
-  selectorTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    paddingHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 2,
-  },
-  selectorLabel: {
-    fontSize: 12,
-    paddingHorizontal: 16,
-    marginBottom: 8,
   },
   challengeSelector: {
     marginBottom: 8,

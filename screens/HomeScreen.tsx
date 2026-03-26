@@ -89,9 +89,6 @@ export default function HomeScreen() {
     dayjs(getToday()).format('YYYY-MM')
   );
   const [challengeOrder, setChallengeOrder] = useState<string[]>([]);
-  const [showHelpTooltip, setShowHelpTooltip] = useState(false);
-  const [helpButtonPosition, setHelpButtonPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const helpButtonRef = useRef<View>(null);
   const scrollOffsetRef = useRef(0);
   const carouselLayoutYRef = useRef(0);
 
@@ -618,8 +615,8 @@ export default function HomeScreen() {
           ...(backgroundImage ? {
             borderBottomWidth: StyleSheet.hairlineWidth,
             borderBottomColor: colorScheme === 'dark'
-              ? 'rgba(0, 0, 0, 0.15)'
-              : 'rgba(255, 255, 255, 0.15)',
+              ? 'rgba(255, 255, 255, 0.15)'
+              : 'rgba(0, 0, 0, 0.1)',
           } : {}),
         },
       ]}
@@ -627,36 +624,6 @@ export default function HomeScreen() {
         carouselLayoutYRef.current = event.nativeEvent.layout.y;
       }}
     >
-      <View style={styles.selectorHeader}>
-        <View style={[pillStyle, { flexDirection: 'row', alignItems: 'center' }]}>
-          <Text style={[styles.selectorTitle, { color: colors.text }]}>
-            Challenges
-          </Text>
-          <View ref={helpButtonRef}>
-          <TouchableOpacity
-            onPress={() => {
-              if (showHelpTooltip) {
-                setShowHelpTooltip(false);
-              } else {
-                helpButtonRef.current?.measureInWindow((buttonX, buttonY, buttonWidth, buttonHeight) => {
-                  const isSticky = backgroundImage ? true : scrollOffsetRef.current > carouselLayoutYRef.current;
-                  const minStickyY = insets.top + 30;
-                  const correctedY = isSticky ? Math.max(buttonY, minStickyY) : buttonY;
-                  setHelpButtonPosition({ x: buttonX, y: correctedY, width: buttonWidth, height: buttonHeight });
-                  setShowHelpTooltip(true);
-                });
-              }
-            }}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={styles.helpButton}
-            accessibilityLabel="Help"
-            accessibilityRole="button"
-          >
-            <Ionicons name="help-circle-outline" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-        </View>
-      </View>
       {isExpoGo || !DraggableFlatList ? (
         <ScrollView
           ref={pillsScrollRef}
@@ -1037,57 +1004,6 @@ export default function HomeScreen() {
         </>
       )}
 
-      {/* Help Tooltip - positioned based on help button */}
-      {showHelpTooltip && helpButtonPosition && (() => {
-        const tooltipWidth = 260;
-        const arrowSize = 8;
-        const buttonCenterX = helpButtonPosition.x + helpButtonPosition.width / 2;
-        const tooltipLeft = Math.max(16, Math.min(buttonCenterX - 40, 400 - tooltipWidth - 16));
-        const arrowLeft = buttonCenterX - tooltipLeft - arrowSize;
-        const tooltipTop = helpButtonPosition.y + helpButtonPosition.height + arrowSize;
-
-        return (
-        <>
-          <TouchableOpacity
-            style={styles.tooltipBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowHelpTooltip(false)}
-          />
-          <View
-            style={[
-              styles.helpTooltip,
-              {
-                top: tooltipTop,
-                left: tooltipLeft,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.helpTooltipArrow,
-                { left: arrowLeft },
-              ]}
-            />
-            <Text style={styles.helpTooltipText}>
-              Tap a challenge to select it, then check off habits below.{'\n\n'}
-              Tap the card for details or swipe to switch.{'\n\n'}
-              {isExpoGo || !DraggableFlatList
-                ? 'Use arrows to reorder challenges.'
-                : 'Hold and drag to reorder challenges.'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setShowHelpTooltip(false)}
-              style={styles.helpTooltipClose}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="Close tooltip"
-              accessibilityRole="button"
-            >
-              <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
-            </TouchableOpacity>
-          </View>
-        </>
-        );
-      })()}
     </SafeAreaView>
     </View>
   );
@@ -1149,65 +1065,6 @@ const styles = StyleSheet.create({
   pastDayBadgeText: {
     fontSize: 12,
     fontWeight: '500',
-  },
-  selectorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 0,
-    marginBottom: 2,
-  },
-  selectorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  helpButton: {
-    marginLeft: 2,
-    padding: 2,
-  },
-  tooltipBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 99,
-  },
-  helpTooltip: {
-    position: 'absolute',
-    zIndex: 100,
-    backgroundColor: '#1F2937',
-    padding: 14,
-    paddingRight: 36,
-    borderRadius: 10,
-    width: 260,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  helpTooltipText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#F3F4F6',
-  },
-  helpTooltipClose: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-  },
-  helpTooltipArrow: {
-    position: 'absolute',
-    top: -8,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderBottomWidth: 8,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#1F2937',
   },
   challengeSelector: {
     marginTop: 8,
