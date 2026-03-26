@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,6 +36,7 @@ export default function ChallengeCard({
   participation,
   allParticipants,
 }: ChallengeCardProps) {
+  const [bgImageFailed, setBgImageFailed] = useState(false);
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
 
@@ -158,7 +159,7 @@ export default function ChallengeCard({
     </>
   );
 
-  if (challenge.backgroundImageUrl) {
+  if (challenge.backgroundImageUrl && !bgImageFailed) {
     return (
       <View style={styles.container}>
         <ExpoImage
@@ -166,6 +167,7 @@ export default function ChallengeCard({
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           cachePolicy="disk"
+          onError={() => setBgImageFailed(true)}
         />
         <LinearGradient
           colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.65)']}

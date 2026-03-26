@@ -71,6 +71,7 @@ export default function ChallengeDetailScreen() {
   const isJoined = Boolean(userParticipation);
   const [isJoining, setIsJoining] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [bgImageFailed, setBgImageFailed] = useState(false);
 
   const handleShare = async () => {
     if (!challenge) return;
@@ -340,7 +341,7 @@ export default function ChallengeDetailScreen() {
     ]);
   };
 
-  const backgroundImage = challenge.backgroundImageUrl;
+  const backgroundImage = bgImageFailed ? null : challenge.backgroundImageUrl;
   const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.35)';
   const onScrimTextColor = backgroundImage ? '#FFFFFF' : colors.text;
   const onScrimSecondaryColor = backgroundImage ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary;
@@ -373,6 +374,7 @@ export default function ChallengeDetailScreen() {
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             cachePolicy="disk"
+            onError={() => setBgImageFailed(true)}
           />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]} />
         </View>

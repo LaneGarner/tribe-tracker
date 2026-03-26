@@ -85,6 +85,7 @@ export default function HomeScreen() {
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(
     null
   );
+  const [bgImageFailed, setBgImageFailed] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [displayMonth, setDisplayMonth] = useState(() =>
     dayjs(getToday()).format('YYYY-MM')
@@ -600,7 +601,12 @@ export default function HomeScreen() {
     return { completed, total };
   }, [activeChallenges, checkins, user?.id]);
 
-  const backgroundImage = selectedChallenge?.backgroundImageUrl;
+  const backgroundImage = bgImageFailed ? null : selectedChallenge?.backgroundImageUrl;
+
+  // Reset bgImageFailed when selected challenge changes
+  useEffect(() => {
+    setBgImageFailed(false);
+  }, [selectedChallengeId]);
 
   // Expose background image state to tab bar via screen options
   useEffect(() => {
@@ -744,6 +750,7 @@ export default function HomeScreen() {
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             cachePolicy="disk"
+            onError={() => setBgImageFailed(true)}
           />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]} />
         </View>

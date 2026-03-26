@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -37,6 +37,7 @@ export default function PublicChallengeCard({
   onPress,
   gradientColors,
 }: PublicChallengeCardProps) {
+  const [bgImageFailed, setBgImageFailed] = useState(false);
   const status = getChallengeStatus(
     challenge.startDate,
     challenge.endDate || challenge.startDate
@@ -128,7 +129,7 @@ export default function PublicChallengeCard({
     </>
   );
 
-  if (challenge.backgroundImageUrl) {
+  if (challenge.backgroundImageUrl && !bgImageFailed) {
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
         <View style={styles.imageContainer}>
@@ -137,6 +138,7 @@ export default function PublicChallengeCard({
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             cachePolicy="disk"
+            onError={() => setBgImageFailed(true)}
           />
           <LinearGradient
             colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.65)']}
