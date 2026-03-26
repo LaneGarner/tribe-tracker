@@ -92,7 +92,6 @@ export default function HomeScreen() {
   const [challengeOrder, setChallengeOrder] = useState<string[]>([]);
   const scrollOffsetRef = useRef(0);
   const scrollViewRef = useRef<any>(null);
-  const headerCollapsedRef = useRef(false);
   const carouselLayoutYRef = useRef(0);
 
   // Ref for swipeable animations
@@ -117,10 +116,6 @@ export default function HomeScreen() {
     if (selectId) {
       setSelectedChallengeId(selectId);
       navigation.setParams({ selectChallengeId: undefined });
-      const index = orderedChallenges.findIndex(c => c.id === selectId);
-      if (index !== -1) {
-        setTimeout(() => scrollPillIntoView(selectId, index), 100);
-      }
     }
   }, [route.params?.selectChallengeId]);
 
@@ -240,37 +235,24 @@ export default function HomeScreen() {
     extrapolate: 'clamp',
   });
 
-  // Snap header with 15% dead zones at both ends
-  const snapHeader = useCallback((offset: number) => {
-    let target: number;
-    if (offset <= 6) {
-      target = 0;
-      headerCollapsedRef.current = false;
-    } else if (offset >= 34) {
-      target = 40;
-      headerCollapsedRef.current = true;
-    } else {
-      target = headerCollapsedRef.current ? 40 : 0;
-    }
-    scrollViewRef.current?.scrollTo({ y: target, animated: true });
-  }, []);
-
+  // Snap header when released without velocity (no momentum will follow)
   const handleScrollEndDrag = useCallback((event: any) => {
     const velocity = event.nativeEvent.velocity?.y ?? 0;
     if (Math.abs(velocity) < 0.1) {
       const offset = scrollOffsetRef.current;
       if (offset > 0 && offset < 40) {
-        snapHeader(offset);
+        scrollViewRef.current?.scrollTo({ y: offset <= 10 ? 0 : 40, animated: true });
       }
     }
-  }, [snapHeader]);
+  }, []);
 
+  // Snap header after momentum settles in the animation zone
   const handleMomentumEnd = useCallback(() => {
     const offset = scrollOffsetRef.current;
     if (offset > 0 && offset < 40) {
-      snapHeader(offset);
+      scrollViewRef.current?.scrollTo({ y: offset <= 10 ? 0 : 40, animated: true });
     }
-  }, [snapHeader]);
+  }, []);
 
   // Load data on mount - storage first, then server
   useEffect(() => {
@@ -383,7 +365,6 @@ export default function HomeScreen() {
     ) {
       // Reset if selected challenge was deleted or is no longer active/upcoming
       setSelectedChallengeId(orderedChallenges[0].id);
-      setTimeout(() => scrollPillIntoView(orderedChallenges[0].id, 0), 100);
     }
   }, [orderedChallenges, selectedChallengeId]);
 
@@ -793,8 +774,6 @@ export default function HomeScreen() {
         onScroll={(event: any) => {
           const offsetY = event.nativeEvent.contentOffset.y;
           scrollOffsetRef.current = offsetY;
-          if (offsetY >= 40) headerCollapsedRef.current = true;
-          else if (offsetY <= 0) headerCollapsedRef.current = false;
           // Update both animated values - scrollY uses native driver, scrollYLayout uses JS
           scrollY.setValue(offsetY);
           scrollYLayout.setValue(offsetY);
@@ -1144,8 +1123,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   challengeSelectorContent: {
-    paddingLeft: 20,
-    paddingRight: 120,
+    paddingHorizontal: 20,
   },
   dateSection: {
     marginTop: 10,
