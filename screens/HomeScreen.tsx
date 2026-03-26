@@ -748,7 +748,7 @@ export default function HomeScreen() {
       >
         {/* TribeTracker text - scrolls away and fades (inside ScrollView only when no background) */}
         {!backgroundImage && (
-          <View style={{ backgroundColor: colors.background, transform: [{ translateY: -6 }] }}>
+          <View style={{ backgroundColor: colors.background, transform: [{ translateY: -6 }], paddingHorizontal: 20 }}>
             <Animated.Text style={[styles.logoText, { color: colors.text, opacity: textOpacity, marginBottom: 4 }]}>
               TribeTracker
             </Animated.Text>
