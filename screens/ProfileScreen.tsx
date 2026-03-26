@@ -238,7 +238,7 @@ export default function ProfileScreen() {
         : `https://tribe-tracker-backend.vercel.app/challenge/${challenge.id}`;
       const label = challenge.isPublic ? '' : 'private ';
       const inviteCodeLine = challenge.inviteCode ? `\n\nInvite code: ${challenge.inviteCode}` : '';
-      const message = `Join my ${label}challenge "${challenge.name}" on Tribe Tracker!\n${shareUrl}${inviteCodeLine}`;
+      const message = `Join my ${label}challenge "${challenge.name}" on TribeTracker!\n${shareUrl}${inviteCodeLine}`;
       await Share.share({ message });
     } catch {
       // User cancelled share

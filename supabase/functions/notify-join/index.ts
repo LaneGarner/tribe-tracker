@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
           <tr>
             <td align="center" style="padding-bottom:32px;">
-              <span style="font-size:28px;font-weight:800;color:#60A5FA;">Tribe Tracker</span>
+              <span style="font-size:28px;font-weight:800;color:#60A5FA;">TribeTracker</span>
             </td>
           </tr>
           <tr>
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
               </p>
               <p style="color:#D1D5DB;font-size:16px;line-height:1.6;margin:0 0 24px 0;">
                 <strong style="color:#fff;">${escapeHtml(displayJoinerName)}</strong> just joined your challenge
-                <strong style="color:#60A5FA;">&ldquo;${escapeHtml(challengeName)}&rdquo;</strong> on Tribe Tracker!
+                <strong style="color:#60A5FA;">&ldquo;${escapeHtml(challengeName)}&rdquo;</strong> on TribeTracker!
               </p>
               <p style="color:#9CA3AF;font-size:14px;margin:0;">
                 Open the app to see your challenge.
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
 
     // Build RFC 2822 MIME message and base64url-encode it
     const mimeMessage = [
-      `From: Tribe Tracker <${gmailFromEmail}>`,
+      `From: TribeTracker <${gmailFromEmail}>`,
       `To: ${creator.email}`,
       `Subject: ${subject}`,
       `MIME-Version: 1.0`,

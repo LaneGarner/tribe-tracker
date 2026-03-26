@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 export default {
   expo: {
-    name: 'Tribe Tracker',
+    name: 'TribeTracker',
     slug: 'tribe-tracker',
     scheme: 'tribetracker',
     owner: 'lanegarner',
@@ -55,8 +55,8 @@ export default {
       [
         'expo-image-picker',
         {
-          cameraPermission: 'Tribe Tracker needs camera access so you can take a profile photo.',
-          photosPermission: 'Tribe Tracker needs photo library access so you can choose a profile photo.',
+          cameraPermission: 'TribeTracker needs camera access so you can take a profile photo.',
+          photosPermission: 'TribeTracker needs photo library access so you can choose a profile photo.',
         },
       ],
       [
