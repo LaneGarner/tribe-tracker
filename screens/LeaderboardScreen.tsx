@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useContext, useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,6 +62,7 @@ export default function LeaderboardScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
+  const headerHeight = useHeaderHeight();
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const participants = useSelector((state: RootState) => state.participants.data);
@@ -246,6 +248,13 @@ export default function LeaderboardScreen() {
   const backgroundImage = selectedChallenge?.backgroundImageUrl;
   const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTransparent: !!backgroundImage,
+      headerStyle: backgroundImage ? { backgroundColor: 'transparent' } : undefined,
+    });
+  }, [navigation, backgroundImage]);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {backgroundImage && (
@@ -265,7 +274,7 @@ export default function LeaderboardScreen() {
       )}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, backgroundImage && { paddingTop: headerHeight }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }

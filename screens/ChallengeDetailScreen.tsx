@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
@@ -45,6 +46,7 @@ export default function ChallengeDetailScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
+  const headerHeight = useHeaderHeight();
 
   const { challengeId } = route.params;
 
@@ -190,8 +192,11 @@ export default function ChallengeDetailScreen() {
 
   // Set up header with chat, share, analytics, and creator menu buttons
   useLayoutEffect(() => {
+    const hasBackground = !!challenge?.backgroundImageUrl;
     navigation.setOptions({
       title: '',
+      headerTransparent: hasBackground,
+      headerStyle: hasBackground ? { backgroundColor: 'transparent' } : undefined,
       headerRight: () => (
         <View style={{ flexDirection: 'row', gap: 20, paddingHorizontal: 8 }}>
           {isJoined && groupConversation && (
@@ -234,7 +239,7 @@ export default function ChallengeDetailScreen() {
         </View>
       ),
     });
-  }, [navigation, colors.text, challenge?.name, challengeId, isCreator, isJoined, groupConversation]);
+  }, [navigation, colors.text, challenge?.name, challenge?.backgroundImageUrl, challengeId, isCreator, isJoined, groupConversation]);
 
   // Fetch fresh participant data when screen gains focus
   useFocusEffect(
@@ -355,7 +360,7 @@ export default function ChallengeDetailScreen() {
       )}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, backgroundImage && { paddingTop: headerHeight }]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
