@@ -446,7 +446,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   challengeSelectorContent: {
-    paddingHorizontal: 16,
+    paddingLeft: 16,
+    paddingRight: 120,
   },
   selectedChallengeHeader: {
     paddingHorizontal: 16,

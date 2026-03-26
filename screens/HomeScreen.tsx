@@ -1144,7 +1144,8 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   challengeSelectorContent: {
-    paddingHorizontal: 20,
+    paddingLeft: 20,
+    paddingRight: 120,
   },
   dateSection: {
     marginTop: 10,
