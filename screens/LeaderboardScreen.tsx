@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -486,9 +487,13 @@ export default function LeaderboardScreen() {
             <Leaderboard
               participants={displayParticipants}
               currentUserId={user?.id}
-              onParticipantPress={participant =>
-                navigation.navigate('ViewMember', { userId: participant.userId })
-              }
+              onParticipantPress={participant => {
+                if (participant.isAnonymous && participant.userId !== user?.id) {
+                  Alert.alert(participant.userName, 'This participant is anonymous.');
+                  return;
+                }
+                navigation.navigate('ViewMember', { userId: participant.userId });
+              }}
               challengeId={selectedChallenge?.id}
               challengeStartDate={selectedChallenge?.startDate}
             />

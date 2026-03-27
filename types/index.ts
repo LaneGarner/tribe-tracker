@@ -44,6 +44,8 @@ export interface ChallengeParticipant {
   daysParticipated: number;
   joinDate: string;
   lastCheckinDate?: string;
+  isAnonymous?: boolean;
+  anonymousName?: string;
   updatedAt?: string;
 }
 

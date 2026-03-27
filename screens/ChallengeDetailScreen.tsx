@@ -21,9 +21,10 @@ import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
 import { deleteChallenge, updateChallenge } from '../redux/slices/challengesSlice';
 import { API_URL, isBackendConfigured } from '../config/api';
-import { addParticipant, importParticipant, removeParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
+import { addParticipant, importParticipant, removeParticipant, updateParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, ChallengeParticipant } from '../types';
+import { generatePseudonym, ANONYMOUS_PHOTO_SENTINEL } from '../utils/pseudonyms';
 import {
   formatDate,
   getChallengeStatus,
@@ -179,6 +180,66 @@ export default function ChallengeDetailScreen() {
     }
 
     if (isJoined) {
+      if (userParticipation?.isAnonymous) {
+        options.push({
+          text: 'Reveal Identity',
+          onPress: () => {
+            Alert.alert(
+              'Reveal Identity',
+              'Other participants will see your real name and photo going forward. Previous messages will keep your pseudonym.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Reveal',
+                  onPress: () => {
+                    if (!userParticipation) return;
+                    const realName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous';
+                    const updated = {
+                      ...userParticipation,
+                      isAnonymous: false,
+                      userName: realName,
+                      userPhotoUrl: profile?.profilePhotoUrl,
+                      updatedAt: new Date().toISOString(),
+                    };
+                    dispatch(updateParticipant(updated));
+                  },
+                },
+              ]
+            );
+          },
+        });
+      } else {
+        options.push({
+          text: 'Go Anonymous',
+          onPress: () => {
+            Alert.alert(
+              'Go Anonymous',
+              'Your identity will be hidden behind a pseudonym. Previous messages and check-ins will still show your name.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Go Anonymous',
+                  onPress: () => {
+                    if (!userParticipation) return;
+                    const existingNames = participants.map(p => p.anonymousName).filter(Boolean) as string[];
+                    const pseudonym = userParticipation.anonymousName || generatePseudonym(existingNames);
+                    const updated = {
+                      ...userParticipation,
+                      isAnonymous: true,
+                      anonymousName: pseudonym,
+                      userName: pseudonym,
+                      userPhotoUrl: ANONYMOUS_PHOTO_SENTINEL,
+                      updatedAt: new Date().toISOString(),
+                    };
+                    dispatch(updateParticipant(updated));
+                  },
+                },
+              ]
+            );
+          },
+        });
+      }
+
       options.push({
         text: 'Leave Challenge',
         style: 'destructive',
@@ -302,30 +363,34 @@ export default function ChallengeDetailScreen() {
     }
   }, [cycleInfo?.currentCycle]);
 
-  const handleJoin = async () => {
-    if (isJoined || isJoining) return;
-
+  const executeJoin = async (joinAnonymously: boolean) => {
     setIsJoining(true);
+
+    const existingNames = participants.map(p => p.anonymousName).filter(Boolean) as string[];
+    const pseudonym = joinAnonymously ? generatePseudonym(existingNames) : undefined;
+
     const participation: ChallengeParticipant = {
       id: Crypto.randomUUID(),
       challengeId: challenge.id,
       challengeName: challenge.name,
       userId: user?.id || 'anonymous',
-      userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
+      userName: joinAnonymously
+        ? pseudonym!
+        : (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous'),
       userEmail: user?.email || '',
-      userPhotoUrl: profile?.profilePhotoUrl,
+      userPhotoUrl: joinAnonymously ? ANONYMOUS_PHOTO_SENTINEL : profile?.profilePhotoUrl,
       totalPoints: 0,
       currentStreak: 0,
       longestStreak: 0,
       daysParticipated: 0,
       joinDate: new Date().toISOString(),
+      isAnonymous: joinAnonymously,
+      anonymousName: pseudonym,
       updatedAt: new Date().toISOString(),
     };
 
-    // Add locally without triggering sync middleware
     dispatch(importParticipant(participation));
 
-    // Directly POST participant to backend (awaited to guarantee persistence)
     if (session?.access_token && isBackendConfigured()) {
       try {
         const response = await fetch(`${API_URL}/api/participants`, {
@@ -345,7 +410,6 @@ export default function ChallengeDetailScreen() {
           console.error('[HandleJoin] Failed to sync participant:', await response.text());
         }
 
-        // Fire-and-forget: refresh from server for consistency
         dispatch(fetchParticipantsFromServer(session.access_token));
       } catch (err) {
         console.error('[HandleJoin] Failed to sync participant:', err);
@@ -353,9 +417,27 @@ export default function ChallengeDetailScreen() {
     }
 
     setIsJoining(false);
-    Alert.alert('Joined!', `You've joined "${challenge.name}"`, [
+
+    const joinMessage = joinAnonymously
+      ? `You've joined "${challenge.name}" as "${pseudonym}"`
+      : `You've joined "${challenge.name}"`;
+    Alert.alert('Joined!', joinMessage, [
       { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Home', params: { selectChallengeId: challenge.id } }) },
     ]);
+  };
+
+  const handleJoin = async () => {
+    if (isJoined || isJoining) return;
+
+    Alert.alert(
+      'Join Challenge',
+      'Would you like to join anonymously? Your identity will be hidden behind a pseudonym.',
+      [
+        { text: 'Join Anonymously', onPress: () => executeJoin(true) },
+        { text: 'Join as Myself', onPress: () => executeJoin(false) },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   const backgroundImage = bgImageFailed ? null : challenge.backgroundImageUrl;
@@ -543,9 +625,13 @@ export default function ChallengeDetailScreen() {
           <Leaderboard
             participants={[...participants].sort((a, b) => b.totalPoints - a.totalPoints).slice(0, 3)}
             currentUserId={user?.id}
-            onParticipantPress={participant =>
-              navigation.navigate('ViewMember', { userId: participant.userId })
-            }
+            onParticipantPress={participant => {
+              if (participant.isAnonymous && participant.userId !== user?.id) {
+                Alert.alert(participant.userName, 'This participant is anonymous.');
+                return;
+              }
+              navigation.navigate('ViewMember', { userId: participant.userId });
+            }}
             showPodium={false}
             challengeId={challenge?.id}
             challengeStartDate={challenge?.startDate}
