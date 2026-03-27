@@ -115,8 +115,7 @@ export default function ChallengeDetailScreen() {
       }
 
       const shareUrl = `https://tribe-tracker-backend.vercel.app/invite/${inviteCode}`;
-      const label = challenge.isPublic ? '' : 'private ';
-      const message = `Join my ${label}challenge "${challenge.name}" on TribeTracker!\n${shareUrl}\n\nInvite code: ${inviteCode}`;
+      const message = `${shareUrl}\n\nInvite code: ${inviteCode}`;
       await Share.share({ message });
     } catch (error) {
       console.error('Error sharing:', error);
