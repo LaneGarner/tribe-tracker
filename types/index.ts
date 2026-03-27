@@ -25,6 +25,7 @@ export interface Challenge {
   currentCycle?: number;
   cycleStartDate?: string;
   cycleEndDate?: string;
+  category?: string;
   updatedAt?: string;
 }
 
