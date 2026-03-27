@@ -194,7 +194,6 @@ export default function CreateChallengeScreen() {
 
   const profile = useSelector((state: RootState) => state.profile.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
-  const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
   const activePublicChallenges = challenges.filter(
     c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'active'
   );
@@ -705,7 +704,7 @@ export default function CreateChallengeScreen() {
         Active
       </Text>
 
-      {!initialFetchDone && challengesLoading ? (
+      {!initialFetchDone ? (
         <PublicChallengeListSkeleton count={3} />
       ) : (
         <>
