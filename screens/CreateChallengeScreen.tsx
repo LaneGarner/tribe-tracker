@@ -196,13 +196,13 @@ export default function CreateChallengeScreen() {
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
   const activePublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
+    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'active'
   );
   const upcomingPublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'upcoming'
+    c => c.isPublic && ['upcoming', 'gap'].includes(getChallengeStatus(c.startDate, c.endDate || c.startDate, c))
   );
   const completedPublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'completed'
+    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'completed'
   );
 
   const groupByCategory = (list: Challenge[]) => {
