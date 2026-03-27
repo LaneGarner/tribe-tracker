@@ -26,6 +26,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { CHALLENGE_CATEGORIES, DEFAULT_CATEGORY } from '../constants/categories';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -127,6 +128,7 @@ export default function CreateChallengeScreen() {
   const [themeColor, setThemeColor] = useState<number>(0);
   const [customThemeColor, setCustomThemeColor] = useState<string | null>(null);
   const [useBackgroundImage, setUseBackgroundImage] = useState(true);
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [inviteCode, setInviteCode] = useState(route.params?.inviteCode || '');
 
   // Pre-fill invite code from deep link
@@ -164,6 +166,7 @@ export default function CreateChallengeScreen() {
       setThemeColor(existingChallenge.themeColor ?? 0);
       setCustomThemeColor(existingChallenge.customThemeColor ?? null);
       setUseBackgroundImage(existingChallenge.useBackgroundImage ?? true);
+      setCategory(existingChallenge.category || DEFAULT_CATEGORY);
     }
   }, [isEditMode, existingChallenge]);
 
@@ -201,6 +204,21 @@ export default function CreateChallengeScreen() {
   const completedPublicChallenges = challenges.filter(
     c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'completed'
   );
+
+  const groupByCategory = (list: Challenge[]) => {
+    const groups = new Map<string, Challenge[]>();
+    for (const c of list) {
+      const key = c.category || DEFAULT_CATEGORY;
+      // Map unrecognized categories to general
+      const resolvedKey = CHALLENGE_CATEGORIES.some(cat => cat.key === key) ? key : DEFAULT_CATEGORY;
+      const existing = groups.get(resolvedKey) || [];
+      existing.push(c);
+      groups.set(resolvedKey, existing);
+    }
+    return CHALLENGE_CATEGORIES
+      .filter(cat => groups.has(cat.key))
+      .map(cat => ({ category: cat, challenges: groups.get(cat.key)! }));
+  };
 
   const addHabit = () => {
     const newItem = makeHabitItem();
@@ -383,6 +401,7 @@ export default function CreateChallengeScreen() {
           recurrenceIntervalDays: parsedDuration,
           gapDays: parseInt(gapDays) || 0,
         }),
+        category: category || DEFAULT_CATEGORY,
         updatedAt: new Date().toISOString(),
       };
 
@@ -443,6 +462,7 @@ export default function CreateChallengeScreen() {
         cycleStartDate: startDate,
         cycleEndDate: endDate,
       }),
+      category: category || DEFAULT_CATEGORY,
       updatedAt: new Date().toISOString(),
     };
 
@@ -464,6 +484,7 @@ export default function CreateChallengeScreen() {
       setIsRecurring(false);
       setRecurrencePreset('weekly');
       setGapDays('0');
+      setCategory(DEFAULT_CATEGORY);
       setErrors({});
     };
 
@@ -607,6 +628,46 @@ export default function CreateChallengeScreen() {
     ]);
   };
 
+  const renderGroupedChallenges = (list: Challenge[], startIndex: number) => {
+    let flatIndex = startIndex;
+    return groupByCategory(list).map(({ category: cat, challenges: grouped }) => (
+      <View key={cat.key}>
+        <View
+          style={styles.categorySubHeader}
+          accessibilityRole="header"
+          accessible
+          accessibilityLabel={cat.label}
+        >
+          <Ionicons
+            name={cat.icon as any}
+            size={16}
+            color={colors.textSecondary}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+          <Text style={[styles.categorySubHeaderText, { color: colors.textSecondary }]}>
+            {cat.label}
+          </Text>
+        </View>
+        {grouped.map((challenge) => {
+          const idx = flatIndex++;
+          return (
+            <PublicChallengeCard
+              key={challenge.id}
+              challenge={challenge}
+              gradientColors={getGradientForIndex(idx)}
+              onPress={() =>
+                navigation.navigate('ChallengeDetail', {
+                  challengeId: challenge.id,
+                })
+              }
+            />
+          );
+        })}
+      </View>
+    ));
+  };
+
   const renderBrowse = () => (
     <>
       <View style={styles.header}>
@@ -641,74 +702,45 @@ export default function CreateChallengeScreen() {
       </View>
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Public Challenges
+        Active
       </Text>
 
       {!initialFetchDone && challengesLoading ? (
         <PublicChallengeListSkeleton count={3} />
-      ) : activePublicChallenges.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons
-            name="globe-outline"
-            size={48}
-            color={colors.textTertiary}
-          />
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No active public challenges
-          </Text>
-        </View>
       ) : (
-        activePublicChallenges.map((challenge, index) => (
-          <PublicChallengeCard
-            key={challenge.id}
-            challenge={challenge}
-            gradientColors={getGradientForIndex(index)}
-            onPress={() =>
-              navigation.navigate('ChallengeDetail', {
-                challengeId: challenge.id,
-              })
-            }
-          />
-        ))
-      )}
-
-      {!challengesLoading && upcomingPublicChallenges.length > 0 && (
         <>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
-            Upcoming Challenges
-          </Text>
-          {upcomingPublicChallenges.map((challenge, index) => (
-            <PublicChallengeCard
-              key={challenge.id}
-              challenge={challenge}
-              gradientColors={getGradientForIndex(activePublicChallenges.length + index)}
-              onPress={() =>
-                navigation.navigate('ChallengeDetail', {
-                  challengeId: challenge.id,
-                })
-              }
-            />
-          ))}
-        </>
-      )}
+          {activePublicChallenges.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="globe-outline"
+                size={48}
+                color={colors.textTertiary}
+              />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No active public challenges
+              </Text>
+            </View>
+          ) : (
+            renderGroupedChallenges(activePublicChallenges, 0)
+          )}
 
-      {!challengesLoading && completedPublicChallenges.length > 0 && (
-        <>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
-            Completed Challenges
-          </Text>
-          {completedPublicChallenges.map((challenge, index) => (
-            <PublicChallengeCard
-              key={challenge.id}
-              challenge={challenge}
-              gradientColors={getGradientForIndex(activePublicChallenges.length + upcomingPublicChallenges.length + index)}
-              onPress={() =>
-                navigation.navigate('ChallengeDetail', {
-                  challengeId: challenge.id,
-                })
-              }
-            />
-          ))}
+          {upcomingPublicChallenges.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
+                Upcoming
+              </Text>
+              {renderGroupedChallenges(upcomingPublicChallenges, activePublicChallenges.length)}
+            </>
+          )}
+
+          {completedPublicChallenges.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
+                Completed
+              </Text>
+              {renderGroupedChallenges(completedPublicChallenges, activePublicChallenges.length + upcomingPublicChallenges.length)}
+            </>
+          )}
         </>
       )}
     </>
@@ -786,6 +818,42 @@ export default function CreateChallengeScreen() {
             onValueChange={setIsPublic}
             accessibilityLabel="Toggle challenge visibility"
           />
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          Category
+        </Text>
+        <View style={styles.presetRow} accessibilityRole="radiogroup" accessibilityLabel="Category">
+          {CHALLENGE_CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat.key}
+              style={[
+                styles.categoryChip,
+                {
+                  backgroundColor: category === cat.key ? colors.primary : colors.surface,
+                  borderColor: category === cat.key ? colors.primary : colors.border,
+                },
+              ]}
+              onPress={() => setCategory(cat.key)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: category === cat.key }}
+              accessibilityLabel={cat.label}
+            >
+              <Ionicons
+                name={cat.icon as any}
+                size={14}
+                color={category === cat.key ? '#fff' : colors.textSecondary}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+              <Text style={[
+                styles.presetChipText,
+                { color: category === cat.key ? '#fff' : colors.text },
+              ]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
@@ -1531,6 +1599,28 @@ const styles = StyleSheet.create({
   presetChipText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  categorySubHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  categorySubHeaderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   toggleRow: {
     flexDirection: 'row',
