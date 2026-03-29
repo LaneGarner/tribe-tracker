@@ -9,9 +9,7 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
-
-// Same gradient as ChallengeCard
-const SELECTED_GRADIENT: [string, string] = ['#00B4DB', '#0083B0'];
+import { CARD_GRADIENTS } from '../../constants/gradients';
 
 interface ChallengeChipProps {
   name: string;
@@ -25,6 +23,7 @@ interface ChallengeChipProps {
   onMoveRight?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
+  gradientColors?: [string, string];
 }
 
 export default function ChallengeChip({
@@ -39,6 +38,7 @@ export default function ChallengeChip({
   onMoveRight,
   isFirst,
   isLast,
+  gradientColors,
 }: ChallengeChipProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -102,7 +102,7 @@ export default function ChallengeChip({
   if (isSelected) {
     return (
       <LinearGradient
-        colors={SELECTED_GRADIENT}
+        colors={gradientColors ?? CARD_GRADIENTS[0]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[

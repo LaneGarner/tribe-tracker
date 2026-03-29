@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -49,6 +49,13 @@ const PILL_HORIZONTAL_PADDING = 16; // padding on each side of content
 const MIN_PILL_WIDTH = 72;
 
 
+// Scale tab label font size based on screen width
+const useTabLabelFontSize = () => {
+  const { width } = useWindowDimensions();
+  // 11pt at 390+ width, scaling down to ~9pt on SE (320)
+  return Math.min(11, Math.max(8, width * 0.028));
+};
+
 // Tab button component
 const TabButton = ({
   route,
@@ -77,6 +84,7 @@ const TabButton = ({
   onTabLayout: (index: number, x: number, width: number) => void;
   onContentLayout: (index: number, width: number) => void;
 }) => {
+  const tabFontSize = useTabLabelFontSize();
 
   return (
     <TouchableOpacity
@@ -114,9 +122,13 @@ const TabButton = ({
           )}
         </View>
         <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
           style={[
             styles.tabLabel,
             {
+              fontSize: tabFontSize,
               color: isFocused ? colors.tabBarActive : colors.tabBarInactive,
               fontWeight: isFocused ? '700' : '500',
             },
@@ -160,6 +172,7 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const totalUnread = useSelector(selectTotalUnreadCount);
 
   // Track tab widths and positions for the sliding indicator
@@ -335,9 +348,10 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const activeDescriptor = descriptors[activeRoute.key];
   const hasBackgroundImage = (activeDescriptor?.options as any)?.hasBackgroundImage ?? false;
 
+  const horizontalMargin = screenWidth < 380 ? '1%' : '2%';
   const containerStyle = [
     styles.tabBarContainer,
-    { paddingBottom: insets.bottom > 0 ? insets.bottom - 16 : 4 },
+    { left: horizontalMargin, right: horizontalMargin, paddingBottom: insets.bottom > 0 ? insets.bottom - 16 : 4 },
   ];
 
   // iOS with blur
@@ -509,8 +523,8 @@ export default function TabNavigator() {
         name="Leaderboard"
         component={LeaderboardScreen}
         options={{
-          title: 'Leaderboards',
-          tabBarLabel: 'Leaderboards',
+          title: 'Leaderboard',
+          tabBarLabel: 'Leaderboard',
         }}
       />
       {chatTabEnabled && (
@@ -518,7 +532,7 @@ export default function TabNavigator() {
           name="Chat"
           component={ChatScreen}
           options={{
-            title: 'Chat',
+            title: 'Tribe Chat',
             tabBarLabel: 'Chat',
           }}
         />

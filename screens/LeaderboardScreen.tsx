@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,9 +39,10 @@ import { loadParticipantsFromStorage, fetchParticipantsFromServer } from '../red
 import { useAuth } from '../context/AuthContext';
 import { isBackendConfigured } from '../config/api';
 import { RootStackParamList, TabParamList, Challenge } from '../types';
-import { getChallengeStatus, getDaysRemaining } from '../utils/dateUtils';
+import { getChallengeStatus, getDaysRemaining, getRecurringCycleInfo } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import ChallengeChip from '../components/challenge/ChallengeChip';
+import { getGradientForChallenge } from '../constants/gradients';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
@@ -70,8 +72,10 @@ export default function LeaderboardScreen() {
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(
     null
   );
+  const [leaderboardMode, setLeaderboardMode] = useState<'allTime' | 'cycle'>('allTime');
   const [refreshing, setRefreshing] = useState(false);
   const [challengeOrder, setChallengeOrder] = useState<string[]>([]);
+  const checkins = useSelector((state: RootState) => state.checkins.data);
   const challengeSwipeRef = useRef<SwipeableViewRef>(null);
   const pillsScrollRef = useRef<ScrollView | any>(null);
   const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
@@ -82,10 +86,12 @@ export default function LeaderboardScreen() {
     participants.filter(p => p.userId === user?.id).map(p => p.challengeId)
   );
   const activeChallenges = challenges.filter(
-    c =>
-      userChallengeIds.has(c.id) &&
-      getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active' &&
-      participants.filter(p => p.challengeId === c.id).length > 1
+    c => {
+      if (!userChallengeIds.has(c.id)) return false;
+      if (participants.filter(p => p.challengeId === c.id).length <= 1) return false;
+      const status = getChallengeStatus(c.startDate, c.endDate || c.startDate, c);
+      return status === 'active' || status === 'gap';
+    }
   );
 
   // Sort active challenges by saved order
@@ -239,7 +245,30 @@ export default function LeaderboardScreen() {
     p => p.challengeId === selectedChallengeId
   );
 
-  const sortedParticipants = [...challengeParticipants].sort(
+  // Compute per-cycle stats from checkins when viewing cycle leaderboard
+  const cycleInfo = selectedChallenge ? getRecurringCycleInfo(selectedChallenge) : null;
+  const isRecurring = !!selectedChallenge?.isRecurring;
+
+  const cycleParticipants = React.useMemo(() => {
+    if (!isRecurring || !cycleInfo || leaderboardMode !== 'cycle') return null;
+    const currentCycle = cycleInfo.currentCycle;
+    const cycleCheckins = checkins.filter(
+      c => c.challengeId === selectedChallengeId && (c.cycle ?? 1) === currentCycle
+    );
+    // Group by userId and compute stats
+    const userStats = new Map<string, number>();
+    cycleCheckins.forEach(c => {
+      const pts = userStats.get(c.userId) ?? 0;
+      userStats.set(c.userId, pts + c.pointsEarned);
+    });
+    return challengeParticipants.map(p => ({
+      ...p,
+      totalPoints: userStats.get(p.userId) ?? 0,
+    }));
+  }, [isRecurring, cycleInfo?.currentCycle, leaderboardMode, checkins, selectedChallengeId, challengeParticipants]);
+
+  const displayParticipants = (leaderboardMode === 'cycle' && cycleParticipants) || challengeParticipants;
+  const sortedParticipants = [...displayParticipants].sort(
     (a, b) => b.totalPoints - a.totalPoints
   );
   const currentUserParticipant = sortedParticipants.find(
@@ -263,7 +292,7 @@ export default function LeaderboardScreen() {
         paddingTop: insets.top + 16,
         backgroundColor: colors.background,
       }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboard</Text>
       </View>
       {/* Challenge selector tabs - sticky outside ScrollView */}
       {orderedChallenges.length > 1 && (
@@ -292,6 +321,7 @@ export default function LeaderboardScreen() {
                       width: e.nativeEvent.layout.width,
                     };
                   }}
+                  gradientColors={getGradientForChallenge(challenge)}
                   showArrows
                   onMoveLeft={() => moveChallengeLeft(challenge.id)}
                   onMoveRight={() => moveChallengeRight(challenge.id)}
@@ -324,6 +354,7 @@ export default function LeaderboardScreen() {
                       }}
                       onLongPress={drag}
                       disabled={isActive}
+                      gradientColors={getGradientForChallenge(challenge)}
                       onLayout={(e) => {
                         pillPositions.current[challenge.id] = {
                           x: e.nativeEvent.layout.x,
@@ -361,8 +392,48 @@ export default function LeaderboardScreen() {
                   {selectedChallenge.name}
                 </Text>
                 <Text style={[styles.selectedChallengeDuration, { color: colors.textSecondary }]}>
-                  {selectedChallenge.durationDays} day challenge · {getDaysRemaining(selectedChallenge.endDate || selectedChallenge.startDate)} days remaining
+                  {cycleInfo
+                    ? `Cycle ${cycleInfo.currentCycle} · ${selectedChallenge.durationDays} day cycles`
+                    : `${selectedChallenge.durationDays} day challenge · ${getDaysRemaining(selectedChallenge.endDate || selectedChallenge.startDate)} days remaining`
+                  }
                 </Text>
+              </View>
+            )}
+
+            {isRecurring && (
+              <View style={styles.leaderboardToggleRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.leaderboardToggleButton,
+                    {
+                      backgroundColor: leaderboardMode === 'cycle' ? colors.primary : colors.surface,
+                      borderColor: leaderboardMode === 'cycle' ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => setLeaderboardMode('cycle')}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: leaderboardMode === 'cycle' }}
+                >
+                  <Text style={[styles.leaderboardToggleText, { color: leaderboardMode === 'cycle' ? '#fff' : colors.text }]}>
+                    This Cycle
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.leaderboardToggleButton,
+                    {
+                      backgroundColor: leaderboardMode === 'allTime' ? colors.primary : colors.surface,
+                      borderColor: leaderboardMode === 'allTime' ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => setLeaderboardMode('allTime')}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: leaderboardMode === 'allTime' }}
+                >
+                  <Text style={[styles.leaderboardToggleText, { color: leaderboardMode === 'allTime' ? '#fff' : colors.text }]}>
+                    All Time
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -414,11 +485,15 @@ export default function LeaderboardScreen() {
 
             {/* Leaderboard */}
             <Leaderboard
-              participants={challengeParticipants}
+              participants={displayParticipants}
               currentUserId={user?.id}
-              onParticipantPress={participant =>
-                navigation.navigate('ViewMember', { userId: participant.userId })
-              }
+              onParticipantPress={participant => {
+                if (participant.isAnonymous && participant.userId !== user?.id) {
+                  Alert.alert(participant.userName, 'This participant is anonymous.');
+                  return;
+                }
+                navigation.navigate('ViewMember', { userId: participant.userId });
+              }}
               challengeId={selectedChallenge?.id}
               challengeStartDate={selectedChallenge?.startDate}
             />
@@ -467,6 +542,22 @@ const styles = StyleSheet.create({
   },
   challengeSelectorContent: {
     paddingHorizontal: 16,
+  },
+  leaderboardToggleRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 8,
+  },
+  leaderboardToggleButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  leaderboardToggleText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   selectedChallengeHeader: {
     paddingHorizontal: 16,

@@ -10,8 +10,11 @@ import {
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { EyeOff } from 'lucide-react-native';
+import { ANONYMOUS_PHOTO_SENTINEL } from '../utils/pseudonyms';
 
 const AVATAR_GRADIENT = ['#60A5FA', '#A855F7'] as [string, string];
+const ANONYMOUS_GRADIENT = ['#6B7280', '#9CA3AF'] as [string, string];
 
 function getInitials(name?: string, email?: string): string {
   if (name) {
@@ -52,14 +55,30 @@ export default function Avatar({
     setImageError(false);
   }, [imageUrl]);
 
-  const showImage = !!imageUrl && !imageError;
+  const isAnonymous = imageUrl === ANONYMOUS_PHOTO_SENTINEL;
+  const showImage = !!imageUrl && !isAnonymous && !imageError;
   const initials = getInitials(name, email);
   const fontSize = size * 0.4;
   const badgeSize = Math.max(24, size * 0.3);
 
   const avatarContent = (
     <View style={[{ width: size, height: size, borderRadius: size / 2 }, style]}>
-      {showImage ? (
+      {isAnonymous ? (
+        <LinearGradient
+          colors={ANONYMOUS_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <EyeOff size={size * 0.45} color="#fff" strokeWidth={2} />
+        </LinearGradient>
+      ) : showImage ? (
         <ExpoImage
           source={{ uri: imageUrl }}
           style={{
@@ -132,7 +151,9 @@ export default function Avatar({
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityLabel={
-          showImage ? 'Profile photo' : `Avatar showing initials ${initials}`
+          isAnonymous ? `Anonymous participant${name ? `, ${name}` : ''}`
+            : showImage ? 'Profile photo'
+            : `Avatar showing initials ${initials}`
         }
         accessibilityHint="Double tap to change your profile photo"
         accessibilityState={{ busy: isUploading }}

@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
+  Keyboard,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -22,9 +23,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useDispatch, useSelector } from 'react-redux';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { CHALLENGE_CATEGORIES, DEFAULT_CATEGORY } from '../constants/categories';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -52,8 +54,10 @@ import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
 import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
-import PublicChallengeCard, { getGradientForIndex } from '../components/challenge/PublicChallengeCard';
+import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
+import ColorThemePicker from '../components/challenge/ColorThemePicker';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { CARD_GRADIENTS, getGradientForIndex } from '../constants/gradients';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 import { pickImage, uploadChallengeBackground, deleteChallengeBackground } from '../utils/imageUpload';
 
@@ -71,6 +75,16 @@ export default function CreateChallengeScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, getAccessToken } = useAuth();
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
 
   const [mode, setMode] = useState<'browse' | 'create' | 'join'>(route.params?.mode || 'browse');
 
@@ -106,8 +120,15 @@ export default function CreateChallengeScreen() {
   });
   const [habits, setHabits] = useState<HabitItem[]>([makeHabitItem()]);
   const [isPublic, setIsPublic] = useState(true);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrencePreset, setRecurrencePreset] = useState<'weekly' | 'biweekly' | 'monthly' | 'custom'>('weekly');
+  const [gapDays, setGapDays] = useState('0');
   const [backgroundImageUri, setBackgroundImageUri] = useState<string | null>(null);
   const [isUploadingBackground, setIsUploadingBackground] = useState(false);
+  const [themeColor, setThemeColor] = useState<number>(0);
+  const [customThemeColor, setCustomThemeColor] = useState<string | null>(null);
+  const [useBackgroundImage, setUseBackgroundImage] = useState(true);
+  const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [inviteCode, setInviteCode] = useState(route.params?.inviteCode || '');
 
   // Pre-fill invite code from deep link
@@ -132,7 +153,20 @@ export default function CreateChallengeScreen() {
           : [makeHabitItem()]
       );
       setIsPublic(existingChallenge.isPublic);
+      if (existingChallenge.isRecurring) {
+        setIsRecurring(true);
+        setGapDays(String(existingChallenge.gapDays ?? 0));
+        const days = existingChallenge.durationDays;
+        if (days === 7) setRecurrencePreset('weekly');
+        else if (days === 14) setRecurrencePreset('biweekly');
+        else if (days === 30) setRecurrencePreset('monthly');
+        else setRecurrencePreset('custom');
+      }
       setBackgroundImageUri(existingChallenge.backgroundImageUrl || null);
+      setThemeColor(existingChallenge.themeColor ?? 0);
+      setCustomThemeColor(existingChallenge.customThemeColor ?? null);
+      setUseBackgroundImage(existingChallenge.useBackgroundImage ?? true);
+      setCategory(existingChallenge.category || DEFAULT_CATEGORY);
     }
   }, [isEditMode, existingChallenge]);
 
@@ -160,16 +194,30 @@ export default function CreateChallengeScreen() {
 
   const profile = useSelector((state: RootState) => state.profile.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
-  const challengesLoading = useSelector((state: RootState) => state.challenges.loading);
   const activePublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'active'
+    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'active'
   );
   const upcomingPublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'upcoming'
+    c => c.isPublic && ['upcoming', 'gap'].includes(getChallengeStatus(c.startDate, c.endDate || c.startDate, c))
   );
   const completedPublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate) === 'completed'
+    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'completed'
   );
+
+  const groupByCategory = (list: Challenge[]) => {
+    const groups = new Map<string, Challenge[]>();
+    for (const c of list) {
+      const key = c.category || DEFAULT_CATEGORY;
+      // Map unrecognized categories to general
+      const resolvedKey = CHALLENGE_CATEGORIES.some(cat => cat.key === key) ? key : DEFAULT_CATEGORY;
+      const existing = groups.get(resolvedKey) || [];
+      existing.push(c);
+      groups.set(resolvedKey, existing);
+    }
+    return CHALLENGE_CATEGORIES
+      .filter(cat => groups.has(cat.key))
+      .map(cat => ({ category: cat, challenges: groups.get(cat.key)! }));
+  };
 
   const addHabit = () => {
     const newItem = makeHabitItem();
@@ -326,6 +374,7 @@ export default function CreateChallengeScreen() {
         backgroundImageUrl = undefined;
       }
 
+      const parsedDuration = parseInt(durationDays) || existingChallenge.durationDays;
       const updatedChallenge: Challenge = {
         ...existingChallenge,
         name: name.trim(),
@@ -333,15 +382,25 @@ export default function CreateChallengeScreen() {
         habits: validHabits,
         isPublic,
         backgroundImageUrl,
+        themeColor,
+        customThemeColor: customThemeColor || undefined,
+        useBackgroundImage,
         inviteCode: isPublic
           ? undefined
           : (existingChallenge.inviteCode || generateInviteCode()),
         // Only update schedule if challenge hasn't started yet
         ...(existingChallenge.status === 'upcoming' && {
           startDate,
-          durationDays: parseInt(durationDays) || existingChallenge.durationDays,
+          durationDays: parsedDuration,
           endDate,
         }),
+        // Recurring fields (can update gap even when active)
+        isRecurring: isRecurring || undefined,
+        ...(isRecurring && {
+          recurrenceIntervalDays: parsedDuration,
+          gapDays: parseInt(gapDays) || 0,
+        }),
+        category: category || DEFAULT_CATEGORY,
         updatedAt: new Date().toISOString(),
       };
 
@@ -375,21 +434,34 @@ export default function CreateChallengeScreen() {
 
     const today = getToday();
     const isFutureStart = dayjs(startDate).isAfter(dayjs(today), 'day');
+    const parsedDuration = parseInt(durationDays) || 30;
     const newChallenge: Challenge = {
       id: challengeId,
       name: name.trim(),
       description: description.trim() || undefined,
       creatorId: user?.id || 'anonymous',
       creatorName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
-      durationDays: parseInt(durationDays) || 30,
+      durationDays: parsedDuration,
       startDate,
       endDate,
       habits: validHabits,
       backgroundImageUrl,
+      themeColor,
+      customThemeColor: customThemeColor || undefined,
+      useBackgroundImage,
       isPublic,
       inviteCode: isPublic ? undefined : generateInviteCode(),
       status: isFutureStart ? 'upcoming' : 'active',
       participantCount: 0,
+      ...(isRecurring && {
+        isRecurring: true,
+        recurrenceIntervalDays: parsedDuration,
+        gapDays: parseInt(gapDays) || 0,
+        currentCycle: 1,
+        cycleStartDate: startDate,
+        cycleEndDate: endDate,
+      }),
+      category: category || DEFAULT_CATEGORY,
       updatedAt: new Date().toISOString(),
     };
 
@@ -405,6 +477,13 @@ export default function CreateChallengeScreen() {
       setEndDate(getChallengeEndDate(getToday(), 30));
       setHabits([makeHabitItem()]);
       setBackgroundImageUri(null);
+      setThemeColor(0);
+      setCustomThemeColor(null);
+      setUseBackgroundImage(true);
+      setIsRecurring(false);
+      setRecurrencePreset('weekly');
+      setGapDays('0');
+      setCategory(DEFAULT_CATEGORY);
       setErrors({});
     };
 
@@ -548,6 +627,46 @@ export default function CreateChallengeScreen() {
     ]);
   };
 
+  const renderGroupedChallenges = (list: Challenge[], startIndex: number) => {
+    let flatIndex = startIndex;
+    return groupByCategory(list).map(({ category: cat, challenges: grouped }) => (
+      <View key={cat.key}>
+        <View
+          style={styles.categorySubHeader}
+          accessibilityRole="header"
+          accessible
+          accessibilityLabel={cat.label}
+        >
+          <Ionicons
+            name={cat.icon as any}
+            size={16}
+            color={colors.textSecondary}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+          <Text style={[styles.categorySubHeaderText, { color: colors.textSecondary }]}>
+            {cat.label}
+          </Text>
+        </View>
+        {grouped.map((challenge) => {
+          const idx = flatIndex++;
+          return (
+            <PublicChallengeCard
+              key={challenge.id}
+              challenge={challenge}
+              gradientColors={getGradientForIndex(idx)}
+              onPress={() =>
+                navigation.navigate('ChallengeDetail', {
+                  challengeId: challenge.id,
+                })
+              }
+            />
+          );
+        })}
+      </View>
+    ));
+  };
+
   const renderBrowse = () => (
     <>
       <View style={styles.header}>
@@ -582,74 +701,45 @@ export default function CreateChallengeScreen() {
       </View>
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Public Challenges
+        Active
       </Text>
 
-      {!initialFetchDone && challengesLoading ? (
+      {!initialFetchDone ? (
         <PublicChallengeListSkeleton count={3} />
-      ) : activePublicChallenges.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons
-            name="globe-outline"
-            size={48}
-            color={colors.textTertiary}
-          />
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No active public challenges
-          </Text>
-        </View>
       ) : (
-        activePublicChallenges.map((challenge, index) => (
-          <PublicChallengeCard
-            key={challenge.id}
-            challenge={challenge}
-            gradientColors={getGradientForIndex(index)}
-            onPress={() =>
-              navigation.navigate('ChallengeDetail', {
-                challengeId: challenge.id,
-              })
-            }
-          />
-        ))
-      )}
-
-      {!challengesLoading && upcomingPublicChallenges.length > 0 && (
         <>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
-            Upcoming Challenges
-          </Text>
-          {upcomingPublicChallenges.map((challenge, index) => (
-            <PublicChallengeCard
-              key={challenge.id}
-              challenge={challenge}
-              gradientColors={getGradientForIndex(activePublicChallenges.length + index)}
-              onPress={() =>
-                navigation.navigate('ChallengeDetail', {
-                  challengeId: challenge.id,
-                })
-              }
-            />
-          ))}
-        </>
-      )}
+          {activePublicChallenges.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="globe-outline"
+                size={48}
+                color={colors.textTertiary}
+              />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No active public challenges
+              </Text>
+            </View>
+          ) : (
+            renderGroupedChallenges(activePublicChallenges, 0)
+          )}
 
-      {!challengesLoading && completedPublicChallenges.length > 0 && (
-        <>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
-            Completed Challenges
-          </Text>
-          {completedPublicChallenges.map((challenge, index) => (
-            <PublicChallengeCard
-              key={challenge.id}
-              challenge={challenge}
-              gradientColors={getGradientForIndex(activePublicChallenges.length + upcomingPublicChallenges.length + index)}
-              onPress={() =>
-                navigation.navigate('ChallengeDetail', {
-                  challengeId: challenge.id,
-                })
-              }
-            />
-          ))}
+          {upcomingPublicChallenges.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
+                Upcoming
+              </Text>
+              {renderGroupedChallenges(upcomingPublicChallenges, activePublicChallenges.length)}
+            </>
+          )}
+
+          {completedPublicChallenges.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
+                Completed
+              </Text>
+              {renderGroupedChallenges(completedPublicChallenges, activePublicChallenges.length + upcomingPublicChallenges.length)}
+            </>
+          )}
         </>
       )}
     </>
@@ -718,45 +808,120 @@ export default function CreateChallengeScreen() {
           numberOfLines={3}
         />
 
-        <Text style={[styles.label, { color: colors.text }]}>Background Image</Text>
-        <TouchableOpacity
-          style={[
-            styles.backgroundImagePicker,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-            },
-          ]}
-          onPress={handlePickBackground}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={backgroundImageUri ? 'Change background image' : 'Add background image'}
-          accessibilityHint="Opens image picker for challenge card background"
-        >
-          {backgroundImageUri ? (
-            <ExpoImage
-              source={{ uri: backgroundImageUri }}
-              style={styles.backgroundImagePreview}
-              contentFit="cover"
-              cachePolicy="disk"
-            />
-          ) : (
-            <View style={styles.backgroundImagePlaceholder}>
-              <Ionicons name="image-outline" size={32} color={colors.textTertiary} />
-              <Text style={[styles.backgroundImagePlaceholderText, { color: colors.textTertiary }]}>
-                Add a background image
-              </Text>
-            </View>
-          )}
-          {isUploadingBackground && (
-            <View style={styles.backgroundImageUploadingOverlay}>
-              <ActivityIndicator color="#fff" />
-            </View>
-          )}
-        </TouchableOpacity>
-        <Text style={[styles.helperText, { color: colors.textTertiary }]}>
-          Shown behind the challenge card on the home screen
+        <View style={styles.toggleRow}>
+          <Text style={[styles.toggleLabel, { color: colors.text }]}>
+            Public challenge
+          </Text>
+          <Toggle
+            value={isPublic}
+            onValueChange={setIsPublic}
+            accessibilityLabel="Toggle challenge visibility"
+          />
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          Category
         </Text>
+        <View style={styles.presetRow} accessibilityRole="radiogroup" accessibilityLabel="Category">
+          {CHALLENGE_CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat.key}
+              style={[
+                styles.categoryChip,
+                {
+                  backgroundColor: category === cat.key ? colors.primary : colors.surface,
+                  borderColor: category === cat.key ? colors.primary : colors.border,
+                },
+              ]}
+              onPress={() => setCategory(cat.key)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: category === cat.key }}
+              accessibilityLabel={cat.label}
+            >
+              <Ionicons
+                name={cat.icon as any}
+                size={14}
+                color={category === cat.key ? '#fff' : colors.textSecondary}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+              <Text style={[
+                styles.presetChipText,
+                { color: category === cat.key ? '#fff' : colors.text },
+              ]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          Card Appearance
+        </Text>
+
+        <View style={styles.toggleRow}>
+          <Text style={[styles.toggleLabel, { color: colors.text }]}>
+            Use color theme
+          </Text>
+          <Toggle
+            value={!useBackgroundImage}
+            onValueChange={(val) => setUseBackgroundImage(!val)}
+            accessibilityLabel="Toggle between color theme and background image"
+          />
+        </View>
+
+        {!useBackgroundImage ? (
+          <ColorThemePicker
+            selectedIndex={customThemeColor ? null : themeColor}
+            customColor={customThemeColor}
+            onSelectPreset={(index) => {
+              setThemeColor(index);
+              setCustomThemeColor(null);
+            }}
+            onSelectCustom={setCustomThemeColor}
+          />
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[
+                styles.backgroundImagePicker,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+              onPress={handlePickBackground}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={backgroundImageUri ? 'Change background image' : 'Add background image'}
+              accessibilityHint="Opens image picker for challenge card background"
+            >
+              {backgroundImageUri ? (
+                <ExpoImage
+                  source={{ uri: backgroundImageUri }}
+                  style={styles.backgroundImagePreview}
+                  contentFit="cover"
+                  cachePolicy="disk"
+                />
+              ) : (
+                <View style={styles.backgroundImagePlaceholder}>
+                  <Ionicons name="image-outline" size={32} color={colors.textTertiary} />
+                  <Text style={[styles.backgroundImagePlaceholderText, { color: colors.textTertiary }]}>
+                    Add a background image
+                  </Text>
+                </View>
+              )}
+              {isUploadingBackground && (
+                <View style={styles.backgroundImageUploadingOverlay}>
+                  <ActivityIndicator color="#fff" />
+                </View>
+              )}
+            </TouchableOpacity>
+            <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+              Shown behind the challenge card on the home screen
+            </Text>
+          </>
+        )}
 
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
           Schedule
@@ -911,6 +1076,96 @@ export default function CreateChallengeScreen() {
           />
         )}
 
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+          Recurrence
+        </Text>
+
+        <View style={[styles.toggleRow, isRecurring && { marginBottom: 12 }]}>
+          <Text style={[styles.toggleLabel, { color: colors.text }]}>
+            Recurring Challenge
+          </Text>
+          <Toggle
+            value={isRecurring}
+            onValueChange={(val) => {
+              setIsRecurring(val);
+              if (val && recurrencePreset !== 'custom') {
+                const presetDays = recurrencePreset === 'weekly' ? 7 : recurrencePreset === 'biweekly' ? 14 : 30;
+                setDurationDays(String(presetDays));
+                setEndDate(getChallengeEndDate(startDate, presetDays));
+              }
+            }}
+            accessibilityLabel="Toggle recurring challenge"
+            disabled={isScheduleLocked}
+          />
+        </View>
+
+        {isRecurring && (
+          <>
+            <Text style={[styles.label, { color: colors.text }]}>Repeat Every</Text>
+            <View style={styles.presetRow}>
+              {([
+                { key: 'weekly' as const, label: 'Weekly', days: 7 },
+                { key: 'biweekly' as const, label: 'Biweekly', days: 14 },
+                { key: 'monthly' as const, label: 'Monthly', days: 30 },
+                { key: 'custom' as const, label: 'Custom', days: null },
+              ]).map(({ key, label, days }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.presetChip,
+                    {
+                      backgroundColor: recurrencePreset === key
+                        ? (customThemeColor || CARD_GRADIENTS[themeColor]?.[0] || colors.primary)
+                        : colors.surface,
+                      borderColor: recurrencePreset === key
+                        ? (customThemeColor || CARD_GRADIENTS[themeColor]?.[0] || colors.primary)
+                        : colors.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    setRecurrencePreset(key);
+                    if (days && !isScheduleLocked) {
+                      setDurationDays(String(days));
+                      setEndDate(getChallengeEndDate(startDate, days));
+                    }
+                  }}
+                  disabled={isScheduleLocked}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: recurrencePreset === key }}
+                >
+                  <Text style={[
+                    styles.presetChipText,
+                    { color: recurrencePreset === key ? '#fff' : colors.text },
+                  ]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.label, { color: colors.text }]}>Rest Period Between Cycles (days)</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surface,
+                  color: isScheduleLocked ? colors.textTertiary : colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              value={gapDays}
+              onChangeText={setGapDays}
+              placeholder="0"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="number-pad"
+              editable={!isScheduleLocked}
+            />
+            <Text style={[styles.helperText, { color: colors.textTertiary }]}>
+              0 = next cycle starts immediately
+            </Text>
+          </>
+        )}
+
         <Text style={[styles.label, { color: colors.text }]}>
           Daily Habits <Text style={{ color: colors.error }}>*</Text>
         </Text>
@@ -952,6 +1207,9 @@ export default function CreateChallengeScreen() {
                 onChangeText={text => {
                   updateHabit(habit.id, text);
                   if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
+                }}
+                onFocus={() => {
+                  setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 300);
                 }}
                 placeholder={`Habit ${index + 1}`}
                 placeholderTextColor={colors.textTertiary}
@@ -1003,6 +1261,9 @@ export default function CreateChallengeScreen() {
                       updateHabit(habit.id, text);
                       if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
                     }}
+                    onFocus={() => {
+                      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 300);
+                    }}
                     placeholder={`Habit ${index + 1}`}
                     placeholderTextColor={colors.textTertiary}
                     autoCapitalize="words"
@@ -1033,19 +1294,9 @@ export default function CreateChallengeScreen() {
           </Text>
         </TouchableOpacity>
 
-        <View style={styles.toggleRow}>
-          <Text style={[styles.toggleLabel, { color: colors.text }]}>
-            Public challenge
-          </Text>
-          <Toggle
-            value={isPublic}
-            onValueChange={setIsPublic}
-            accessibilityLabel="Toggle challenge visibility"
-          />
-        </View>
       </FormScrollView>
 
-      <View style={[styles.fixedButtonContainer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+      <View style={[styles.fixedButtonContainer, { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: keyboardVisible ? 12 : TAB_BAR_HEIGHT + insets.bottom + 25 }]}>
         <TouchableOpacity
           style={[styles.submitButton, { backgroundColor: colors.primary, marginBottom: 0, opacity: (isCreating || isUploadingBackground) ? 0.7 : 1 }]}
           onPress={handleCreate}
@@ -1118,7 +1369,7 @@ export default function CreateChallengeScreen() {
         style={[styles.container, { backgroundColor: colors.background }]}
         edges={['top']}
       >
-        <View style={[styles.scrollContent, styles.flex1]}>
+        <View style={styles.createModeContainer}>
           {renderCreate()}
         </View>
       </SafeAreaView>
@@ -1161,6 +1412,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: TAB_BAR_HEIGHT + 32,
+  },
+  createModeContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
@@ -1328,6 +1583,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  presetRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+  },
+  presetChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  presetChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  categorySubHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  categorySubHeaderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   toggleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1340,7 +1633,6 @@ const styles = StyleSheet.create({
   },
   fixedButtonContainer: {
     paddingTop: 12,
-    paddingBottom: 24,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   submitButton: {
@@ -1388,7 +1680,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 20,
     height: 140,
   },
   backgroundImagePreview: {

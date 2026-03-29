@@ -21,14 +21,16 @@ import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
 import { deleteChallenge, updateChallenge } from '../redux/slices/challengesSlice';
 import { API_URL, isBackendConfigured } from '../config/api';
-import { addParticipant, importParticipant, removeParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
+import { addParticipant, importParticipant, removeParticipant, updateParticipant, makeSelectParticipantsByChallengeId, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, ChallengeParticipant } from '../types';
+import { generatePseudonym, ANONYMOUS_PHOTO_SENTINEL } from '../utils/pseudonyms';
 import {
   formatDate,
   getChallengeStatus,
   getCurrentChallengeDay,
   getDaysBetween,
+  getRecurringCycleInfo,
 } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
@@ -71,6 +73,7 @@ export default function ChallengeDetailScreen() {
   const isJoined = Boolean(userParticipation);
   const [isJoining, setIsJoining] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [bgImageFailed, setBgImageFailed] = useState(false);
 
   const handleShare = async () => {
     if (!challenge) return;
@@ -113,8 +116,7 @@ export default function ChallengeDetailScreen() {
       }
 
       const shareUrl = `https://tribe-tracker-backend.vercel.app/invite/${inviteCode}`;
-      const label = challenge.isPublic ? '' : 'private ';
-      const message = `Join my ${label}challenge "${challenge.name}" on Tribe Tracker!\n${shareUrl}\n\nInvite code: ${inviteCode}`;
+      const message = `${shareUrl}\n\nInvite code: ${inviteCode}`;
       await Share.share({ message });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -142,6 +144,7 @@ export default function ChallengeDetailScreen() {
 
   const handleOptionsMenu = () => {
     if (!challenge) return;
+    console.log('[Menu] userParticipation:', userParticipation?.id, 'isAnonymous:', userParticipation?.isAnonymous);
     const options: { text: string; style?: 'destructive' | 'cancel'; onPress?: () => void }[] = [];
 
     if (isCreator) {
@@ -178,6 +181,94 @@ export default function ChallengeDetailScreen() {
     }
 
     if (isJoined) {
+      if (userParticipation?.isAnonymous) {
+        options.push({
+          text: 'Reveal Identity',
+          onPress: () => {
+            Alert.alert(
+              'Reveal Identity',
+              'Other participants will see your real name and photo going forward. Previous messages will keep your pseudonym.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Reveal',
+                  onPress: async () => {
+                    if (!userParticipation) return;
+                    const realName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous';
+                    const updated = {
+                      ...userParticipation,
+                      isAnonymous: false,
+                      userName: realName,
+                      userPhotoUrl: profile?.profilePhotoUrl,
+                      updatedAt: new Date().toISOString(),
+                    };
+                    dispatch(updateParticipant(updated));
+                    if (session?.access_token && isBackendConfigured()) {
+                      try {
+                        await fetch(`${API_URL}/api/participants?id=${updated.id}`, {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${session.access_token}`,
+                          },
+                          body: JSON.stringify({ participant: { ...updated, updated_at: new Date().toISOString() } }),
+                        });
+                      } catch (err) {
+                        console.error('Failed to sync reveal identity:', err);
+                      }
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        });
+      } else {
+        options.push({
+          text: 'Go Anonymous',
+          onPress: () => {
+            Alert.alert(
+              'Go Anonymous',
+              'Your identity will be hidden behind a pseudonym. Previous messages and check-ins will still show your name.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Go Anonymous',
+                  onPress: async () => {
+                    if (!userParticipation) return;
+                    const existingNames = participants.map(p => p.anonymousName).filter(Boolean) as string[];
+                    const pseudonym = userParticipation.anonymousName || generatePseudonym(existingNames);
+                    const updated = {
+                      ...userParticipation,
+                      isAnonymous: true,
+                      anonymousName: pseudonym,
+                      userName: pseudonym,
+                      userPhotoUrl: ANONYMOUS_PHOTO_SENTINEL,
+                      updatedAt: new Date().toISOString(),
+                    };
+                    dispatch(updateParticipant(updated));
+                    if (session?.access_token && isBackendConfigured()) {
+                      try {
+                        await fetch(`${API_URL}/api/participants?id=${updated.id}`, {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${session.access_token}`,
+                          },
+                          body: JSON.stringify({ participant: { ...updated, updated_at: new Date().toISOString() } }),
+                        });
+                      } catch (err) {
+                        console.error('Failed to sync anonymous toggle:', err);
+                      }
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        });
+      }
+
       options.push({
         text: 'Leave Challenge',
         style: 'destructive',
@@ -277,37 +368,58 @@ export default function ChallengeDetailScreen() {
     );
   }
 
+  const cycleInfo = getRecurringCycleInfo(challenge);
   const status = getChallengeStatus(
     challenge.startDate,
-    challenge.endDate || challenge.startDate
+    challenge.endDate || challenge.startDate,
+    challenge
   );
-  const currentDay = status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0;
+  const currentDay = cycleInfo
+    ? cycleInfo.cycleDay
+    : (status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0);
   const totalDays = challenge.durationDays;
 
-  const handleJoin = async () => {
-    if (isJoined || isJoining) return;
+  // Cycle transition detection: update challenge if cycle advanced
+  React.useEffect(() => {
+    if (cycleInfo && challenge.currentCycle !== cycleInfo.currentCycle) {
+      dispatch(updateChallenge({
+        ...challenge,
+        currentCycle: cycleInfo.currentCycle,
+        cycleStartDate: cycleInfo.cycleStartDate,
+        cycleEndDate: cycleInfo.cycleEndDate,
+        updatedAt: new Date().toISOString(),
+      }));
+    }
+  }, [cycleInfo?.currentCycle]);
 
+  const executeJoin = async (joinAnonymously: boolean) => {
     setIsJoining(true);
+
+    const existingNames = participants.map(p => p.anonymousName).filter(Boolean) as string[];
+    const pseudonym = joinAnonymously ? generatePseudonym(existingNames) : undefined;
+
     const participation: ChallengeParticipant = {
       id: Crypto.randomUUID(),
       challengeId: challenge.id,
       challengeName: challenge.name,
       userId: user?.id || 'anonymous',
-      userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
+      userName: joinAnonymously
+        ? pseudonym!
+        : (user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous'),
       userEmail: user?.email || '',
-      userPhotoUrl: profile?.profilePhotoUrl,
+      userPhotoUrl: joinAnonymously ? ANONYMOUS_PHOTO_SENTINEL : profile?.profilePhotoUrl,
       totalPoints: 0,
       currentStreak: 0,
       longestStreak: 0,
       daysParticipated: 0,
       joinDate: new Date().toISOString(),
+      isAnonymous: joinAnonymously,
+      anonymousName: pseudonym,
       updatedAt: new Date().toISOString(),
     };
 
-    // Add locally without triggering sync middleware
     dispatch(importParticipant(participation));
 
-    // Directly POST participant to backend (awaited to guarantee persistence)
     if (session?.access_token && isBackendConfigured()) {
       try {
         const response = await fetch(`${API_URL}/api/participants`, {
@@ -327,7 +439,6 @@ export default function ChallengeDetailScreen() {
           console.error('[HandleJoin] Failed to sync participant:', await response.text());
         }
 
-        // Fire-and-forget: refresh from server for consistency
         dispatch(fetchParticipantsFromServer(session.access_token));
       } catch (err) {
         console.error('[HandleJoin] Failed to sync participant:', err);
@@ -335,12 +446,30 @@ export default function ChallengeDetailScreen() {
     }
 
     setIsJoining(false);
-    Alert.alert('Joined!', `You've joined "${challenge.name}"`, [
+
+    const joinMessage = joinAnonymously
+      ? `You've joined "${challenge.name}" as "${pseudonym}"`
+      : `You've joined "${challenge.name}"`;
+    Alert.alert('Joined!', joinMessage, [
       { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Home', params: { selectChallengeId: challenge.id } }) },
     ]);
   };
 
-  const backgroundImage = challenge.backgroundImageUrl;
+  const handleJoin = async () => {
+    if (isJoined || isJoining) return;
+
+    Alert.alert(
+      'Join Challenge',
+      'Would you like to join anonymously? Your identity will be hidden behind a pseudonym.',
+      [
+        { text: 'Join Anonymously', onPress: () => executeJoin(true) },
+        { text: 'Join as Myself', onPress: () => executeJoin(false) },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const backgroundImage = bgImageFailed ? null : challenge.backgroundImageUrl;
   const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.35)';
   const onScrimTextColor = backgroundImage ? '#FFFFFF' : colors.text;
   const onScrimSecondaryColor = backgroundImage ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary;
@@ -373,6 +502,7 @@ export default function ChallengeDetailScreen() {
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             cachePolicy="disk"
+            onError={() => setBgImageFailed(true)}
           />
           <View style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]} />
         </View>
@@ -408,14 +538,21 @@ export default function ChallengeDetailScreen() {
                       ? colors.success
                       : status === 'upcoming'
                         ? colors.warning
-                        : colors.textTertiary,
+                        : status === 'gap'
+                          ? colors.primary
+                          : colors.textTertiary,
                 },
               ]}
             >
               <Text style={styles.statusText}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {status === 'gap' ? 'Rest Period' : status.charAt(0).toUpperCase() + status.slice(1)}
               </Text>
             </View>
+            {cycleInfo && (
+              <Text style={[styles.metaText, { color: glassStyle ? colors.textSecondary : onScrimSecondaryColor }]}>
+                Cycle {cycleInfo.currentCycle}
+              </Text>
+            )}
             <Text style={[styles.metaText, { color: glassStyle ? colors.textSecondary : onScrimSecondaryColor }]}>
               {participants.length} participant{participants.length !== 1 ? 's' : ''}
             </Text>
@@ -452,15 +589,26 @@ export default function ChallengeDetailScreen() {
               </View>
             </>
           )}
+          {status === 'gap' && cycleInfo && (
+            <View style={{ marginBottom: 20 }}>
+              <Text style={[styles.progressTitle, { color: colors.text }]}>
+                Rest Period
+              </Text>
+              <Text style={[{ color: colors.textSecondary, fontSize: 14, marginTop: 4 }]}>
+                Next cycle starts {formatDate(cycleInfo.cycleStartDate, 'MMM D')}
+                {cycleInfo.cycleDaysRemaining > 0 ? ` (${cycleInfo.cycleDaysRemaining + 1} day${cycleInfo.cycleDaysRemaining + 1 !== 1 ? 's' : ''})` : ''}
+              </Text>
+            </View>
+          )}
           <View style={{ flexDirection: 'row' }}>
             <View style={styles.dateItem}>
               <Ionicons name="calendar-outline" size={20} color={colors.primary} />
               <View style={styles.dateInfo}>
                 <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                  {status === 'completed' ? 'Started' : 'Starts'}
+                  {cycleInfo ? 'Cycle Starts' : status === 'completed' ? 'Started' : 'Starts'}
                 </Text>
                 <Text style={[styles.dateValue, { color: colors.text }]}>
-                  {formatDate(challenge.startDate)}
+                  {formatDate(cycleInfo ? cycleInfo.cycleStartDate : challenge.startDate)}
                 </Text>
               </View>
             </View>
@@ -469,10 +617,10 @@ export default function ChallengeDetailScreen() {
               <Ionicons name="flag-outline" size={20} color={colors.success} />
               <View style={styles.dateInfo}>
                 <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                  {status === 'completed' ? 'Ended' : 'Ends'}
+                  {cycleInfo ? 'Cycle Ends' : status === 'completed' ? 'Ended' : 'Ends'}
                 </Text>
                 <Text style={[styles.dateValue, { color: colors.text }]}>
-                  {formatDate(challenge.endDate || challenge.startDate)}
+                  {formatDate(cycleInfo ? cycleInfo.cycleEndDate : (challenge.endDate || challenge.startDate))}
                 </Text>
               </View>
             </View>
@@ -506,9 +654,13 @@ export default function ChallengeDetailScreen() {
           <Leaderboard
             participants={[...participants].sort((a, b) => b.totalPoints - a.totalPoints).slice(0, 3)}
             currentUserId={user?.id}
-            onParticipantPress={participant =>
-              navigation.navigate('ViewMember', { userId: participant.userId })
-            }
+            onParticipantPress={participant => {
+              if (participant.isAnonymous && participant.userId !== user?.id) {
+                Alert.alert(participant.userName, 'This participant is anonymous.');
+                return;
+              }
+              navigation.navigate('ViewMember', { userId: participant.userId });
+            }}
             showPodium={false}
             challengeId={challenge?.id}
             challengeStartDate={challenge?.startDate}

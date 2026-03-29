@@ -158,7 +158,7 @@ export default function ProfileScreen() {
         : 0;
 
       // Derive status from dates rather than relying solely on stored value
-      let status: 'upcoming' | 'active' | 'completed' = challenge?.status || 'active';
+      let status: 'upcoming' | 'active' | 'completed' | 'gap' = challenge?.status || 'active';
       if (challenge?.endDate && dayjs(challenge.endDate).isBefore(dayjs(), 'day')) {
         status = 'completed';
       } else if (challenge?.startDate && dayjs(challenge.startDate).isAfter(dayjs(), 'day')) {
@@ -238,7 +238,7 @@ export default function ProfileScreen() {
         : `https://tribe-tracker-backend.vercel.app/challenge/${challenge.id}`;
       const label = challenge.isPublic ? '' : 'private ';
       const inviteCodeLine = challenge.inviteCode ? `\n\nInvite code: ${challenge.inviteCode}` : '';
-      const message = `Join my ${label}challenge "${challenge.name}" on Tribe Tracker!\n${shareUrl}${inviteCodeLine}`;
+      const message = `Join my ${label}challenge "${challenge.name}" on TribeTracker!\n${shareUrl}${inviteCodeLine}`;
       await Share.share({ message });
     } catch {
       // User cancelled share

@@ -51,6 +51,8 @@ export default function NewDmScreen() {
 
     for (const p of participants) {
       if (p.userId === currentUserId || blockedIds.has(p.userId)) continue;
+      // Skip anonymous participations - only show users by their real identity
+      if (p.isAnonymous) continue;
       if (!seen.has(p.userId)) {
         seen.set(p.userId, {
           userId: p.userId,

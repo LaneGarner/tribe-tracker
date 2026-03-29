@@ -300,7 +300,7 @@ export async function evaluateAndScheduleNotifications(
 export function showPermissionExplanation(onProceed: () => void): void {
   Alert.alert(
     'Enable Notifications',
-    'Tribe Tracker can remind you to log your daily habits, protect your streaks, and let you know when challenges are starting or ending. You can customize exactly which notifications you receive.',
+    'TribeTracker can remind you to log your daily habits, protect your streaks, and let you know when challenges are starting or ending. You can customize exactly which notifications you receive.',
     [
       { text: 'Not Now', style: 'cancel' },
       { text: 'Enable', onPress: onProceed },

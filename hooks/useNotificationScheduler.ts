@@ -20,6 +20,7 @@ export default function useNotificationScheduler(): void {
   const participants = useSelector((state: RootState) => state.participants.data);
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasPromptedRef = useRef(false);
 
   const scheduleNotifications = useCallback(() => {
     if (!profile?.id) return;
@@ -63,6 +64,9 @@ export default function useNotificationScheduler(): void {
     if (activeChallenges.length === 0) return;
 
     const promptIfNeeded = async () => {
+      if (hasPromptedRef.current) return;
+      hasPromptedRef.current = true;
+
       const alreadyPrompted = await hasPromptedPermission();
       if (alreadyPrompted) return;
 

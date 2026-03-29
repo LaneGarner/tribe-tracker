@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,8 +13,10 @@ import {
   getCurrentChallengeDay,
   getDaysRemaining,
   formatDate,
+  getRecurringCycleInfo,
 } from '../../utils/dateUtils';
 import { calculateActiveStreak } from '../../utils/streakUtils';
+import { getGradientForChallenge } from '../../constants/gradients';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -28,14 +30,12 @@ function getOrdinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-// Default gradient - cyan/teal blue
-const DEFAULT_GRADIENT = ['#00B4DB', '#0083B0'];
-
 export default function ChallengeCard({
   challenge,
   participation,
   allParticipants,
 }: ChallengeCardProps) {
+  const [bgImageFailed, setBgImageFailed] = useState(false);
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
 
@@ -68,13 +68,18 @@ export default function ChallengeCard({
     return index >= 0 ? index + 1 : null;
   }, [allParticipants, participation]);
 
+  const cycleInfo = getRecurringCycleInfo(challenge);
   const status = getChallengeStatus(
     challenge.startDate,
-    challenge.endDate || challenge.startDate
+    challenge.endDate || challenge.startDate,
+    challenge
   );
-  const currentDay =
-    status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0;
-  const daysRemaining = getDaysRemaining(challenge.endDate || challenge.startDate);
+  const currentDay = cycleInfo
+    ? cycleInfo.cycleDay
+    : (status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0);
+  const daysRemaining = cycleInfo
+    ? cycleInfo.cycleDaysRemaining
+    : getDaysRemaining(challenge.endDate || challenge.startDate);
   const progressPercent = Math.min((currentDay / challenge.durationDays) * 100, 100);
 
   const cardContent = (
@@ -85,20 +90,30 @@ export default function ChallengeCard({
           <Text style={styles.name} numberOfLines={2}>
             {challenge.name}
           </Text>
-          {status !== 'active' && (
+          {cycleInfo && (
+            <Text style={styles.daysRemaining}>
+              Cycle {cycleInfo.currentCycle}
+              {status === 'gap'
+                ? ` · Rest · Next in ${daysRemaining + 1} day${daysRemaining + 1 !== 1 ? 's' : ''}`
+                : status === 'active' && daysRemaining > 0
+                  ? ` · ${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left`
+                  : ''}
+            </Text>
+          )}
+          {!cycleInfo && status !== 'active' && (
             <Text style={styles.daysRemaining}>
               {status === 'upcoming'
                 ? `Starts ${formatDate(challenge.startDate, 'MMM D')} (${getDaysRemaining(challenge.startDate)} day${getDaysRemaining(challenge.startDate) !== 1 ? 's' : ''})`
                 : 'Completed'}
             </Text>
           )}
-          {status === 'active' && daysRemaining > 0 && (
+          {!cycleInfo && status === 'active' && daysRemaining > 0 && (
             <Text style={styles.daysRemaining}>
               {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
             </Text>
           )}
         </View>
-        {participation && status !== 'upcoming' && (
+        {participation && status !== 'upcoming' && status !== 'gap' && (
           <View style={styles.badgeRow}>
             {userRank !== null && (
               <View style={styles.rankBadge}>
@@ -121,7 +136,7 @@ export default function ChallengeCard({
       </View>
 
       {/* Stats row */}
-      {participation && status !== 'upcoming' && (
+      {participation && status !== 'upcoming' && status !== 'gap' && (
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>My Points</Text>
@@ -158,7 +173,9 @@ export default function ChallengeCard({
     </>
   );
 
-  if (challenge.backgroundImageUrl) {
+  const showBgImage = challenge.backgroundImageUrl && !bgImageFailed && challenge.useBackgroundImage !== false;
+
+  if (showBgImage) {
     return (
       <View style={styles.container}>
         <ExpoImage
@@ -166,6 +183,7 @@ export default function ChallengeCard({
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           cachePolicy="disk"
+          onError={() => setBgImageFailed(true)}
         />
         <LinearGradient
           colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.65)']}
@@ -181,7 +199,7 @@ export default function ChallengeCard({
 
   return (
     <LinearGradient
-      colors={DEFAULT_GRADIENT as [string, string]}
+      colors={getGradientForChallenge(challenge)}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.container, styles.scrim]}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,9 @@ import {
   getDaysRemaining,
   getCurrentChallengeDay,
 } from '../../utils/dateUtils';
+import { getGradientForChallenge, getGradientForIndex } from '../../constants/gradients';
+
+export { getGradientForIndex };
 
 interface PublicChallengeCardProps {
   challenge: Challenge;
@@ -16,37 +19,23 @@ interface PublicChallengeCardProps {
   gradientColors?: [string, string];
 }
 
-// Gradient palette for variety
-const CARD_GRADIENTS: [string, string][] = [
-  ['#00B4DB', '#0083B0'], // cyan/teal
-  ['#667EEA', '#764BA2'], // purple/violet
-  ['#F093FB', '#F5576C'], // pink/rose
-  ['#4FACFE', '#00F2FE'], // light blue
-  ['#43E97B', '#38F9D7'], // green/teal
-  ['#FA709A', '#FEE140'], // pink/yellow
-  ['#A18CD1', '#FBC2EB'], // lavender/pink
-  ['#FF9A9E', '#FECFEF'], // coral/pink
-];
-
-export function getGradientForIndex(index: number): [string, string] {
-  return CARD_GRADIENTS[index % CARD_GRADIENTS.length];
-}
-
 export default function PublicChallengeCard({
   challenge,
   onPress,
   gradientColors,
 }: PublicChallengeCardProps) {
+  const [bgImageFailed, setBgImageFailed] = useState(false);
   const status = getChallengeStatus(
     challenge.startDate,
-    challenge.endDate || challenge.startDate
+    challenge.endDate || challenge.startDate,
+    challenge
   );
   const currentDay =
-    status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0;
+    (status === 'active' || status === 'gap') ? getCurrentChallengeDay(challenge.startDate, challenge) : 0;
   const daysRemaining = getDaysRemaining(challenge.endDate || challenge.startDate);
   const progressPercent = Math.min((currentDay / challenge.durationDays) * 100, 100);
 
-  const colors = gradientColors || CARD_GRADIENTS[0];
+  const colors = gradientColors || getGradientForChallenge(challenge);
 
   const cardContent = (
     <>
@@ -128,7 +117,7 @@ export default function PublicChallengeCard({
     </>
   );
 
-  if (challenge.backgroundImageUrl) {
+  if (challenge.backgroundImageUrl && !bgImageFailed) {
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
         <View style={styles.imageContainer}>
@@ -137,6 +126,7 @@ export default function PublicChallengeCard({
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             cachePolicy="disk"
+            onError={() => setBgImageFailed(true)}
           />
           <LinearGradient
             colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.65)']}

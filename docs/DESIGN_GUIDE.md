@@ -1,4 +1,4 @@
-# Tribe Tracker Design Guide
+# TribeTracker Design Guide
 
 ## Typography
 

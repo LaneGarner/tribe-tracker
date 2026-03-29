@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { Challenge } from '../types';
 
 // Get today's date as YYYY-MM-DD string
 export function getToday(): string {
@@ -81,11 +82,90 @@ export function getChallengeEndDate(startDate: string, durationDays: number): st
   return dayjs(startDate).add(durationDays - 1, 'day').format('YYYY-MM-DD');
 }
 
+// Recurring challenge cycle info
+export interface CycleInfo {
+  currentCycle: number;
+  cycleStartDate: string;
+  cycleEndDate: string;
+  status: 'upcoming' | 'active' | 'completed' | 'gap';
+  cycleDay: number;
+  cycleDaysRemaining: number;
+}
+
+// Compute cycle info for a recurring challenge at a given date (defaults to today)
+export function getRecurringCycleInfo(
+  challenge: Challenge,
+  forDate?: string
+): CycleInfo | null {
+  if (!challenge.isRecurring) return null;
+
+  const today = forDate || getToday();
+  const start = dayjs(challenge.startDate);
+  const now = dayjs(today);
+
+  if (now.isBefore(start)) {
+    return {
+      currentCycle: 1,
+      cycleStartDate: challenge.startDate,
+      cycleEndDate: getChallengeEndDate(challenge.startDate, challenge.durationDays),
+      status: 'upcoming',
+      cycleDay: 0,
+      cycleDaysRemaining: challenge.durationDays,
+    };
+  }
+
+  const durationDays = challenge.durationDays;
+  const gapDays = challenge.gapDays ?? 0;
+  const cyclePeriod = durationDays + gapDays;
+  const daysSinceStart = now.diff(start, 'day');
+  const currentCycle = Math.floor(daysSinceStart / cyclePeriod) + 1;
+  const dayWithinCycle = daysSinceStart % cyclePeriod;
+
+  const cycleStartDate = start.add((currentCycle - 1) * cyclePeriod, 'day').format('YYYY-MM-DD');
+  const cycleEndDate = getChallengeEndDate(cycleStartDate, durationDays);
+
+  if (dayWithinCycle < durationDays) {
+    return {
+      currentCycle,
+      cycleStartDate,
+      cycleEndDate,
+      status: 'active',
+      cycleDay: dayWithinCycle + 1,
+      cycleDaysRemaining: durationDays - dayWithinCycle - 1,
+    };
+  }
+
+  // In gap period
+  const gapDaysRemaining = cyclePeriod - dayWithinCycle - 1;
+  const nextCycleStart = start.add(currentCycle * cyclePeriod, 'day').format('YYYY-MM-DD');
+  return {
+    currentCycle: currentCycle + 1,
+    cycleStartDate: nextCycleStart,
+    cycleEndDate: getChallengeEndDate(nextCycleStart, durationDays),
+    status: 'gap',
+    cycleDay: 0,
+    cycleDaysRemaining: gapDaysRemaining,
+  };
+}
+
+// Get the cycle number for a specific checkin date
+export function getCycleForDate(challenge: Challenge, checkinDate: string): number {
+  if (!challenge.isRecurring) return 1;
+  const info = getRecurringCycleInfo(challenge, checkinDate);
+  return info?.currentCycle ?? 1;
+}
+
 // Calculate challenge status based on dates
 export function getChallengeStatus(
   startDate: string,
-  endDate: string
-): 'upcoming' | 'active' | 'completed' {
+  endDate: string,
+  challenge?: Challenge
+): 'upcoming' | 'active' | 'completed' | 'gap' {
+  if (challenge?.isRecurring) {
+    const info = getRecurringCycleInfo(challenge);
+    return info?.status ?? 'active';
+  }
+
   const today = getToday();
   const start = dayjs(startDate);
   const end = dayjs(endDate);
@@ -97,7 +177,11 @@ export function getChallengeStatus(
 }
 
 // Get the current day number of a challenge (1-indexed)
-export function getCurrentChallengeDay(startDate: string): number {
+export function getCurrentChallengeDay(startDate: string, challenge?: Challenge): number {
+  if (challenge?.isRecurring) {
+    const info = getRecurringCycleInfo(challenge);
+    return info?.cycleDay ?? 1;
+  }
   const today = dayjs();
   const start = dayjs(startDate);
   return today.diff(start, 'day') + 1;

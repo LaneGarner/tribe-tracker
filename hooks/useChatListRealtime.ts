@@ -17,6 +17,7 @@ export function useChatListRealtime() {
   const memberChannelRef = useRef<RealtimeChannel | null>(null);
   const newDmChannelRef = useRef<RealtimeChannel | null>(null);
   const conversationIdsRef = useRef<Set<string>>(new Set());
+  const subscriptionCounterRef = useRef(0);
 
   // Stable dependency: sorted, joined conversation IDs
   const conversationIdString = useMemo(
@@ -95,6 +96,9 @@ export function useChatListRealtime() {
 
     const conversationIds = conversationIdString.split(',');
 
+    subscriptionCounterRef.current += 1;
+    const suffix = subscriptionCounterRef.current;
+
     // Clean up previous subscriptions
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
@@ -105,7 +109,7 @@ export function useChatListRealtime() {
 
     // Subscribe to new messages
     channelRef.current = supabase
-      .channel('chat-list-messages')
+      .channel(`chat-list-messages-${suffix}`)
       .on(
         'postgres_changes',
         {
@@ -136,16 +140,16 @@ export function useChatListRealtime() {
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[Realtime] chat-list-messages subscribed');
+          console.log(`[Realtime] chat-list-messages-${suffix} subscribed`);
         }
         if (err) {
-          console.error('[Realtime] chat-list-messages error:', err);
+          console.error(`[Realtime] chat-list-messages-${suffix} error:`, err);
         }
       });
 
     // Subscribe to member status updates (DM approvals)
     memberChannelRef.current = supabase
-      .channel('chat-members')
+      .channel(`chat-members-${suffix}`)
       .on(
         'postgres_changes',
         {
@@ -165,10 +169,10 @@ export function useChatListRealtime() {
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[Realtime] chat-members subscribed');
+          console.log(`[Realtime] chat-members-${suffix} subscribed`);
         }
         if (err) {
-          console.error('[Realtime] chat-members error:', err);
+          console.error(`[Realtime] chat-members-${suffix} error:`, err);
         }
       });
 
