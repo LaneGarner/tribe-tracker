@@ -144,6 +144,7 @@ export default function ChallengeDetailScreen() {
 
   const handleOptionsMenu = () => {
     if (!challenge) return;
+    console.log('[Menu] userParticipation:', userParticipation?.id, 'isAnonymous:', userParticipation?.isAnonymous);
     const options: { text: string; style?: 'destructive' | 'cancel'; onPress?: () => void }[] = [];
 
     if (isCreator) {
@@ -191,7 +192,7 @@ export default function ChallengeDetailScreen() {
                 { text: 'Cancel', style: 'cancel' },
                 {
                   text: 'Reveal',
-                  onPress: () => {
+                  onPress: async () => {
                     if (!userParticipation) return;
                     const realName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous';
                     const updated = {
@@ -202,6 +203,20 @@ export default function ChallengeDetailScreen() {
                       updatedAt: new Date().toISOString(),
                     };
                     dispatch(updateParticipant(updated));
+                    if (session?.access_token && isBackendConfigured()) {
+                      try {
+                        await fetch(`${API_URL}/api/participants?id=${updated.id}`, {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${session.access_token}`,
+                          },
+                          body: JSON.stringify({ participant: { ...updated, updated_at: new Date().toISOString() } }),
+                        });
+                      } catch (err) {
+                        console.error('Failed to sync reveal identity:', err);
+                      }
+                    }
                   },
                 },
               ]
@@ -219,7 +234,7 @@ export default function ChallengeDetailScreen() {
                 { text: 'Cancel', style: 'cancel' },
                 {
                   text: 'Go Anonymous',
-                  onPress: () => {
+                  onPress: async () => {
                     if (!userParticipation) return;
                     const existingNames = participants.map(p => p.anonymousName).filter(Boolean) as string[];
                     const pseudonym = userParticipation.anonymousName || generatePseudonym(existingNames);
@@ -232,6 +247,20 @@ export default function ChallengeDetailScreen() {
                       updatedAt: new Date().toISOString(),
                     };
                     dispatch(updateParticipant(updated));
+                    if (session?.access_token && isBackendConfigured()) {
+                      try {
+                        await fetch(`${API_URL}/api/participants?id=${updated.id}`, {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${session.access_token}`,
+                          },
+                          body: JSON.stringify({ participant: { ...updated, updated_at: new Date().toISOString() } }),
+                        });
+                      } catch (err) {
+                        console.error('Failed to sync anonymous toggle:', err);
+                      }
+                    }
                   },
                 },
               ]
