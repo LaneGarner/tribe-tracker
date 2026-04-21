@@ -693,6 +693,15 @@ export default function HomeScreen() {
         carouselLayoutYRef.current = event.nativeEvent.layout.y;
       }}
     >
+      <Text
+        style={[
+          styles.pillsHeader,
+          { color: backgroundImage ? 'rgba(255,255,255,0.75)' : colors.textSecondary },
+        ]}
+        accessibilityRole="header"
+      >
+        My Challenges
+      </Text>
       {isExpoGo || !DraggableFlatList ? (
         <ScrollView
           ref={pillsScrollRef}
@@ -1162,6 +1171,14 @@ const styles = StyleSheet.create({
   pastDayBadgeText: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  pillsHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    paddingHorizontal: 20,
+    marginBottom: 6,
   },
   challengeSelector: {
     marginTop: 0,

@@ -297,6 +297,12 @@ export default function LeaderboardScreen() {
       {/* Challenge selector tabs - sticky outside ScrollView */}
       {orderedChallenges.length > 1 && (
         <View style={[styles.challengeSelectorSticky, { backgroundColor: colors.background }]}>
+          <Text
+            style={[styles.pillsHeader, { color: colors.textSecondary }]}
+            accessibilityRole="header"
+          >
+            My Rankings
+          </Text>
           {isExpoGo || !DraggableFlatList ? (
             // Expo Go: arrows inside chips for reordering
             <ScrollView
@@ -526,6 +532,14 @@ const styles = StyleSheet.create({
   },
   challengeSelectorSticky: {
     paddingBottom: 8,
+  },
+  pillsHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    paddingHorizontal: 20,
+    marginBottom: 6,
   },
   headerTitle: {
     fontSize: 24,
