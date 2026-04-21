@@ -532,6 +532,7 @@ const styles = StyleSheet.create({
   stickyHeader: {
     paddingHorizontal: 20,
     paddingBottom: 12,
+    alignItems: 'center',
     zIndex: 10,
   },
   headerRightSlot: {
@@ -553,6 +554,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
