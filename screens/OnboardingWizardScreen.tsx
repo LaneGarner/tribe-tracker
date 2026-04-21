@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Crypto from 'expo-crypto';
 import { useDispatch, useSelector } from 'react-redux';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -206,6 +207,10 @@ export default function OnboardingWizardScreen() {
   const canContinueStep1 = goals.length > 0;
 
   return (
+    <SafeAreaView
+      edges={['top']}
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -832,6 +837,7 @@ export default function OnboardingWizardScreen() {
         )}
       </View>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
