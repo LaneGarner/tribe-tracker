@@ -88,7 +88,6 @@ export default function DiscoverScreen() {
   }, []);
 
   const [mode, setMode] = useState<'browse' | 'create' | 'join'>(route.params?.mode || 'browse');
-  const [showMatchPrompt, setShowMatchPrompt] = useState(true);
 
   // Edit mode detection
   const editChallengeId = route.params?.challengeId;
@@ -712,46 +711,22 @@ export default function DiscoverScreen() {
         <Text style={[styles.browseIntroSubtitle, { color: colors.textSecondary }]}>
           Join a challenge, commit with a group, stack real wins together.
         </Text>
-      </View>
-
-      {showMatchPrompt && (
         <TouchableOpacity
           onPress={() => navigation.navigate('OnboardingWizard')}
-          activeOpacity={0.85}
-          style={[
-            styles.matchPromptCard,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
+          style={styles.wizardPrompt}
           accessibilityRole="button"
-          accessibilityLabel="Find challenges matched to your goals — open recommendation wizard"
+          accessibilityLabel="Open goal matching wizard"
         >
-          <Ionicons name="sparkles" size={20} color="#3B82F6" />
-          <Text
-            style={[styles.matchPromptText, { color: colors.text }]}
-            numberOfLines={1}
-          >
-            We can match you to challenges based on what you're working on.
+          <Text style={[styles.wizardPromptText, { color: colors.textSecondary }]}>
+            Not sure where to start?{' '}
+            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+              Answer a few questions
+            </Text>{' '}
+            for a short list of matches.
           </Text>
-          <View style={styles.matchPromptCta}>
-            <Text style={[styles.matchPromptCtaText, { color: colors.primary }]}>
-              Show me
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-          </View>
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              setShowMatchPrompt(false);
-            }}
-            hitSlop={14}
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss recommendation prompt"
-            style={styles.matchPromptDismiss}
-          >
-            <Ionicons name="close" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
         </TouchableOpacity>
-      )}
+      </View>
+
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Active
@@ -1536,34 +1511,6 @@ const styles = StyleSheet.create({
   browseIntro: {
     marginBottom: 20,
   },
-  matchPromptCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    marginBottom: 20,
-  },
-  matchPromptText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  matchPromptCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  matchPromptCtaText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  matchPromptDismiss: {
-    padding: 2,
-    marginLeft: 4,
-  },
   browseIntroTitle: {
     fontSize: 20,
     fontWeight: '700',
@@ -1572,6 +1519,13 @@ const styles = StyleSheet.create({
   browseIntroSubtitle: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  wizardPrompt: {
+    marginTop: 8,
+  },
+  wizardPromptText: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   emptyState: {
     alignItems: 'center',
