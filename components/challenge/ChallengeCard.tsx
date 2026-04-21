@@ -168,6 +168,11 @@ export default function ChallengeCard({
               ]}
             />
           </View>
+          <Text style={styles.progressDayText}>
+            {cycleInfo
+              ? `Cycle ${cycleInfo.currentCycle} · Day ${currentDay} of ${challenge.durationDays}`
+              : `Day ${currentDay} of ${challenge.durationDays}`}
+          </Text>
         </View>
       )}
     </>
@@ -323,5 +328,10 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
     backgroundColor: '#fff',
+  },
+  progressDayText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.75)',
   },
 });
