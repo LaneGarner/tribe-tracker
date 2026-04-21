@@ -17,12 +17,11 @@ import HomeScreen from '../screens/HomeScreen';
 import CreateChallengeScreen from '../screens/CreateChallengeScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import MenuScreen from '../screens/MenuScreen';
-import ChatScreen from '../screens/ChatScreen';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { TabParamList } from '../types';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { selectTotalUnreadCount } from '../redux/slices/chatSlice';
-import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
+import HeaderChatButton from '../components/ui/HeaderChatButton';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -31,7 +30,6 @@ const TAB_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; size: nu
   Home: { icon: 'home', size: 22 },
   Challenges: { icon: 'flag', size: 22 },
   Leaderboard: { icon: 'trophy', size: 22 },
-  Chat: { icon: 'chatbubble', size: 22 },
   Menu: { icon: 'menu', size: 26 },
 };
 
@@ -113,13 +111,6 @@ const TabButton = ({
             size={iconConfig.size}
             color={isFocused ? colors.tabBarActive : colors.tabBarInactive}
           />
-          {route.name === 'Chat' && totalUnread > 0 && (
-            <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>
-                {totalUnread > 99 ? '99+' : totalUnread}
-              </Text>
-            </View>
-          )}
         </View>
         <Text
           numberOfLines={1}
@@ -485,7 +476,6 @@ const styles = StyleSheet.create({
 export default function TabNavigator() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const [chatTabEnabled] = useFeatureFlag(FEATURE_FLAGS.CHAT_TAB, true);
 
   return (
     <Tab.Navigator
@@ -500,6 +490,7 @@ export default function TabNavigator() {
           fontWeight: '600',
         },
         headerShadowVisible: false,
+        headerRight: () => <HeaderChatButton />,
       }}
     >
       <Tab.Screen
@@ -527,16 +518,6 @@ export default function TabNavigator() {
           tabBarLabel: 'Leaderboards',
         }}
       />
-      {chatTabEnabled && (
-        <Tab.Screen
-          name="Chat"
-          component={ChatScreen}
-          options={{
-            title: 'Tribe Chat',
-            tabBarLabel: 'Chat',
-          }}
-        />
-      )}
       <Tab.Screen
         name="Menu"
         component={MenuScreen}

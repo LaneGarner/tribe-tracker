@@ -46,6 +46,7 @@ import { getGradientForChallenge } from '../constants/gradients';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
+import HeaderChatButton from '../components/ui/HeaderChatButton';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
 
@@ -293,6 +294,9 @@ export default function LeaderboardScreen() {
         backgroundColor: colors.background,
       }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboard</Text>
+        <View style={styles.headerRightSlot}>
+          <HeaderChatButton />
+        </View>
       </View>
       {/* Challenge selector tabs - sticky outside ScrollView */}
       {orderedChallenges.length > 1 && (
@@ -529,6 +533,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
     zIndex: 10,
+  },
+  headerRightSlot: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
   },
   challengeSelectorSticky: {
     paddingBottom: 8,

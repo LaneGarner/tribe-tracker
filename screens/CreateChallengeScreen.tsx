@@ -54,6 +54,7 @@ import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
 import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
+import HeaderChatButton from '../components/ui/HeaderChatButton';
 import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
 import ColorThemePicker from '../components/challenge/ColorThemePicker';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
@@ -670,7 +671,9 @@ export default function CreateChallengeScreen() {
   const renderBrowse = () => (
     <>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Challenges</Text>
+        <View style={{ width: 44 }} />
+        <Text style={[styles.title, { color: colors.text, flex: 1, textAlign: 'center' }]}>Challenges</Text>
+        <HeaderChatButton />
       </View>
 
       <View style={styles.actionButtons}>

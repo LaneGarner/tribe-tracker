@@ -54,6 +54,7 @@ import ChallengeChip from '../components/challenge/ChallengeChip';
 import { getGradientForChallenge } from '../constants/gradients';
 import HabitChecklist from '../components/challenge/HabitChecklist';
 import AllHabitsChecklist from '../components/challenge/AllHabitsChecklist';
+import HeaderChatButton from '../components/ui/HeaderChatButton';
 import ReadOnlyHabitList from '../components/challenge/ReadOnlyHabitList';
 import DateCarousel from '../components/ui/DateCarousel';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
@@ -842,6 +843,9 @@ export default function HomeScreen() {
             style={[styles.logo, { tintColor: backgroundImage ? '#fff' : (colorScheme === 'dark' ? '#fff' : '#000') }]}
           />
         </Animated.View>
+        <View style={styles.headerRightSlot}>
+          <HeaderChatButton onDarkBackground={!!backgroundImage} />
+        </View>
       </Animated.View>
 
       {/* Text + pills outside ScrollView when background image - content clips at ScrollView top edge */}
@@ -1306,6 +1310,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+  },
+  headerRightSlot: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
   stickyCarouselContainer: {
     paddingBottom: 8,

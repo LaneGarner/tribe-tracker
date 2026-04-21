@@ -3,11 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'tribe_feature_flags';
 
-export const FEATURE_FLAGS = {
-  CHAT_TAB: 'chatTab',
-} as const;
+export const FEATURE_FLAGS = {} as const;
 
-type FlagName = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
+type FlagName = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS] | string;
 
 // Module-level cache and listeners for cross-component sync
 const flagCache = new Map<string, boolean>();
