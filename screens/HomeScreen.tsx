@@ -92,6 +92,7 @@ export default function HomeScreen() {
     dayjs(getToday()).format('YYYY-MM')
   );
   const [challengeOrder, setChallengeOrder] = useState<string[]>([]);
+  const [orderLoaded, setOrderLoaded] = useState(false);
   const scrollOffsetRef = useRef(0);
   const scrollViewRef = useRef<any>(null);
   const carouselLayoutYRef = useRef(0);
@@ -286,6 +287,8 @@ export default function HomeScreen() {
         }
       } catch (error) {
         console.error('Failed to load challenge order:', error);
+      } finally {
+        setOrderLoaded(true);
       }
     };
     loadOrder();
@@ -374,8 +377,10 @@ export default function HomeScreen() {
     }
   }, [orderedChallenges, saveOrder]);
 
-  // Set initial selected challenge - always pick first on mount
+  // Set initial selected challenge - wait for order to load so the first
+  // pill (respecting persisted reordering) is picked, not the raw Redux order.
   useEffect(() => {
+    if (!orderLoaded) return;
     if (orderedChallenges.length > 0 && !hasAutoSelected.current) {
       hasAutoSelected.current = true;
       setSelectedChallengeId(orderedChallenges[0].id);
@@ -387,7 +392,7 @@ export default function HomeScreen() {
       // Reset if selected challenge was deleted or is no longer active/upcoming
       setSelectedChallengeId(orderedChallenges[0].id);
     }
-  }, [orderedChallenges, selectedChallengeId]);
+  }, [orderLoaded, orderedChallenges, selectedChallengeId]);
 
   const onRefresh = async () => {
     setRefreshing(true);
