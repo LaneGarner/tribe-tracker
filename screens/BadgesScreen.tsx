@@ -90,13 +90,13 @@ export default function BadgesScreen() {
       ? definitions.filter(d => earnedBadgeIds.has(d.id))
       : definitions.filter(d => !earnedBadgeIds.has(d.id));
 
-  const earnedCount = earned.length;
-  const availableCount = definitions.length - earnedCount;
+  const earnedCount = earnedBadgeIds.size;
+  const availableCount = Math.max(0, definitions.length - earnedCount);
   const totalBadges = definitions.length;
   const pointsToNext = getPointsForNextLevel(totalPoints);
 
   const tabs: { key: TabType; label: string }[] = [
-    { key: 'earned', label: `Collection (${earnedCount})` },
+    { key: 'earned', label: `My Badges (${earnedCount})` },
     { key: 'available', label: `Available (${availableCount})` },
   ];
 
