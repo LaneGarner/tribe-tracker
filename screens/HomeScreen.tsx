@@ -1365,10 +1365,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   pillsHeader: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
     paddingHorizontal: 20,
     marginBottom: 6,
   },
