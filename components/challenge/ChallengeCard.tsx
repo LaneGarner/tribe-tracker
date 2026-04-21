@@ -333,5 +333,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.75)',
+    textAlign: 'right',
   },
 });
