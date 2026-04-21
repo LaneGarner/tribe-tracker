@@ -29,6 +29,26 @@ import HexBadge from '../components/badges/HexBadge';
 
 type TabType = 'earned' | 'available';
 
+type BadgeTier = 'milestone' | 'bronze' | 'silver' | 'gold';
+
+const TIER_META: Record<BadgeTier, { label: string; color: string; order: number }> = {
+  milestone: { label: 'Milestones', color: '#10B981', order: 0 },
+  bronze: { label: 'Bronze', color: '#CD7F32', order: 1 },
+  silver: { label: 'Silver', color: '#C0C0C0', order: 2 },
+  gold: { label: 'Gold', color: '#FFD700', order: 3 },
+};
+
+function getTierForDefinition(def: BadgeDefinition): BadgeTier {
+  if (def.slug.endsWith('_gold')) return 'gold';
+  if (def.slug.endsWith('_silver')) return 'silver';
+  if (def.slug.endsWith('_bronze')) return 'bronze';
+  // Fall back to points-based inference for definitions without tier suffix
+  if (def.points >= 7) return 'gold';
+  if (def.points >= 3) return 'silver';
+  if (def.points >= 2) return 'bronze';
+  return 'milestone';
+}
+
 export default function BadgesScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
@@ -89,6 +109,15 @@ export default function BadgesScreen() {
     currentTab === 'earned'
       ? definitions.filter(d => earnedBadgeIds.has(d.id))
       : definitions.filter(d => !earnedBadgeIds.has(d.id));
+
+  // Group filtered definitions by tier
+  const tierSections = (Object.keys(TIER_META) as BadgeTier[])
+    .sort((a, b) => TIER_META[a].order - TIER_META[b].order)
+    .map(tier => ({
+      tier,
+      definitions: filteredDefinitions.filter(d => getTierForDefinition(d) === tier),
+    }))
+    .filter(section => section.definitions.length > 0);
 
   const earnedCount = earnedBadgeIds.size;
   const availableCount = Math.max(0, definitions.length - earnedCount);
@@ -181,15 +210,30 @@ export default function BadgesScreen() {
           ))}
         </View>
 
-        {/* Badge Grid */}
+        {/* Badge Grid — grouped by tier */}
         {definitions.length === 0 && loading ? (
           <BadgeGridSkeleton />
         ) : filteredDefinitions.length > 0 ? (
-          <BadgeGrid
-            definitions={filteredDefinitions}
-            earned={earned}
-            onBadgePress={handleBadgePress}
-          />
+          <View>
+            {tierSections.map(({ tier, definitions: tierDefs }) => {
+              const meta = TIER_META[tier];
+              return (
+                <View key={tier} style={styles.tierSection}>
+                  <View style={styles.tierHeader}>
+                    <View style={[styles.tierDot, { backgroundColor: meta.color }]} />
+                    <Text style={[styles.tierTitle, { color: colors.text }]}>
+                      {meta.label}
+                    </Text>
+                  </View>
+                  <BadgeGrid
+                    definitions={tierDefs}
+                    earned={earned}
+                    onBadgePress={handleBadgePress}
+                  />
+                </View>
+              );
+            })}
+          </View>
         ) : (
           <View style={styles.emptyState}>
             <Ionicons
@@ -429,6 +473,27 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  tierSection: {
+    marginBottom: 12,
+  },
+  tierHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+  },
+  tierDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  tierTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   emptyState: {
     alignItems: 'center',
