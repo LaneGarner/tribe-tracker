@@ -37,6 +37,13 @@ export default function PublicChallengeCard({
 
   const colors = gradientColors || getGradientForChallenge(challenge);
 
+  const participantLabel =
+    challenge.participantCount && challenge.participantCount > 0
+      ? `, ${challenge.participantCount} ${challenge.participantCount === 1 ? 'member' : 'members'}`
+      : '';
+  const statusLabel = status === 'active' ? 'active' : status === 'upcoming' ? 'starting soon' : 'completed';
+  const a11yLabel = `${challenge.name}${challenge.creatorName ? ` by ${challenge.creatorName}` : ''}, ${challenge.durationDays} days, ${challenge.habits.length} habits${participantLabel}, ${statusLabel}`;
+
   const cardContent = (
     <>
       {/* Header with title */}
@@ -69,7 +76,9 @@ export default function PublicChallengeCard({
         {challenge.participantCount !== undefined && challenge.participantCount > 0 && (
           <View style={styles.statItem}>
             <Ionicons name="people-outline" size={16} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.statText}>{challenge.participantCount}</Text>
+            <Text style={styles.statText}>
+              {challenge.participantCount} {challenge.participantCount === 1 ? 'member' : 'members'}
+            </Text>
           </View>
         )}
       </View>
@@ -119,7 +128,12 @@ export default function PublicChallengeCard({
 
   if (challenge.backgroundImageUrl && !bgImageFailed) {
     return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.9}
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+      >
         <View style={styles.imageContainer}>
           <ExpoImage
             source={{ uri: challenge.backgroundImageUrl }}
@@ -142,7 +156,12 @@ export default function PublicChallengeCard({
   }
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.9}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+    >
       <LinearGradient
         colors={colors}
         start={{ x: 0, y: 0 }}
