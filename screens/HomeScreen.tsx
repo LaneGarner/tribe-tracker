@@ -404,6 +404,7 @@ export default function HomeScreen() {
     } else if (
       orderedChallenges.length > 0 &&
       selectedChallengeId &&
+      selectedChallengeId !== ALL_PILL_ID &&
       !orderedChallenges.some(c => c.id === selectedChallengeId)
     ) {
       // Reset if selected challenge was deleted or is no longer active/upcoming
