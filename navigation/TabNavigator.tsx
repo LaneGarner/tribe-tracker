@@ -490,7 +490,11 @@ export default function TabNavigator() {
           fontWeight: '600',
         },
         headerShadowVisible: false,
-        headerRight: () => <HeaderChatButton />,
+        headerRight: () => (
+          <View style={{ paddingRight: 12 }}>
+            <HeaderChatButton />
+          </View>
+        ),
       }}
     >
       <Tab.Screen

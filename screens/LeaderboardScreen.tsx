@@ -294,7 +294,7 @@ export default function LeaderboardScreen() {
         backgroundColor: colors.background,
       }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboard</Text>
-        <View style={styles.headerRightSlot}>
+        <View style={[styles.headerRightSlot, { top: insets.top + 16, bottom: 12 }]}>
           <HeaderChatButton />
         </View>
       </View>
@@ -536,8 +536,8 @@ const styles = StyleSheet.create({
   },
   headerRightSlot: {
     position: 'absolute',
-    right: 8,
-    bottom: 8,
+    right: 12,
+    justifyContent: 'center',
   },
   challengeSelectorSticky: {
     paddingBottom: 8,

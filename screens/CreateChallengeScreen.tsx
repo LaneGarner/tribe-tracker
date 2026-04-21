@@ -670,10 +670,11 @@ export default function CreateChallengeScreen() {
 
   const renderBrowse = () => (
     <>
-      <View style={styles.header}>
-        <View style={{ width: 44 }} />
-        <Text style={[styles.title, { color: colors.text, flex: 1, textAlign: 'center' }]}>Challenges</Text>
-        <HeaderChatButton />
+      <View style={styles.browseHeader}>
+        <Text style={[styles.title, { color: colors.text, textAlign: 'center' }]}>Challenges</Text>
+        <View style={styles.headerChatSlot}>
+          <HeaderChatButton />
+        </View>
       </View>
 
       <View style={styles.actionButtons}>
@@ -1435,6 +1436,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 16,
     paddingBottom: 24,
+  },
+  browseHeader: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 16,
+    paddingBottom: 24,
+    marginHorizontal: -20,
+    paddingHorizontal: 12,
+  },
+  headerChatSlot: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
   title: {
     fontSize: 24,
