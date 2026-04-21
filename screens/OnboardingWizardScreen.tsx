@@ -34,7 +34,7 @@ type WizardNavProp = NativeStackNavigationProp<
   'OnboardingWizard'
 >;
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 // Per-category follow-up chips. Keys must match CHALLENGE_CATEGORIES keys.
 const SPECIFICS_MAP: Record<string, string[]> = {
@@ -64,7 +64,7 @@ export default function OnboardingWizardScreen() {
   const [chatTurn, setChatTurn] = useState<string>('');
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [matches, setMatches] = useState<MatchChallengeResult[]>([]);
-  const [joinedChallengeIds, setJoinedChallengeIds] = useState<Set<string>>(
+  const [selectedChallengeIds, setSelectedChallengeIds] = useState<Set<string>>(
     new Set()
   );
 
@@ -130,7 +130,7 @@ export default function OnboardingWizardScreen() {
     );
   };
 
-  const handleFindMatches = async () => {
+  const handleFindMatches = async (skipChatTurn: boolean = false) => {
     setLoadingMatches(true);
     try {
       const token = getAccessToken();
@@ -144,7 +144,7 @@ export default function OnboardingWizardScreen() {
         goalSpecifics,
         goalDaysPerWeek: daysPerWeek,
         goalNotes: goalNotes.trim(),
-        chatTurn: chatTurn.trim(),
+        chatTurn: skipChatTurn ? '' : chatTurn.trim(),
       });
       setMatches(result);
       setStep(4);
@@ -153,32 +153,54 @@ export default function OnboardingWizardScreen() {
     }
   };
 
-  const handleJoin = (match: MatchChallengeResult) => {
-    if (joinedChallengeIds.has(match.challengeId)) return;
-    const participation: ChallengeParticipant = {
-      id: Crypto.randomUUID(),
-      challengeId: match.challengeId,
-      challengeName: match.challenge.name,
-      userId: user?.id || 'anonymous',
-      userName:
-        user?.user_metadata?.full_name ||
-        user?.email?.split('@')[0] ||
-        'Anonymous',
-      userEmail: user?.email || '',
-      userPhotoUrl: profile?.profilePhotoUrl,
-      totalPoints: 0,
-      currentStreak: 0,
-      longestStreak: 0,
-      daysParticipated: 0,
-      joinDate: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    dispatch(addParticipant(participation));
-    setJoinedChallengeIds(prev => {
+  const toggleSelectMatch = (challengeId: string) => {
+    setSelectedChallengeIds(prev => {
       const next = new Set(prev);
-      next.add(match.challengeId);
+      if (next.has(challengeId)) {
+        next.delete(challengeId);
+      } else {
+        next.add(challengeId);
+      }
       return next;
     });
+  };
+
+  const joinSelectedMatches = () => {
+    const now = new Date().toISOString();
+    matches
+      .filter(m => selectedChallengeIds.has(m.challengeId))
+      .forEach(match => {
+        const participation: ChallengeParticipant = {
+          id: Crypto.randomUUID(),
+          challengeId: match.challengeId,
+          challengeName: match.challenge.name,
+          userId: user?.id || 'anonymous',
+          userName:
+            user?.user_metadata?.full_name ||
+            user?.email?.split('@')[0] ||
+            'Anonymous',
+          userEmail: user?.email || '',
+          userPhotoUrl: profile?.profilePhotoUrl,
+          totalPoints: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+          daysParticipated: 0,
+          joinDate: now,
+          updatedAt: now,
+        };
+        dispatch(addParticipant(participation));
+      });
+  };
+
+  const handleJoinAll = () => {
+    joinSelectedMatches();
+    completeOnboarding();
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+  };
+
+  const handleSkipMatches = () => {
+    completeOnboarding();
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   };
 
   const canContinueStep1 = goals.length > 0;
@@ -191,18 +213,22 @@ export default function OnboardingWizardScreen() {
       {/* Skip (X) top-right */}
       <View style={styles.headerRow}>
         <View style={styles.stepDots}>
-          {[1, 2, 3, 4].map(n => (
-            <View
-              key={n}
-              style={[
-                styles.stepDot,
-                {
-                  backgroundColor:
-                    n <= step ? colors.primary : colors.surfaceSecondary,
-                },
-              ]}
-            />
-          ))}
+          {[1, 2, 3, 4].map(n => {
+            const filled = step === 5 ? true : n <= step;
+            return (
+              <View
+                key={n}
+                style={[
+                  styles.stepDot,
+                  {
+                    backgroundColor: filled
+                      ? colors.primary
+                      : colors.surfaceSecondary,
+                  },
+                ]}
+              />
+            );
+          })}
         </View>
         <TouchableOpacity
           onPress={handleSkip}
@@ -464,23 +490,38 @@ export default function OnboardingWizardScreen() {
             </Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               {matches.length > 0
-                ? 'Tap Join on any that fit. You can always browse more later.'
+                ? 'Tap any that fit. Review and join on the next step.'
                 : "We'll match you as more challenges are created. Browse public challenges from the Challenges tab anytime."}
             </Text>
 
             {matches.map(match => {
-              const joined = joinedChallengeIds.has(match.challengeId);
+              const selected = selectedChallengeIds.has(match.challengeId);
               return (
-                <View
+                <TouchableOpacity
                   key={match.challengeId}
+                  onPress={() => toggleSelectMatch(match.challengeId)}
+                  activeOpacity={0.85}
                   style={[
                     styles.matchCard,
                     {
                       backgroundColor: colors.surface,
-                      borderColor: colors.border,
+                      borderColor: selected ? colors.primary : colors.border,
+                      borderWidth: selected ? 2 : 1,
                     },
                   ]}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={`Select ${match.challenge.name}${match.reason ? ' — ' + match.reason : ''}`}
                 >
+                  {selected && (
+                    <View style={styles.matchCheckmark}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={24}
+                        color={colors.primary}
+                      />
+                    </View>
+                  )}
                   <Text style={[styles.matchName, { color: colors.text }]}>
                     {match.challenge.name}
                   </Text>
@@ -526,35 +567,55 @@ export default function OnboardingWizardScreen() {
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => handleJoin(match)}
-                    disabled={joined}
-                    style={[
-                      styles.joinButton,
-                      {
-                        backgroundColor: joined
-                          ? colors.surfaceSecondary
-                          : colors.primary,
-                      },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      joined ? 'Already joined' : `Join ${match.challenge.name}`
-                    }
-                    accessibilityState={{ disabled: joined }}
-                  >
-                    <Text
-                      style={[
-                        styles.joinButtonText,
-                        { color: joined ? colors.textSecondary : '#fff' },
-                      ]}
-                    >
-                      {joined ? 'Joined' : 'Join'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
               );
             })}
+          </View>
+        )}
+
+        {step === 5 && (
+          <View>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Ready to commit?
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              These challenges will be added to your list.
+            </Text>
+
+            <View style={{ marginTop: 16 }}>
+              {matches
+                .filter(m => selectedChallengeIds.has(m.challengeId))
+                .map((match, idx, arr) => (
+                  <View
+                    key={match.challengeId}
+                    style={[
+                      styles.confirmRow,
+                      {
+                        borderBottomColor: colors.border,
+                        borderBottomWidth:
+                          idx === arr.length - 1
+                            ? 0
+                            : StyleSheet.hairlineWidth,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.confirmName, { color: colors.text }]}
+                      numberOfLines={1}
+                    >
+                      {match.challenge.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.confirmDuration,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      {match.challenge.durationDays} days
+                    </Text>
+                  </View>
+                ))}
+            </View>
           </View>
         )}
       </ScrollView>
@@ -648,6 +709,19 @@ export default function OnboardingWizardScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
+              style={styles.textLinkButton}
+              onPress={() => handleFindMatches(true)}
+              disabled={loadingMatches}
+              accessibilityRole="button"
+              accessibilityLabel="Skip this question"
+            >
+              <Text
+                style={[styles.textLinkButtonText, { color: colors.textSecondary }]}
+              >
+                Skip
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[
                 styles.primaryButton,
                 {
@@ -657,7 +731,7 @@ export default function OnboardingWizardScreen() {
                     : colors.primary,
                 },
               ]}
-              onPress={handleFindMatches}
+              onPress={() => handleFindMatches(false)}
               disabled={loadingMatches}
               accessibilityRole="button"
               accessibilityLabel="Find my matches"
@@ -674,16 +748,87 @@ export default function OnboardingWizardScreen() {
         )}
 
         {step === 4 && (
-          <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-            onPress={handleFinish}
-            accessibilityRole="button"
-            accessibilityLabel="Finish"
-          >
-            <Text style={[styles.primaryButtonText, { color: '#fff' }]}>
-              Finish
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.footerRow}>
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                { borderColor: colors.border },
+              ]}
+              onPress={handleSkipMatches}
+              accessibilityRole="button"
+              accessibilityLabel="Skip — finish without joining"
+            >
+              <Text
+                style={[styles.secondaryButtonText, { color: colors.text }]}
+              >
+                Skip
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                {
+                  flex: 1,
+                  backgroundColor:
+                    selectedChallengeIds.size > 0
+                      ? colors.primary
+                      : colors.surfaceSecondary,
+                },
+              ]}
+              disabled={selectedChallengeIds.size === 0}
+              onPress={() => setStep(5)}
+              accessibilityRole="button"
+              accessibilityLabel="Review selections"
+              accessibilityState={{ disabled: selectedChallengeIds.size === 0 }}
+            >
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  {
+                    color:
+                      selectedChallengeIds.size > 0
+                        ? '#fff'
+                        : colors.textSecondary,
+                  },
+                ]}
+              >
+                Review selections
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {step === 5 && (
+          <View style={styles.footerRow}>
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                { borderColor: colors.border },
+              ]}
+              onPress={() => setStep(4)}
+              accessibilityRole="button"
+              accessibilityLabel="Go back to selections"
+            >
+              <Text
+                style={[styles.secondaryButtonText, { color: colors.text }]}
+              >
+                Go back
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                { flex: 1, backgroundColor: colors.primary },
+              ]}
+              onPress={handleJoinAll}
+              accessibilityRole="button"
+              accessibilityLabel="Join all selected challenges"
+            >
+              <Text style={[styles.primaryButtonText, { color: '#fff' }]}>
+                Join all
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </KeyboardAvoidingView>
@@ -768,18 +913,33 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     marginTop: 12,
+    position: 'relative',
   },
-  matchName: { fontSize: 17, fontWeight: '700', marginBottom: 4 },
+  matchCheckmark: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+  },
+  matchName: { fontSize: 17, fontWeight: '700', marginBottom: 4, paddingRight: 28 },
   matchReason: { fontSize: 14, lineHeight: 19, marginBottom: 10 },
-  matchMeta: { flexDirection: 'row', gap: 16, marginBottom: 12 },
+  matchMeta: { flexDirection: 'row', gap: 16 },
   matchMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   matchMetaText: { fontSize: 13 },
-  joinButton: {
-    paddingVertical: 12,
-    borderRadius: 10,
+  confirmRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
   },
-  joinButtonText: { fontSize: 15, fontWeight: '600' },
+  confirmName: { fontSize: 16, fontWeight: '600', flex: 1, marginRight: 12 },
+  confirmDuration: { fontSize: 13 },
+  textLinkButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textLinkButtonText: { fontSize: 15, fontWeight: '500' },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 12,
