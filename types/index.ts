@@ -256,7 +256,7 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Home: { selectChallengeId?: string } | undefined;
-  Challenges: undefined;
+  Discover: undefined;
   Leaderboard: { challengeId?: string } | undefined;
   Chat: undefined;
   Menu: undefined;

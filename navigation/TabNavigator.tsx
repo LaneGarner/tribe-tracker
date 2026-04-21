@@ -14,7 +14,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
-import CreateChallengeScreen from '../screens/CreateChallengeScreen';
+import DiscoverScreen from '../screens/DiscoverScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import MenuScreen from '../screens/MenuScreen';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
@@ -28,7 +28,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 // Tab icon configuration - all filled icons, color changes on focus
 const TAB_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; size: number }> = {
   Home: { icon: 'home', size: 22 },
-  Challenges: { icon: 'flag', size: 22 },
+  Discover: { icon: 'flag', size: 22 },
   Leaderboard: { icon: 'trophy', size: 22 },
   Menu: { icon: 'menu', size: 26 },
 };
@@ -506,12 +506,12 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Challenges"
-        component={CreateChallengeScreen}
+        name="Discover"
+        component={DiscoverScreen}
         options={{
-          title: 'Challenges',
+          title: 'Discover',
           headerShown: false,
-          tabBarLabel: 'Challenges',
+          tabBarLabel: 'Discover',
         }}
       />
       <Tab.Screen

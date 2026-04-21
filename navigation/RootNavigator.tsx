@@ -12,7 +12,7 @@ import AuthScreen from '../screens/AuthScreen';
 
 // Core screens
 import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
-import CreateChallengeScreen from '../screens/CreateChallengeScreen';
+import DiscoverScreen from '../screens/DiscoverScreen';
 import ManageChildScreen from '../screens/ManageChildScreen';
 import TaskAnalyticsScreen from '../screens/TaskAnalyticsScreen';
 
@@ -124,7 +124,7 @@ export default function RootNavigator() {
           />
           <Stack.Screen
             name="CreateChallenge"
-            component={CreateChallengeScreen}
+            component={DiscoverScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

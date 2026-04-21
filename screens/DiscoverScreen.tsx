@@ -69,7 +69,7 @@ type CreateChallengeNavigationProp = NativeStackNavigationProp<
 
 type CreateChallengeRouteProp = RouteProp<RootStackParamList, 'CreateChallenge'>;
 
-export default function CreateChallengeScreen() {
+export default function DiscoverScreen() {
   const navigation = useNavigation<CreateChallengeNavigationProp>();
   const route = useRoute<CreateChallengeRouteProp>();
   const dispatch = useDispatch<AppDispatch>();
@@ -671,7 +671,7 @@ export default function CreateChallengeScreen() {
   const renderBrowse = () => (
     <>
       <View style={styles.browseHeader}>
-        <Text style={[styles.title, { color: colors.text, textAlign: 'center' }]}>Challenges</Text>
+        <Text style={[styles.title, { color: colors.text, textAlign: 'center' }]}>Discover</Text>
         <View style={styles.headerChatSlot}>
           <HeaderChatButton />
         </View>

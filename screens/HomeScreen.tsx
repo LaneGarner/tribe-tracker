@@ -1168,7 +1168,7 @@ export default function HomeScreen() {
             </Text>
             <TouchableOpacity
               style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-              onPress={() => (navigation as any).navigate('Challenges')}
+              onPress={() => (navigation as any).navigate('Discover')}
               accessibilityLabel="Find challenges to join"
               accessibilityRole="button"
             >
