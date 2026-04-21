@@ -524,7 +524,7 @@ export default function TabNavigator() {
         component={LeaderboardScreen}
         options={{
           title: 'Leaderboard',
-          tabBarLabel: 'Leaderboard',
+          tabBarLabel: 'Leaderboards',
         }}
       />
       {chatTabEnabled && (
