@@ -708,21 +708,31 @@ export default function DiscoverScreen() {
         <Text style={[styles.browseIntroSubtitle, { color: colors.textSecondary }]}>
           Join a challenge, commit with a group, stack real wins together.
         </Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('OnboardingWizard')}
-          style={styles.wizardPrompt}
-          accessibilityRole="button"
-          accessibilityLabel="Open goal matching wizard"
-        >
-          <Text style={[styles.wizardPromptText, { color: colors.textSecondary }]}>
-            Not sure where to start?{' '}
-            <Text style={{ color: colors.primary, fontWeight: '600' }}>
-              Answer a few questions
-            </Text>{' '}
-            for a short list of matches.
-          </Text>
-        </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        onPress={() => navigation.navigate('OnboardingWizard')}
+        activeOpacity={0.85}
+        style={[
+          styles.wizardPromptCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="Not sure where to start? Answer a few questions for a short list of matches."
+      >
+        <Ionicons name="sparkles" size={20} color="#3B82F6" />
+        <Text
+          style={[styles.wizardPromptCardText, { color: colors.text }]}
+          numberOfLines={2}
+        >
+          Not sure where to start?{' '}
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>
+            Answer a few questions
+          </Text>{' '}
+          for a short list of matches.
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+      </TouchableOpacity>
 
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -1511,10 +1521,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  wizardPrompt: {
-    marginTop: 8,
+  wizardPromptCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginBottom: 20,
   },
-  wizardPromptText: {
+  wizardPromptCardText: {
+    flex: 1,
     fontSize: 13,
     lineHeight: 18,
   },
