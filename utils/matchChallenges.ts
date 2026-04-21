@@ -10,7 +10,9 @@ export interface MatchChallengeResult {
 export interface MatchChallengesPayload {
   goals: string[];
   goalSpecifics: Record<string, string[]>;
-  goalDaysPerWeek: number;
+  urgency?: 'ready' | 'building' | 'exploring';
+  timeCommitment?: 'light' | 'moderate' | 'solid' | 'heavy';
+  barriers?: string[];
   goalNotes: string;
   chatTurn: string;
 }
