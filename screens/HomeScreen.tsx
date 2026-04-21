@@ -823,9 +823,6 @@ export default function HomeScreen() {
             style={[styles.logo, { tintColor: backgroundImage ? '#fff' : (colorScheme === 'dark' ? '#fff' : '#000') }]}
           />
         </Animated.View>
-        <View style={styles.headerRightSlot}>
-          <HeaderChatButton onDarkBackground={!!backgroundImage} />
-        </View>
       </Animated.View>
 
       {/* Text + pills outside ScrollView when background image - content clips at ScrollView top edge */}
@@ -1221,6 +1218,7 @@ export default function HomeScreen() {
       )}
 
     </SafeAreaView>
+    <HeaderChatButton onDarkBackground={!!backgroundImage} />
     </View>
   );
 
@@ -1235,13 +1233,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
-  },
-  headerRightSlot: {
-    position: 'absolute',
-    right: 12,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
   },
   stickyCarouselContainer: {
     paddingBottom: 8,

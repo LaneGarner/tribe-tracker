@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-nativ
 import { MessageCircle } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { selectTotalUnreadCount } from '../../redux/slices/chatSlice';
 
@@ -10,13 +11,25 @@ interface HeaderChatButtonProps {
   color?: string;
   style?: ViewStyle;
   onDarkBackground?: boolean;
+  /**
+   * When true (default), the button wraps itself in an absolutely-positioned
+   * container anchored to the top-right of the screen using safe-area insets.
+   * Set to false to render the button inline (e.g., inside a menu row).
+   */
+  floating?: boolean;
 }
 
-export default function HeaderChatButton({ color, style, onDarkBackground }: HeaderChatButtonProps) {
+export default function HeaderChatButton({
+  color,
+  style,
+  onDarkBackground,
+  floating = true,
+}: HeaderChatButtonProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const navigation = useNavigation<any>();
   const unread = useSelector(selectTotalUnreadCount);
+  const insets = useSafeAreaInsets();
 
   const iconColor = color || (onDarkBackground ? '#FFFFFF' : colors.text);
   const unreadLabel =
@@ -24,9 +37,9 @@ export default function HeaderChatButton({ color, style, onDarkBackground }: Hea
       ? `Chat, ${unread} unread message${unread === 1 ? '' : 's'}`
       : 'Chat';
 
-  return (
+  const button = (
     <TouchableOpacity
-      style={[styles.button, style]}
+      style={[styles.button, !floating && style]}
       onPress={() => navigation.navigate('Chat')}
       hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
       accessibilityRole="button"
@@ -40,9 +53,32 @@ export default function HeaderChatButton({ color, style, onDarkBackground }: Hea
       )}
     </TouchableOpacity>
   );
+
+  if (!floating) {
+    return button;
+  }
+
+  return (
+    <View
+      style={[
+        styles.floatingContainer,
+        { top: insets.top + 8 },
+        style,
+      ]}
+      pointerEvents="box-none"
+    >
+      {button}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  floatingContainer: {
+    position: 'absolute',
+    right: 12,
+    zIndex: 50,
+    elevation: 50,
+  },
   button: {
     width: 44,
     height: 44,

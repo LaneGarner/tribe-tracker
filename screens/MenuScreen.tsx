@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { ThemeContext, ThemePreference, getColors } from '../theme/ThemeContext';
@@ -122,6 +123,7 @@ export default function MenuScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -307,6 +309,8 @@ export default function MenuScreen() {
         </Text>
       </ScrollView>
       <TabBarGradientFade />
+      </SafeAreaView>
+      <HeaderChatButton />
     </View>
   );
 }

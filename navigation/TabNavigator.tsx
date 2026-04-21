@@ -21,7 +21,6 @@ import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { TabParamList } from '../types';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { selectTotalUnreadCount } from '../redux/slices/chatSlice';
-import HeaderChatButton from '../components/ui/HeaderChatButton';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -490,11 +489,6 @@ export default function TabNavigator() {
           fontWeight: '600',
         },
         headerShadowVisible: false,
-        headerRight: () => (
-          <View style={{ paddingRight: 12 }}>
-            <HeaderChatButton />
-          </View>
-        ),
       }}
     >
       <Tab.Screen
@@ -527,6 +521,7 @@ export default function TabNavigator() {
         component={MenuScreen}
         options={{
           title: 'Menu',
+          headerShown: false,
           tabBarLabel: 'Menu',
         }}
       />

@@ -672,9 +672,6 @@ export default function DiscoverScreen() {
     <>
       <View style={styles.browseHeader}>
         <Text style={[styles.title, { color: colors.text, textAlign: 'center' }]}>Discover</Text>
-        <View style={styles.headerChatSlot}>
-          <HeaderChatButton />
-        </View>
       </View>
 
       <View style={styles.actionButtons}>
@@ -1423,6 +1420,7 @@ export default function DiscoverScreen() {
         {mode === 'join' && renderJoin()}
       </ScrollView>
       <TabBarGradientFade />
+      {mode === 'browse' && <HeaderChatButton />}
     </SafeAreaView>
   );
 }
@@ -1459,13 +1457,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     marginHorizontal: -20,
     paddingHorizontal: 12,
-  },
-  headerChatSlot: {
-    position: 'absolute',
-    right: 12,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
   },
   title: {
     fontSize: 24,

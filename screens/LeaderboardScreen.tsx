@@ -294,9 +294,6 @@ export default function LeaderboardScreen() {
         backgroundColor: colors.background,
       }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>
-        <View style={[styles.headerRightSlot, { top: insets.top + 16, bottom: 12 }]}>
-          <HeaderChatButton />
-        </View>
       </View>
       {/* Challenge selector tabs - sticky outside ScrollView */}
       {orderedChallenges.length > 1 && (
@@ -521,6 +518,7 @@ export default function LeaderboardScreen() {
         )}
       </ScrollView>
       <TabBarGradientFade />
+      <HeaderChatButton />
     </View>
   );
 }
@@ -534,11 +532,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     alignItems: 'center',
     zIndex: 10,
-  },
-  headerRightSlot: {
-    position: 'absolute',
-    right: 12,
-    justifyContent: 'center',
   },
   challengeSelectorSticky: {
     paddingBottom: 8,
