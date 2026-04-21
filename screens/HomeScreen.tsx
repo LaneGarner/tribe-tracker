@@ -8,7 +8,6 @@ import {
   RefreshControl,
   Animated,
   PanResponder,
-  Pressable,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -112,7 +111,6 @@ export default function HomeScreen() {
 
   // Points badge swipe state
   const [badgeHidden, setBadgeHidden] = useState(false);
-  const [pointsPopoverVisible, setPointsPopoverVisible] = useState(false);
   const badgeHiddenRef = useRef(badgeHidden);
   const badgeTranslateX = useRef(new Animated.Value(0)).current;
   const BADGE_WIDTH = 70;
@@ -151,22 +149,10 @@ export default function HomeScreen() {
       },
       onPanResponderRelease: (_, gestureState) => {
         const isHidden = badgeHiddenRef.current;
-        const isTap = Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5;
         if (!isHidden) {
-          // Tap (no movement) -> toggle popover
-          if (isTap) {
-            setPointsPopoverVisible(v => !v);
-            Animated.spring(badgeTranslateX, {
-              toValue: 0,
-              useNativeDriver: true,
-              friction: 8,
-            }).start();
-            return;
-          }
           // If swiped right more than 30px, hide it
           if (gestureState.dx > 30) {
             setBadgeHidden(true);
-            setPointsPopoverVisible(false);
             Animated.spring(badgeTranslateX, {
               toValue: HIDDEN_OFFSET,
               useNativeDriver: true,
@@ -621,12 +607,11 @@ export default function HomeScreen() {
     ? challengeColors[selectedChallengeId]
     : undefined;
 
-  // Calculate today's points for the floating badge, with per-challenge breakdown
+  // Calculate today's points for the floating badge
   const todayPoints = useMemo(() => {
     const todayDate = getToday();
     let completed = 0;
     let total = 0;
-    const breakdown: { challengeId: string; name: string; completed: number; total: number }[] = [];
 
     activeChallenges.forEach(challenge => {
       const habitCount = challenge.habits?.length || 0;
@@ -642,15 +627,9 @@ export default function HomeScreen() {
         ? todayCheckin.habitsCompleted.filter(h => h).length
         : 0;
       completed += challengeCompleted;
-      breakdown.push({
-        challengeId: challenge.id,
-        name: challenge.name,
-        completed: challengeCompleted,
-        total: habitCount,
-      });
     });
 
-    return { completed, total, breakdown };
+    return { completed, total };
   }, [activeChallenges, checkins, user?.id]);
 
   const backgroundImage = bgImageFailed ? null : selectedChallenge?.backgroundImageUrl;
@@ -1222,8 +1201,7 @@ export default function HomeScreen() {
               },
             ]}
             {...badgePanResponder.panHandlers}
-            accessibilityRole="button"
-            accessibilityLabel={`Today's points ${todayPoints.completed} of ${todayPoints.total}. Tap to see breakdown.`}
+            accessibilityLabel={`Today's points ${todayPoints.completed} of ${todayPoints.total}`}
           >
             <LinearGradient
               colors={['#F97316', '#EC4899']}
@@ -1239,98 +1217,6 @@ export default function HomeScreen() {
             </LinearGradient>
           </Animated.View>
 
-          {/* Points breakdown popover */}
-          {pointsPopoverVisible && !badgeHidden && (() => {
-            const todayDate = getToday();
-            const singleChallengeCheckin = !isAllPillSelected && selectedChallenge
-              ? checkins.find(
-                  c => c.challengeId === selectedChallenge.id &&
-                       c.userId === user?.id &&
-                       c.checkinDate === todayDate
-                )
-              : null;
-            const singleChallengeHabitRows = !isAllPillSelected && selectedChallenge
-              ? (selectedChallenge.habits || []).map((habit, idx) => ({
-                  habit,
-                  completed: !!singleChallengeCheckin?.habitsCompleted?.[idx],
-                }))
-              : [];
-
-            return (
-            <>
-              <Pressable
-                style={styles.popoverBackdrop}
-                onPress={() => setPointsPopoverVisible(false)}
-                accessibilityLabel="Dismiss points breakdown"
-              />
-              <View
-                style={[styles.pointsPopover, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                accessibilityRole="alert"
-                accessibilityLabel="Today's points breakdown"
-              >
-                {isAllPillSelected ? (
-                  <>
-                    <Text style={[styles.popoverTitle, { color: colors.text }]}>
-                      Today's Points: {todayPoints.completed}/{todayPoints.total}
-                    </Text>
-                    <View style={[styles.popoverDivider, { backgroundColor: colors.border }]} />
-                    {todayPoints.breakdown.length === 0 ? (
-                      <Text style={[styles.popoverEmpty, { color: colors.textSecondary }]}>
-                        No active challenges.
-                      </Text>
-                    ) : (
-                      todayPoints.breakdown.map(row => (
-                        <View key={row.challengeId} style={styles.popoverRow}>
-                          <Text
-                            style={[styles.popoverChallengeName, { color: colors.text }]}
-                            numberOfLines={1}
-                          >
-                            {row.name}
-                          </Text>
-                          <Text style={[styles.popoverChallengePts, { color: colors.textSecondary }]}>
-                            {row.completed}/{row.total}
-                          </Text>
-                        </View>
-                      ))
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Text style={[styles.popoverTitle, { color: colors.text }]} numberOfLines={1}>
-                      Today — {selectedChallenge?.name ?? ''}
-                    </Text>
-                    <View style={[styles.popoverDivider, { backgroundColor: colors.border }]} />
-                    {singleChallengeHabitRows.length === 0 ? (
-                      <Text style={[styles.popoverEmpty, { color: colors.textSecondary }]}>
-                        No activities completed today.
-                      </Text>
-                    ) : (
-                      singleChallengeHabitRows.map((row, idx) => (
-                        <View key={`${row.habit}-${idx}`} style={styles.popoverRow}>
-                          <Text
-                            style={[styles.popoverChallengeName, { color: colors.text }]}
-                            numberOfLines={1}
-                          >
-                            {row.habit}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.popoverChallengePts,
-                              { color: row.completed ? colors.success : colors.textSecondary },
-                            ]}
-                          >
-                            {row.completed ? '✓' : '✗'}
-                          </Text>
-                        </View>
-                      ))
-                    )}
-                  </>
-                )}
-                <View style={styles.popoverArrow} />
-              </View>
-            </>
-            );
-          })()}
         </>
       )}
 
@@ -1501,73 +1387,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: TAB_BAR_HEIGHT + 10,
     right: 20,
-  },
-  popoverBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 20,
-  },
-  pointsPopover: {
-    position: 'absolute',
-    bottom: TAB_BAR_HEIGHT + 90,
-    right: 20,
-    minWidth: 280,
-    maxWidth: 340,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 21,
-  },
-  popoverTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 10,
-  },
-  popoverDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginBottom: 8,
-  },
-  popoverRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 4,
-    gap: 12,
-  },
-  popoverChallengeName: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  popoverChallengePts: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  popoverEmpty: {
-    fontSize: 13,
-    paddingVertical: 4,
-  },
-  popoverArrow: {
-    position: 'absolute',
-    bottom: -7,
-    right: 24,
-    width: 14,
-    height: 14,
-    backgroundColor: 'transparent',
-    borderLeftWidth: 7,
-    borderRightWidth: 7,
-    borderTopWidth: 7,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   pointsBadge: {
     width: 70,
