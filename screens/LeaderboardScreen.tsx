@@ -293,7 +293,7 @@ export default function LeaderboardScreen() {
         paddingTop: insets.top + 16,
         backgroundColor: colors.background,
       }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboard</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>
         <View style={[styles.headerRightSlot, { top: insets.top + 16, bottom: 12 }]}>
           <HeaderChatButton />
         </View>
