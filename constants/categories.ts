@@ -5,12 +5,12 @@ export interface ChallengeCategory {
 }
 
 export const CHALLENGE_CATEGORIES: ChallengeCategory[] = [
+  { key: 'General', label: 'General', icon: 'grid-outline' },
   { key: 'Health', label: 'Health', icon: 'heart-outline' },
   { key: 'Discipline', label: 'Discipline', icon: 'shield-checkmark-outline' },
   { key: 'Addiction', label: 'Addiction', icon: 'ban-outline' },
   { key: 'Mental Health', label: 'Mental Health', icon: 'leaf-outline' },
   { key: 'Lifestyle', label: 'Lifestyle', icon: 'sunny-outline' },
-  { key: 'General', label: 'General', icon: 'grid-outline' },
 ];
 
 export const DEFAULT_CATEGORY = 'General';
