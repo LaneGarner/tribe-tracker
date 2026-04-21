@@ -543,8 +543,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   pillsHeader: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
     paddingHorizontal: 20,
     marginBottom: 6,
   },
