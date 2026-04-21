@@ -5,7 +5,6 @@ const STORAGE_KEY = 'tribe_feature_flags';
 
 export const FEATURE_FLAGS = {
   CHAT_TAB: 'chatTab',
-  CHALLENGE_CALENDAR: 'challengeCalendar',
 } as const;
 
 type FlagName = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];

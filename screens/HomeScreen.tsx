@@ -52,16 +52,18 @@ import ChallengeCardSkeleton from '../components/challenge/ChallengeCardSkeleton
 import ChallengeChip from '../components/challenge/ChallengeChip';
 import { getGradientForChallenge } from '../constants/gradients';
 import HabitChecklist from '../components/challenge/HabitChecklist';
+import AllHabitsChecklist from '../components/challenge/AllHabitsChecklist';
 import ReadOnlyHabitList from '../components/challenge/ReadOnlyHabitList';
 import DateCarousel from '../components/ui/DateCarousel';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import Skeleton from '../components/ui/Skeleton';
 import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCalendar';
-import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
+const ALL_PILL_ID = '__all__';
+const ALL_PILL_GRADIENT: [string, string] = ['#64748B', '#334155'];
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'Home'>,
@@ -104,7 +106,7 @@ export default function HomeScreen() {
   const pillsScrollRef = useRef<ScrollView | any>(null);
   const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
   const hasAutoSelected = useRef(false);
-  const [challengeCalendarMode] = useFeatureFlag(FEATURE_FLAGS.CHALLENGE_CALENDAR, true);
+  const isAllPillSelected = selectedChallengeId === ALL_PILL_ID;
 
   // Points badge swipe state
   const [badgeHidden, setBadgeHidden] = useState(false);
@@ -477,7 +479,9 @@ export default function HomeScreen() {
 
   // Calculate month range scoped to calendar challenges
   const { minMonth, maxMonth } = useMemo(() => {
-    const scopedChallenges = challengeCalendarMode && selectedChallenge
+    const scopedChallenges = isAllPillSelected
+      ? activeChallenges
+      : selectedChallenge
       ? [selectedChallenge]
       : activeChallenges;
 
@@ -495,7 +499,7 @@ export default function HomeScreen() {
       minMonth: dayjs(earliest).format('YYYY-MM'),
       maxMonth: dayjs(latest).format('YYYY-MM'),
     };
-  }, [challengeCalendarMode, selectedChallenge, activeChallenges, today]);
+  }, [isAllPillSelected, selectedChallenge, activeChallenges, today]);
 
   // Calendar month swipe handlers
   const handleCalendarSwipeLeft = () => {
@@ -523,13 +527,13 @@ export default function HomeScreen() {
     }
   };
 
-  // Clamp displayMonth when challenge scope changes in focused calendar mode
+  // Clamp displayMonth when challenge scope changes
   useEffect(() => {
-    if (challengeCalendarMode && minMonth && maxMonth) {
+    if (!isAllPillSelected && minMonth && maxMonth) {
       if (displayMonth < minMonth) setDisplayMonth(minMonth);
       else if (displayMonth > maxMonth) setDisplayMonth(maxMonth);
     }
-  }, [challengeCalendarMode, minMonth, maxMonth, selectedChallengeId]);
+  }, [isAllPillSelected, minMonth, maxMonth, selectedChallengeId]);
 
   // Challenge carousel handlers
   const currentChallengeIndex = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
@@ -583,20 +587,19 @@ export default function HomeScreen() {
     return checkins.filter(c => c.userId === user?.id);
   }, [checkins, user?.id]);
 
-  // Calendar data scoped to selected challenge when in focused mode
+  // Calendar data: all active challenges when All is selected, else scoped to the selected challenge
   const calendarChallenges = useMemo(() => {
-    if (challengeCalendarMode && selectedChallenge) {
-      return [selectedChallenge];
-    }
+    if (isAllPillSelected) return activeChallenges;
+    if (selectedChallenge) return [selectedChallenge];
     return activeChallenges;
-  }, [challengeCalendarMode, selectedChallenge, activeChallenges]);
+  }, [isAllPillSelected, selectedChallenge, activeChallenges]);
 
   const calendarCheckins = useMemo(() => {
-    if (challengeCalendarMode && selectedChallengeId) {
+    if (!isAllPillSelected && selectedChallengeId) {
       return userCheckins.filter(c => c.challengeId === selectedChallengeId);
     }
     return userCheckins;
-  }, [challengeCalendarMode, selectedChallengeId, userCheckins]);
+  }, [isAllPillSelected, selectedChallengeId, userCheckins]);
 
   const selectedChallengeColor = selectedChallengeId
     ? challengeColors[selectedChallengeId]
@@ -710,6 +713,12 @@ export default function HomeScreen() {
           style={styles.challengeSelector}
           contentContainerStyle={styles.challengeSelectorContent}
         >
+          <ChallengeChip
+            name="All"
+            isSelected={isAllPillSelected}
+            onPress={() => setSelectedChallengeId(ALL_PILL_ID)}
+            gradientColors={ALL_PILL_GRADIENT}
+          />
           {orderedChallenges.map((challenge, index) => (
             <ChallengeChip
               key={challenge.id}
@@ -744,6 +753,14 @@ export default function HomeScreen() {
             onDragEnd={({ data }: { data: Challenge[] }) => saveOrder(data.map(c => c.id))}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.challengeSelectorContent}
+            ListHeaderComponent={
+              <ChallengeChip
+                name="All"
+                isSelected={isAllPillSelected}
+                onPress={() => setSelectedChallengeId(ALL_PILL_ID)}
+                gradientColors={ALL_PILL_GRADIENT}
+              />
+            }
             renderItem={({ item: challenge, drag, isActive, getIndex }: any) => {
               const isSelected = selectedChallengeId === challenge.id;
               const content = (
@@ -857,6 +874,91 @@ export default function HomeScreen() {
                 <Skeleton width="60%" height={16} style={{ marginBottom: 12 }} />
                 <Skeleton width="50%" height={16} />
               </View>
+            </View>
+          </>
+        ) : isAllPillSelected ? (
+          <>
+            <View style={styles.dateSection}>
+              <View style={styles.section}>
+                <View style={styles.sectionTitleRow}>
+                  <View style={[!backgroundImage && pillStyle]}>
+                    <Text style={[styles.sectionTitle, { color: onScrimTextColor }, headerTextStyle]}>
+                      {isToday(selectedDate) ? "Today's Habits" : 'Habits'}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.dateText,
+                        { color: onScrimSecondaryColor },
+                        headerTextStyle && {
+                          textShadowColor: headerTextStyle.textShadowColor,
+                          textShadowOffset: headerTextStyle.textShadowOffset,
+                          textShadowRadius: headerTextStyle.textShadowRadius,
+                        },
+                      ]}
+                    >
+                      {formatDate(selectedDate, 'dddd, MMMM D')} · All Challenges
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <SwipeableView
+                ref={swipeableRef}
+                onSwipeLeft={handleSwipeLeft}
+                onSwipeRight={handleSwipeRight}
+                canSwipeLeft={canSwipeForward}
+                canSwipeRight={canSwipeBack}
+              >
+                <DateCarousel
+                  selectedDate={selectedDate}
+                  onDateChange={setSelectedDate}
+                  onPrevious={handleArrowPrevious}
+                  onNext={handleArrowNext}
+                  hasBackgroundImage={!!backgroundImage}
+                />
+
+                <View style={styles.habitListSection}>
+                  <AllHabitsChecklist
+                    challenges={activeChallenges}
+                    date={selectedDate}
+                    hasBackgroundImage={!!backgroundImage}
+                  />
+                </View>
+              </SwipeableView>
+            </View>
+
+            <View style={styles.calendarSection}>
+              <View style={[
+                { marginHorizontal: 20, marginBottom: 12 },
+                !backgroundImage && pillStyle,
+              ]}>
+                <Text style={[styles.sectionTitle, { color: onScrimTextColor, marginBottom: 0 }, headerTextStyle]}>
+                  Calendar
+                </Text>
+              </View>
+              <SwipeableView
+                ref={calendarSwipeRef}
+                onSwipeLeft={handleCalendarSwipeLeft}
+                onSwipeRight={handleCalendarSwipeRight}
+                canSwipeLeft={!maxMonth || dayjs(displayMonth + '-01').add(1, 'month').format('YYYY-MM') <= maxMonth}
+                canSwipeRight={!minMonth || dayjs(displayMonth + '-01').subtract(1, 'month').format('YYYY-MM') >= minMonth}
+              >
+                <ActivityCalendar
+                  challenges={calendarChallenges}
+                  checkins={calendarCheckins}
+                  selectedDate={selectedDate}
+                  onDateSelect={handleDateSelect}
+                  challengeColors={challengeColors}
+                  displayMonth={displayMonth}
+                  onMonthChange={setDisplayMonth}
+                  minMonth={minMonth ?? undefined}
+                  maxMonth={maxMonth ?? undefined}
+                  onPrevious={() => calendarSwipeRef.current?.animateRight()}
+                  onNext={() => calendarSwipeRef.current?.animateLeft()}
+                  hasBackgroundImage={!!backgroundImage}
+                  mode="multi"
+                />
+              </SwipeableView>
             </View>
           </>
         ) : selectedChallenge ? (
@@ -1007,7 +1109,7 @@ export default function HomeScreen() {
                       onPrevious={() => calendarSwipeRef.current?.animateRight()}
                       onNext={() => calendarSwipeRef.current?.animateLeft()}
                       hasBackgroundImage={!!backgroundImage}
-                      mode={challengeCalendarMode ? 'single' : 'multi'}
+                      mode={isAllPillSelected ? 'multi' : 'single'}
                       selectedChallengeColor={selectedChallengeColor}
                     />
                   </SwipeableView>
