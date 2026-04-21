@@ -113,6 +113,12 @@ export interface UserProfile {
   role?: string;
   permissionTier?: string;
   districtId?: string;
+  // Onboarding / first-run wizard
+  onboardingCompleted?: boolean;
+  goals?: string[];
+  goalSpecifics?: Record<string, string[]>;
+  goalDaysPerWeek?: number;
+  goalNotes?: string;
   updatedAt?: string;
 }
 
@@ -245,6 +251,7 @@ export type RootStackParamList = {
   SystemAdmin: undefined;
   FeatureToggles: undefined;
   Badges: undefined;
+  OnboardingWizard: undefined;
 };
 
 export type TabParamList = {

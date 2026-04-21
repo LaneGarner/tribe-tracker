@@ -1,8 +1,10 @@
 import React, { useContext } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { RootState } from '../redux/store';
 import TabNavigator from './TabNavigator';
 
 // Auth screen
@@ -42,12 +44,25 @@ import FeatureTogglesScreen from '../screens/FeatureTogglesScreen';
 // Badges screen
 import BadgesScreen from '../screens/BadgesScreen';
 
+// Onboarding wizard (first-run)
+import OnboardingWizardScreen from '../screens/OnboardingWizardScreen';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user } = useAuth();
+  const profile = useSelector((state: RootState) => state.profile.data);
+  const profileLoading = useSelector(
+    (state: RootState) => state.profile.loading
+  );
+
+  // Show wizard when logged in, profile has loaded at least once, and the
+  // user hasn't completed onboarding yet. While profile is still loading we
+  // show the normal Main flow (avoids a flash before redirect kicks in).
+  const needsOnboarding =
+    !!user && !profileLoading && !!profile && profile.onboardingCompleted !== true;
 
   return (
     <Stack.Navigator
@@ -77,12 +92,29 @@ export default function RootNavigator() {
       ) : (
         // Logged in - show main app
         <>
+          {needsOnboarding ? (
+            <Stack.Screen
+              name="OnboardingWizard"
+              component={OnboardingWizardScreen}
+              options={{ headerShown: false, gestureEnabled: false }}
+            />
+          ) : null}
+
           {/* Main app with tabs - tabs have their own headers */}
           <Stack.Screen
             name="Main"
             component={TabNavigator}
             options={{ headerShown: false }}
           />
+
+          {/* Always register OnboardingWizard so it can be opened manually */}
+          {!needsOnboarding ? (
+            <Stack.Screen
+              name="OnboardingWizard"
+              component={OnboardingWizardScreen}
+              options={{ headerShown: false }}
+            />
+          ) : null}
 
           {/* Core screens */}
           <Stack.Screen
