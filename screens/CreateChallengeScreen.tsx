@@ -700,6 +700,15 @@ export default function CreateChallengeScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.browseIntro}>
+        <Text style={[styles.browseIntroTitle, { color: colors.text }]}>
+          Public Challenges
+        </Text>
+        <Text style={[styles.browseIntroSubtitle, { color: colors.textSecondary }]}>
+          Join a challenge, commit with a group, stack real wins together.
+        </Text>
+      </View>
+
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Active
       </Text>
@@ -1464,6 +1473,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
+  },
+  browseIntro: {
+    marginBottom: 20,
+  },
+  browseIntroTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  browseIntroSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   emptyState: {
     alignItems: 'center',
