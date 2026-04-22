@@ -511,7 +511,7 @@ export default function OnboardingWizardScreen() {
               <Text
                 style={[styles.subtitle, { color: colors.textSecondary }]}
               >
-                Pick any that fit — or skip.
+                Pick any that fit.
               </Text>
 
               <View style={styles.chipsRow}>
@@ -872,22 +872,6 @@ export default function OnboardingWizardScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.textLinkButton}
-                onPress={handleFindMatches}
-                disabled={loadingMatches}
-                accessibilityRole="button"
-                accessibilityLabel="Skip this question"
-              >
-                <Text
-                  style={[
-                    styles.textLinkButtonText,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  Skip
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
                 style={[
                   styles.primaryButton,
                   {
@@ -917,21 +901,6 @@ export default function OnboardingWizardScreen() {
 
           {step === 4 && matches.length > 0 && (
             <View style={styles.footerRow}>
-              <TouchableOpacity
-                style={[
-                  styles.secondaryButton,
-                  { borderColor: colors.border },
-                ]}
-                onPress={handleSkipMatches}
-                accessibilityRole="button"
-                accessibilityLabel="Skip — finish without joining"
-              >
-                <Text
-                  style={[styles.secondaryButtonText, { color: colors.text }]}
-                >
-                  Skip
-                </Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
@@ -1080,13 +1049,6 @@ const styles = StyleSheet.create({
   },
   confirmName: { fontSize: 16, fontWeight: '600', flex: 1, marginRight: 12 },
   confirmDuration: { fontSize: 13 },
-  textLinkButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  textLinkButtonText: { fontSize: 15, fontWeight: '500' },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 12,
