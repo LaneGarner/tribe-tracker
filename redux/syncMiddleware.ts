@@ -313,7 +313,7 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
             conversationId: string; messageId: string; userId: string; emoji: string; currentUserId?: string;
           };
           try {
-            const response = await fetch(`${API_URL}/api/message-reactions`, {
+            const response = await fetch(`${API_URL}/api/messages?resource=reactions`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
               body: JSON.stringify({ messageId, emoji }),
@@ -335,7 +335,7 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
           };
           try {
             const response = await fetch(
-              `${API_URL}/api/message-reactions?messageId=${messageId}&emoji=${encodeURIComponent(emoji)}`,
+              `${API_URL}/api/messages?resource=reactions&messageId=${messageId}&emoji=${encodeURIComponent(emoji)}`,
               { method: 'DELETE', headers: { Authorization: `Bearer ${authToken}` } }
             );
             if (!response.ok && response.status !== 404) {
