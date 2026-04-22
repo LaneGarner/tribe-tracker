@@ -1,7 +1,7 @@
 import { Middleware, UnknownAction } from '@reduxjs/toolkit';
 import { API_URL } from '../config/api';
 import { Challenge, ChallengeParticipant, HabitCheckin, UserProfile, UserBadge, ChatMessage, BlockedUser } from '../types';
-import { addToPendingSync, PendingSyncItem } from '../utils/storage';
+import { addToPendingSync, clearCoachInsights, PendingSyncItem } from '../utils/storage';
 import { evaluateNewBadges } from '../utils/badgeEvaluator';
 import { addEarnedBadge } from './slices/badgesSlice';
 
@@ -315,6 +315,12 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
         console.error('Background sync failed:', err);
       }
     })();
+  }
+
+  // Invalidate cached AI coach insights whenever check-in data changes so stale
+  // summaries don't linger. Fire-and-forget; the screen falls back to a fresh fetch.
+  if (CHECKIN_SYNC_ACTIONS.includes(action.type)) {
+    clearCoachInsights().catch(() => {});
   }
 
   // Badge evaluation — runs after relevant actions (including non-sync actions like fetchFromServer/fulfilled)

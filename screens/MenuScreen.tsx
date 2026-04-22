@@ -44,8 +44,8 @@ export default function MenuScreen() {
 
   const featureItems: MenuItem[] = [
     { id: 'badges', label: 'Badges', icon: 'ribbon-outline', screen: 'Badges' },
-    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching', devOnly: true },
-  ].filter(i => __DEV__ || !i.devOnly);
+    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching' },
+  ];
 
   const settingsItems: MenuItem[] = [
     { id: 'apps', label: 'Apps & Devices', icon: 'phone-portrait-outline', screen: 'AppsDevices', devOnly: true },
