@@ -113,6 +113,10 @@ const CHAT_SYNC_ACTIONS = [
   'chat/addMessage',
   'chat/addBlockedUser',
   'chat/removeBlockedUser',
+  'chat/addReaction',
+  'chat/removeReaction',
+  'chat/deleteMessage',
+  'chat/editMessage',
 ];
 
 // Badge action types to sync
@@ -304,6 +308,75 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
         } else if (action.type === 'chat/removeBlockedUser') {
           const blockedId = action.payload as string;
           await pushToServer(`users?resource=blocked&id=${blockedId}`, {}, 'DELETE');
+        } else if (action.type === 'chat/addReaction') {
+          const { conversationId, messageId, userId, emoji, currentUserId } = action.payload as {
+            conversationId: string; messageId: string; userId: string; emoji: string; currentUserId?: string;
+          };
+          try {
+            const response = await fetch(`${API_URL}/api/message-reactions`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+              body: JSON.stringify({ messageId, emoji }),
+            });
+            // 409 = UNIQUE violation (already exists) — treat as success for offline replay
+            if (!response.ok && response.status !== 409) {
+              console.error(`[Sync] addReaction failed (${response.status})`);
+              store.dispatch({
+                type: 'chat/removeReaction',
+                payload: { conversationId, messageId, userId, emoji, currentUserId },
+              });
+            }
+          } catch (err) {
+            console.error('[Sync] addReaction network error:', err);
+          }
+        } else if (action.type === 'chat/removeReaction') {
+          const { conversationId, messageId, userId, emoji, currentUserId } = action.payload as {
+            conversationId: string; messageId: string; userId: string; emoji: string; currentUserId?: string;
+          };
+          try {
+            const response = await fetch(
+              `${API_URL}/api/message-reactions?messageId=${messageId}&emoji=${encodeURIComponent(emoji)}`,
+              { method: 'DELETE', headers: { Authorization: `Bearer ${authToken}` } }
+            );
+            if (!response.ok && response.status !== 404) {
+              console.error(`[Sync] removeReaction failed (${response.status})`);
+              store.dispatch({
+                type: 'chat/addReaction',
+                payload: { conversationId, messageId, userId, emoji, currentUserId },
+              });
+            }
+          } catch (err) {
+            console.error('[Sync] removeReaction network error:', err);
+          }
+        } else if (action.type === 'chat/deleteMessage') {
+          const { messageId } = action.payload as { conversationId: string; messageId: string; deletedAt: string };
+          try {
+            const response = await fetch(`${API_URL}/api/messages?id=${messageId}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${authToken}` },
+            });
+            if (!response.ok) {
+              console.error(`[Sync] deleteMessage failed (${response.status})`);
+            }
+          } catch (err) {
+            console.error('[Sync] deleteMessage network error:', err);
+          }
+        } else if (action.type === 'chat/editMessage') {
+          const { messageId, content } = action.payload as {
+            conversationId: string; messageId: string; content: string; editedAt: string; previousContent?: string;
+          };
+          try {
+            const response = await fetch(`${API_URL}/api/messages?id=${messageId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+              body: JSON.stringify({ content }),
+            });
+            if (!response.ok) {
+              console.error(`[Sync] editMessage failed (${response.status})`);
+            }
+          } catch (err) {
+            console.error('[Sync] editMessage network error:', err);
+          }
         }
 
         // Badge sync

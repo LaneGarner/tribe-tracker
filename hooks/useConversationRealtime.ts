@@ -4,7 +4,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { addRealtimeMessage, setActiveConversation, pollNewMessages, updateMemberLastReadAt } from '../redux/slices/chatSlice';
+import { addRealtimeMessage, setActiveConversation, pollNewMessages, updateMemberLastReadAt, deleteMessage, editMessage, addReaction, removeReaction } from '../redux/slices/chatSlice';
 import { ChatMessage } from '../types';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { isBackendConfigured } from '../config/api';
@@ -58,6 +58,72 @@ export function useConversationRealtime(conversationId: string) {
             createdAt: row.created_at as string,
           };
           dispatch(addRealtimeMessage(message));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          if (row.sender_id === user.id) return;
+          const messageId = row.id as string;
+          if (row.deleted_at) {
+            dispatch(deleteMessage({
+              conversationId,
+              messageId,
+              deletedAt: row.deleted_at as string,
+            }));
+          } else if (row.edited_at) {
+            dispatch(editMessage({
+              conversationId,
+              messageId,
+              content: row.content as string,
+              editedAt: row.edited_at as string,
+            }));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_reactions',
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown>;
+          if (row.user_id === user.id) return;
+          dispatch(addReaction({
+            conversationId,
+            messageId: row.message_id as string,
+            userId: row.user_id as string,
+            emoji: row.emoji as string,
+            currentUserId: user.id,
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'message_reactions',
+        },
+        (payload) => {
+          const row = payload.old as Record<string, unknown>;
+          if (!row || row.user_id === user.id) return;
+          dispatch(removeReaction({
+            conversationId,
+            messageId: row.message_id as string,
+            userId: row.user_id as string,
+            emoji: row.emoji as string,
+            currentUserId: user.id,
+          }));
         }
       )
       .on(

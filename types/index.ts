@@ -203,6 +203,21 @@ export interface ConversationMember {
   lastReadAt?: string;
 }
 
+export interface Reaction {
+  emoji: string;
+  userIds: string[];
+  count: number;
+  selfReacted: boolean;
+}
+
+export interface ReplyPreview {
+  id: string;
+  senderId: string;
+  senderName: string;
+  contentPreview: string;
+  isDeleted?: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
@@ -215,6 +230,10 @@ export interface ChatMessage {
   status: 'sending' | 'sent' | 'failed';
   createdAt: string;
   updatedAt?: string;
+  replyTo?: ReplyPreview;
+  reactions?: Reaction[];
+  deletedAt?: string;
+  editedAt?: string;
 }
 
 export interface BlockedUser {

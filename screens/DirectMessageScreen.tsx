@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,8 @@ import DateSeparator from '../components/chat/DateSeparator';
 import ChatInput from '../components/chat/ChatInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import EmptyChat from '../components/chat/EmptyChat';
+import MessageActionsOverlay from '../components/chat/MessageActionsOverlay';
+import { useChatActions } from '../hooks/useChatActions';
 import { isBackendConfigured, API_URL } from '../config/api';
 import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage, computeReadReceipts, ReaderInfo } from '../utils/chatUtils';
 
@@ -50,6 +52,8 @@ export default function DirectMessageScreen() {
   const { user, session } = useAuth();
 
   const { conversationId, otherUserName } = route.params;
+  const flatListRef = useRef<FlatList<ChatDisplayItem> | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useConversationRealtime(conversationId);
   const { typingUsers, sendTypingEvent } = useTypingIndicator(conversationId);
@@ -140,9 +144,23 @@ export default function DirectMessageScreen() {
     return null;
   }, [readReceiptMap]);
 
-  const handleSend = useCallback((text: string) => {
+  const flashMessage = useCallback((messageId: string) => {
+    setHighlightedId(messageId);
+    setTimeout(() => setHighlightedId(prev => (prev === messageId ? null : prev)), 1200);
+  }, []);
+
+  const chatActions = useChatActions({
+    conversationId,
+    currentUserId: user?.id,
+    flashMessage,
+  });
+
+  const handleSend = useCallback((text: string, replyToMessageId?: string) => {
     if (!user?.id) return;
     const clientId = Crypto.randomUUID();
+    const parentMsg = replyToMessageId
+      ? messages.find(m => m.id === replyToMessageId)
+      : undefined;
     const message: ChatMessage = {
       id: clientId,
       conversationId,
@@ -154,9 +172,32 @@ export default function DirectMessageScreen() {
       clientId,
       status: 'sending',
       createdAt: new Date().toISOString(),
+      replyTo: parentMsg
+        ? {
+            id: parentMsg.id,
+            senderId: parentMsg.senderId,
+            senderName: parentMsg.senderName || '',
+            contentPreview: (parentMsg.content || '').substring(0, 140),
+            isDeleted: !!parentMsg.deletedAt,
+          }
+        : undefined,
     };
     dispatch(addMessage(message));
-  }, [dispatch, user, conversationId]);
+  }, [dispatch, user, conversationId, messages]);
+
+  const jumpToMessage = useCallback((messageId: string) => {
+    const reversed = [...messages].reverse();
+    const items = buildChatDisplayItems(reversed);
+    const index = items.findIndex(item => item.type !== 'date-separator' && (item as DisplayMessage).id === messageId);
+    if (index >= 0) {
+      try {
+        flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+      } catch (err) {
+        console.warn('scrollToIndex failed:', err);
+      }
+      flashMessage(messageId);
+    }
+  }, [messages, flashMessage]);
 
   const handleAcceptRequest = async () => {
     if (!session?.access_token) return;
@@ -289,9 +330,14 @@ export default function DirectMessageScreen() {
         pendingConversation={isOtherPending}
         showTimestamp={msg.showTimestamp}
         readByOther={isOwn && msg.id === otherReadMessageId}
+        onLongPress={chatActions.handleLongPress}
+        onSwipeReply={chatActions.beginReply}
+        onJumpToMessage={jumpToMessage}
+        onToggleReaction={chatActions.handleToggleReaction}
+        highlight={highlightedId === msg.id}
       />
     );
-  }, [user?.id, isOtherPending, otherMember?.userPhotoUrl, otherReadMessageId]);
+  }, [user?.id, isOtherPending, otherMember?.userPhotoUrl, otherReadMessageId, chatActions.handleLongPress, chatActions.beginReply, chatActions.handleToggleReaction, jumpToMessage, highlightedId]);
 
   const displayItems = useMemo(() => {
     const reversed = [...messages].reverse();
@@ -354,6 +400,7 @@ export default function DirectMessageScreen() {
         </View>
       )}
       <FlatList
+        ref={flatListRef}
         data={displayItems}
         renderItem={renderItem}
         keyExtractor={item => item.type === 'date-separator' ? item.id : (item as DisplayMessage).clientId || item.id}
@@ -368,9 +415,23 @@ export default function DirectMessageScreen() {
 
       <ChatInput
         onSend={handleSend}
+        onEdit={chatActions.handleEditSubmit}
         onTyping={sendTypingEvent}
         disabled={isOwnPending || isOwnRejected || isOtherRejected}
         placeholder={isOwnPending ? 'Accept request to reply...' : 'Message...'}
+        replyingTo={chatActions.replyingTo}
+        onCancelReply={chatActions.cancelReply}
+        editing={chatActions.editing}
+        onCancelEdit={chatActions.cancelEdit}
+      />
+      <MessageActionsOverlay
+        target={chatActions.actionsTarget}
+        onClose={chatActions.closeActions}
+        onReact={chatActions.handleToggleReaction}
+        onReply={chatActions.beginReply}
+        onCopy={chatActions.handleCopy}
+        onEdit={chatActions.beginEdit}
+        onDelete={chatActions.handleDelete}
       />
     </KeyboardAvoidingView>
   );
