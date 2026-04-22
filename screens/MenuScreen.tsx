@@ -296,7 +296,7 @@ export default function MenuScreen() {
 
         {/* Version */}
         <Text style={[styles.version, { color: colors.textTertiary }]}>
-          TribeTracker v0.0.1
+          TribeTracker v0.0.2
         </Text>
       </ScrollView>
       <TabBarGradientFade />
