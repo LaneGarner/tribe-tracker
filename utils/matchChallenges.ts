@@ -10,10 +10,8 @@ export interface MatchChallengeResult {
 export interface MatchChallengesPayload {
   goals: string[];
   goalSpecifics: Record<string, string[]>;
-  urgency?: 'ready' | 'building' | 'exploring';
-  timeCommitment?: 'light' | 'moderate' | 'solid' | 'heavy';
-  barriers?: string[];
-  goalNotes: string;
+  startingPoint?: 'fresh' | 'returning' | 'leveling_up';
+  challengeStyle?: 'gentle' | 'structured' | 'ambitious';
   chatTurn: string;
 }
 

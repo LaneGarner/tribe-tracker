@@ -35,33 +35,22 @@ type WizardNavProp = NativeStackNavigationProp<
   'OnboardingWizard'
 >;
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5;
 
-type Urgency = 'ready' | 'building' | 'exploring';
-type TimeCommitment = 'light' | 'moderate' | 'solid' | 'heavy';
+type StartingPoint = 'fresh' | 'returning' | 'leveling_up';
+type ChallengeStyle = 'gentle' | 'structured' | 'ambitious';
 
-const URGENCY_OPTIONS: { value: Urgency; label: string }[] = [
-  { value: 'ready', label: 'Ready to start now' },
-  { value: 'building', label: 'Building up to it' },
-  { value: 'exploring', label: 'Just exploring' },
+const STARTING_POINT_OPTIONS: { value: StartingPoint; label: string }[] = [
+  { value: 'fresh', label: 'Starting fresh' },
+  { value: 'returning', label: 'Getting back on track' },
+  { value: 'leveling_up', label: 'Ready to level up' },
 ];
 
-const TIME_OPTIONS: { value: TimeCommitment; label: string }[] = [
-  { value: 'light', label: '<15 min' },
-  { value: 'moderate', label: '15–30 min' },
-  { value: 'solid', label: '30–60 min' },
-  { value: 'heavy', label: '1 hr+' },
+const CHALLENGE_STYLE_OPTIONS: { value: ChallengeStyle; label: string }[] = [
+  { value: 'gentle', label: 'Gentle and consistent' },
+  { value: 'structured', label: 'Structured with clear steps' },
+  { value: 'ambitious', label: 'Ambitious and challenging' },
 ];
-
-const BARRIER_OPTIONS = [
-  'Lost motivation',
-  'Too ambitious',
-  'Life got busy',
-  'No fast results',
-  'Went it alone',
-  'None of these',
-];
-const BARRIER_NONE = 'None of these';
 
 // Per-category follow-up chips. Keys must match CHALLENGE_CATEGORIES keys.
 const SPECIFICS_MAP: Record<string, string[]> = {
@@ -86,11 +75,12 @@ export default function OnboardingWizardScreen() {
   const [goalSpecifics, setGoalSpecifics] = useState<Record<string, string[]>>(
     {}
   );
-  const [urgency, setUrgency] = useState<Urgency | null>(null);
-  const [timeCommitment, setTimeCommitment] = useState<TimeCommitment | null>(
+  const [startingPoint, setStartingPoint] = useState<StartingPoint | null>(
     null
   );
-  const [barriers, setBarriers] = useState<string[]>([]);
+  const [challengeStyle, setChallengeStyle] = useState<ChallengeStyle | null>(
+    null
+  );
   const [successVision, setSuccessVision] = useState<string>('');
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [matches, setMatches] = useState<MatchChallengeResult[]>([]);
@@ -114,26 +104,12 @@ export default function OnboardingWizardScreen() {
     });
   };
 
-  const toggleBarrier = (option: string) => {
-    setBarriers(prev => {
-      if (option === BARRIER_NONE) {
-        return prev.includes(BARRIER_NONE) ? [] : [BARRIER_NONE];
-      }
-      const withoutNone = prev.filter(o => o !== BARRIER_NONE);
-      return withoutNone.includes(option)
-        ? withoutNone.filter(o => o !== option)
-        : [...withoutNone, option];
-    });
-  };
-
   const buildProfileUpdate = (extra: Record<string, unknown> = {}) => ({
     onboardingCompleted: true,
     goals,
     goalSpecifics,
-    urgency: urgency || undefined,
-    timeCommitment: timeCommitment || undefined,
-    barriers,
-    goalNotes: successVision.trim() || undefined,
+    startingPoint: startingPoint || undefined,
+    challengeStyle: challengeStyle || undefined,
     ...extra,
   });
 
@@ -165,20 +141,18 @@ export default function OnboardingWizardScreen() {
       const token = getAccessToken();
       if (!token) {
         setMatches([]);
-        setStep(5);
+        setStep(4);
         return;
       }
       const result = await fetchChallengeMatches(token, {
         goals,
         goalSpecifics,
-        urgency: urgency || undefined,
-        timeCommitment: timeCommitment || undefined,
-        barriers,
-        goalNotes: '',
+        startingPoint: startingPoint || undefined,
+        challengeStyle: challengeStyle || undefined,
         chatTurn: skipVision ? '' : successVision.trim(),
       });
       setMatches(result);
-      setStep(5);
+      setStep(4);
     } finally {
       setLoadingMatches(false);
     }
@@ -250,10 +224,10 @@ export default function OnboardingWizardScreen() {
   };
 
   const canContinueStep1 = goals.length > 0;
-  const canContinueStep2 = urgency !== null && timeCommitment !== null;
+  const canContinueStep2 = startingPoint !== null && challengeStyle !== null;
 
-  const showDots = step >= 1 && step <= 4;
-  const dotFilledCount = step >= 5 ? 4 : step;
+  const showDots = step >= 1 && step <= 3;
+  const dotFilledCount = step >= 4 ? 3 : step;
 
   return (
     <SafeAreaView
@@ -268,7 +242,7 @@ export default function OnboardingWizardScreen() {
         <View style={styles.headerRow}>
           <View style={styles.stepDots}>
             {showDots
-              ? [1, 2, 3, 4].map(n => {
+              ? [1, 2, 3].map(n => {
                   const filled = n <= dotFilledCount;
                   return (
                     <View
@@ -310,7 +284,7 @@ export default function OnboardingWizardScreen() {
               <Text
                 style={[styles.subtitle, { color: colors.textSecondary }]}
               >
-                Pick everything that applies, then tell us which pieces matter.
+                Pick everything that calls to you.
               </Text>
 
               <View style={styles.chipsRow}>
@@ -407,16 +381,16 @@ export default function OnboardingWizardScreen() {
             </View>
           )}
 
-          {/* STEP 2 — How are you feeling about it? */}
+          {/* STEP 2 — What does progress look like for you? */}
           {step === 2 && (
             <View>
               <Text style={[styles.title, { color: colors.text }]}>
-                How are you feeling about it?
+                What does progress look like for you?
               </Text>
               <Text
                 style={[styles.subtitle, { color: colors.textSecondary }]}
               >
-                Helps us calibrate what to suggest.
+                Helps us find challenges at the right level.
               </Text>
 
               <Text
@@ -425,15 +399,15 @@ export default function OnboardingWizardScreen() {
                   { color: colors.textSecondary, marginTop: 20 },
                 ]}
               >
-                Where are you at?
+                How would you describe where you're starting?
               </Text>
               <View style={styles.chipsRow}>
-                {URGENCY_OPTIONS.map(opt => {
-                  const selected = urgency === opt.value;
+                {STARTING_POINT_OPTIONS.map(opt => {
+                  const selected = startingPoint === opt.value;
                   return (
                     <TouchableOpacity
                       key={opt.value}
-                      onPress={() => setUrgency(opt.value)}
+                      onPress={() => setStartingPoint(opt.value)}
                       style={[
                         styles.chip,
                         {
@@ -468,17 +442,17 @@ export default function OnboardingWizardScreen() {
                   { color: colors.textSecondary, marginTop: 24 },
                 ]}
               >
-                Time you can give per day
+                What kind of challenge fits you best?
               </Text>
-              <View style={styles.segmentRow}>
-                {TIME_OPTIONS.map(opt => {
-                  const selected = timeCommitment === opt.value;
+              <View style={styles.chipsRow}>
+                {CHALLENGE_STYLE_OPTIONS.map(opt => {
+                  const selected = challengeStyle === opt.value;
                   return (
                     <TouchableOpacity
                       key={opt.value}
-                      onPress={() => setTimeCommitment(opt.value)}
+                      onPress={() => setChallengeStyle(opt.value)}
                       style={[
-                        styles.segmentChip,
+                        styles.chip,
                         {
                           backgroundColor: selected
                             ? colors.primary
@@ -494,7 +468,7 @@ export default function OnboardingWizardScreen() {
                     >
                       <Text
                         style={[
-                          styles.segmentChipText,
+                          styles.chipText,
                           { color: selected ? '#fff' : colors.text },
                         ]}
                       >
@@ -507,60 +481,11 @@ export default function OnboardingWizardScreen() {
             </View>
           )}
 
-          {/* STEP 3 — What's held you back? */}
+          {/* STEP 3 — What's the goal behind the goal? */}
           {step === 3 && (
             <View>
               <Text style={[styles.title, { color: colors.text }]}>
-                What's held you back?
-              </Text>
-              <Text
-                style={[styles.subtitle, { color: colors.textSecondary }]}
-              >
-                No judgment. This helps us avoid bad matches.
-              </Text>
-
-              <View style={styles.chipsRow}>
-                {BARRIER_OPTIONS.map(opt => {
-                  const selected = barriers.includes(opt);
-                  return (
-                    <TouchableOpacity
-                      key={opt}
-                      onPress={() => toggleBarrier(opt)}
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor: selected
-                            ? colors.primary
-                            : colors.surface,
-                          borderColor: selected
-                            ? colors.primary
-                            : colors.border,
-                        },
-                      ]}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: selected }}
-                      accessibilityLabel={opt}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          { color: selected ? '#fff' : colors.text },
-                        ]}
-                      >
-                        {opt}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* STEP 4 — What would a win feel like? */}
-          {step === 4 && (
-            <View>
-              <Text style={[styles.title, { color: colors.text }]}>
-                What would a win feel like?
+                What's the goal behind the goal?
               </Text>
               <Text
                 style={[styles.subtitle, { color: colors.textSecondary }]}
@@ -571,7 +496,7 @@ export default function OnboardingWizardScreen() {
               <TextInput
                 value={successVision}
                 onChangeText={setSuccessVision}
-                placeholder="e.g., I'm meditating every morning and actually sticking with it."
+                placeholder="e.g., I want to feel like myself again. Or I want to prove I can actually stick with something."
                 placeholderTextColor={colors.textTertiary}
                 multiline
                 maxLength={300}
@@ -594,8 +519,8 @@ export default function OnboardingWizardScreen() {
             </View>
           )}
 
-          {/* STEP 5 — Matches */}
-          {step === 5 && (
+          {/* STEP 4 — Matches */}
+          {step === 4 && (
             <View>
               <Text style={[styles.title, { color: colors.text }]}>
                 {matches.length > 0
@@ -743,8 +668,8 @@ export default function OnboardingWizardScreen() {
             </View>
           )}
 
-          {/* STEP 6 — Confirmation */}
-          {step === 6 && (
+          {/* STEP 5 — Confirmation */}
+          {step === 5 && (
             <View>
               <Text style={[styles.title, { color: colors.text }]}>
                 Ready to commit?
@@ -904,39 +829,6 @@ export default function OnboardingWizardScreen() {
                   { borderColor: colors.border },
                 ]}
                 onPress={() => setStep(2)}
-                accessibilityRole="button"
-                accessibilityLabel="Back"
-              >
-                <Text
-                  style={[styles.secondaryButtonText, { color: colors.text }]}
-                >
-                  Back
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  { flex: 1, backgroundColor: colors.primary },
-                ]}
-                onPress={() => setStep(4)}
-                accessibilityRole="button"
-                accessibilityLabel="Continue"
-              >
-                <Text style={[styles.primaryButtonText, { color: '#fff' }]}>
-                  Continue
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {step === 4 && (
-            <View style={styles.footerRow}>
-              <TouchableOpacity
-                style={[
-                  styles.secondaryButton,
-                  { borderColor: colors.border },
-                ]}
-                onPress={() => setStep(3)}
                 disabled={loadingMatches}
                 accessibilityRole="button"
                 accessibilityLabel="Back"
@@ -991,7 +883,7 @@ export default function OnboardingWizardScreen() {
             </View>
           )}
 
-          {step === 5 && matches.length > 0 && (
+          {step === 4 && matches.length > 0 && (
             <View style={styles.footerRow}>
               <TouchableOpacity
                 style={[
@@ -1020,7 +912,7 @@ export default function OnboardingWizardScreen() {
                   },
                 ]}
                 disabled={selectedChallengeIds.size === 0}
-                onPress={() => setStep(6)}
+                onPress={() => setStep(5)}
                 accessibilityRole="button"
                 accessibilityLabel="Review selections"
                 accessibilityState={{
@@ -1044,14 +936,14 @@ export default function OnboardingWizardScreen() {
             </View>
           )}
 
-          {step === 6 && (
+          {step === 5 && (
             <View style={styles.footerRow}>
               <TouchableOpacity
                 style={[
                   styles.secondaryButton,
                   { borderColor: colors.border },
                 ]}
-                onPress={() => setStep(5)}
+                onPress={() => setStep(4)}
                 accessibilityRole="button"
                 accessibilityLabel="Go back to selections"
               >
@@ -1119,19 +1011,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipText: { fontSize: 14, fontWeight: '500' },
-  segmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  segmentChip: {
-    flexGrow: 1,
-    flexBasis: '22%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    minHeight: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  segmentChipText: { fontSize: 14, fontWeight: '600' },
   textArea: {
     borderWidth: 1,
     borderRadius: 10,
