@@ -22,7 +22,6 @@ import SegmentedControl from '../components/SegmentedControl';
 import Avatar from '../components/Avatar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
-import HeaderChatButton from '../components/ui/HeaderChatButton';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -301,7 +300,6 @@ export default function MenuScreen() {
       </ScrollView>
       <TabBarGradientFade />
       </SafeAreaView>
-      <HeaderChatButton />
     </View>
   );
 }
