@@ -254,7 +254,7 @@ export type RootStackParamList = {
   SystemAdmin: undefined;
   FeatureToggles: undefined;
   Badges: undefined;
-  OnboardingWizard: undefined;
+  OnboardingWizard: { fromDiscover?: boolean } | undefined;
 };
 
 export type TabParamList = {

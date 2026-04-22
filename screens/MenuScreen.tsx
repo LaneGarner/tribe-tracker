@@ -31,6 +31,7 @@ interface MenuItem {
   icon: keyof typeof Ionicons.glyphMap;
   screen?: keyof RootStackParamList;
   action?: () => void;
+  devOnly?: boolean;
 }
 
 export default function MenuScreen() {
@@ -43,14 +44,14 @@ export default function MenuScreen() {
 
   const featureItems: MenuItem[] = [
     { id: 'badges', label: 'Badges', icon: 'ribbon-outline', screen: 'Badges' },
-    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching' },
-  ];
+    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching', devOnly: true },
+  ].filter(i => __DEV__ || !i.devOnly);
 
   const settingsItems: MenuItem[] = [
-    { id: 'apps', label: 'Apps & Devices', icon: 'phone-portrait-outline', screen: 'AppsDevices' },
+    { id: 'apps', label: 'Apps & Devices', icon: 'phone-portrait-outline', screen: 'AppsDevices', devOnly: true },
     { id: 'notifications', label: 'Notifications', icon: 'notifications-outline', screen: 'Notifications' },
-    { id: 'preferences', label: 'Preferences', icon: 'globe-outline', screen: 'Preferences' },
-  ];
+    { id: 'preferences', label: 'Preferences', icon: 'globe-outline', screen: 'Preferences', devOnly: true },
+  ].filter(i => __DEV__ || !i.devOnly);
 
   const legalSupportItems: MenuItem[] = [
     { id: 'privacy', label: 'Privacy Center', icon: 'shield-outline', screen: 'PrivacyCenter' },

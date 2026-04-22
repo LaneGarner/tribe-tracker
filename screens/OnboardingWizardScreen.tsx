@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Crypto from 'expo-crypto';
 import { useDispatch, useSelector } from 'react-redux';
@@ -34,6 +34,8 @@ type WizardNavProp = NativeStackNavigationProp<
   RootStackParamList,
   'OnboardingWizard'
 >;
+
+type WizardRouteProp = RouteProp<RootStackParamList, 'OnboardingWizard'>;
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -81,6 +83,8 @@ export default function OnboardingWizardScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const navigation = useNavigation<WizardNavProp>();
+  const route = useRoute<WizardRouteProp>();
+  const fromDiscover = route.params?.fromDiscover === true;
   const dispatch = useDispatch();
   const { user, getAccessToken } = useAuth();
   const profile = useSelector((state: RootState) => state.profile.data);
@@ -140,6 +144,10 @@ export default function OnboardingWizardScreen() {
   };
 
   const handleSkip = () => {
+    if (fromDiscover) {
+      navigation.goBack();
+      return;
+    }
     Alert.alert(
       'Skip setup?',
       "You can browse challenges anytime from the Discover tab. We won't show this again.",
@@ -220,22 +228,34 @@ export default function OnboardingWizardScreen() {
       });
   };
 
+  const exitAfterComplete = () => {
+    if (fromDiscover) {
+      navigation.goBack();
+      return;
+    }
+    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+  };
+
   const handleJoinAll = async () => {
     await setWizardSeen();
     joinSelectedMatches();
     completeOnboarding();
-    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+    exitAfterComplete();
   };
 
   const handleSkipMatches = async () => {
     await setWizardSeen();
     completeOnboarding();
-    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+    exitAfterComplete();
   };
 
   const handleCreateChallengeFromEmpty = async () => {
     await setWizardSeen();
     completeOnboarding();
+    if (fromDiscover) {
+      navigation.replace('CreateChallenge', { mode: 'create' });
+      return;
+    }
     navigation.reset({
       index: 1,
       routes: [
@@ -243,10 +263,6 @@ export default function OnboardingWizardScreen() {
         { name: 'CreateChallenge', params: { mode: 'create' } },
       ],
     });
-  };
-
-  const handleBackFromStep1 = () => {
-    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   };
 
   const canContinueStep1 = goals.length > 0;
@@ -766,21 +782,6 @@ export default function OnboardingWizardScreen() {
         >
           {step === 1 && (
             <View style={styles.footerRow}>
-              <TouchableOpacity
-                style={[
-                  styles.secondaryButton,
-                  { borderColor: colors.border },
-                ]}
-                onPress={handleBackFromStep1}
-                accessibilityRole="button"
-                accessibilityLabel="Back"
-              >
-                <Text
-                  style={[styles.secondaryButtonText, { color: colors.text }]}
-                >
-                  Back
-                </Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.primaryButton,

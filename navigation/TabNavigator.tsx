@@ -42,7 +42,7 @@ const VELOCITY_THRESHOLD = 500;
 
 const TAB_BAR_PADDING = 0;
 const SELECTION_PILL_PADDING = 6;
-const PILL_HORIZONTAL_PADDING = 16; // padding on each side of content
+const PILL_HORIZONTAL_PADDING = 22; // padding on each side of content
 const MIN_PILL_WIDTH = 72;
 
 

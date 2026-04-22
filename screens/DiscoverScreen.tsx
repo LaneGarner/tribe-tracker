@@ -715,7 +715,7 @@ export default function DiscoverScreen() {
       </View>
 
       <TouchableOpacity
-        onPress={() => navigation.navigate('OnboardingWizard')}
+        onPress={() => navigation.navigate('OnboardingWizard', { fromDiscover: true })}
         activeOpacity={0.85}
         style={[
           styles.wizardPromptCard,
