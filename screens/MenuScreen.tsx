@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { clearAllAppData, clearChatData } from '../utils/storage';
 import { RootStackParamList } from '../types';
 import { RootState, AppDispatch } from '../redux/store';
-import { selectTotalUnreadCount, loadChatFromStorage } from '../redux/slices/chatSlice';
+import { loadChatFromStorage } from '../redux/slices/chatSlice';
 import SegmentedControl from '../components/SegmentedControl';
 import Avatar from '../components/Avatar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
@@ -41,11 +41,9 @@ export default function MenuScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { user, signOut, getAccessToken } = useAuth();
   const profile = useSelector((state: RootState) => state.profile.data);
-  const totalUnread = useSelector(selectTotalUnreadCount);
 
   const featureItems: MenuItem[] = [
     { id: 'badges', label: 'Badges', icon: 'ribbon-outline', screen: 'Badges' },
-    { id: 'chat', label: 'Chat', icon: 'chatbubble-outline' as const, screen: 'Chat' as const },
     { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching' },
   ];
 
@@ -190,13 +188,6 @@ export default function MenuScreen() {
               <Text style={[styles.menuItemText, { color: colors.text }]}>
                 {item.label}
               </Text>
-              {item.id === 'chat' && totalUnread > 0 && (
-                <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.unreadBadgeText}>
-                    {totalUnread > 99 ? '99+' : totalUnread}
-                  </Text>
-                </View>
-              )}
               <Ionicons
                 name="chevron-forward"
                 size={20}
