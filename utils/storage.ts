@@ -31,7 +31,6 @@ const KEYS = {
   NOTIFICATION_PROMPT_SHOWN: 'tribe_notification_prompt_shown',
   WIZARD_SEEN: 'tribe_wizard_seen',
   COACH_INSIGHTS: 'tribe_coach_insights',
-  COACH_DISCLOSURE_SEEN: 'tribe_coach_disclosure_seen',
 };
 
 // Challenge storage functions
@@ -224,7 +223,6 @@ export const clearUserData = async (): Promise<void> => {
       AsyncStorage.removeItem(KEYS.BLOCKED_USERS),
       AsyncStorage.removeItem(KEYS.WIZARD_SEEN),
       AsyncStorage.removeItem(KEYS.COACH_INSIGHTS),
-      AsyncStorage.removeItem(KEYS.COACH_DISCLOSURE_SEEN),
     ]);
   } catch (error) {
     console.error('Error clearing user data:', error);
@@ -288,23 +286,6 @@ export const clearCoachInsights = async () => {
     await AsyncStorage.removeItem(KEYS.COACH_INSIGHTS);
   } catch (error) {
     console.error('Error clearing coach insights:', error);
-  }
-};
-
-export const hasSeenCoachDisclosure = async (): Promise<boolean> => {
-  try {
-    const data = await AsyncStorage.getItem(KEYS.COACH_DISCLOSURE_SEEN);
-    return data === '1';
-  } catch {
-    return false;
-  }
-};
-
-export const markCoachDisclosureSeen = async () => {
-  try {
-    await AsyncStorage.setItem(KEYS.COACH_DISCLOSURE_SEEN, '1');
-  } catch (error) {
-    console.error('Error marking coach disclosure seen:', error);
   }
 };
 

@@ -23,9 +23,7 @@ import { RootStackParamList } from '../types';
 import {
   CoachInsightsCacheEntry,
   clearCoachInsights,
-  hasSeenCoachDisclosure,
   loadCoachInsights,
-  markCoachDisclosureSeen,
   saveCoachInsights,
 } from '../utils/storage';
 import Skeleton from '../components/ui/Skeleton';
@@ -106,23 +104,17 @@ export default function CoachingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [disclosureVisible, setDisclosureVisible] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   const hasFetchedRef = useRef(false);
 
-  // Disclosure banner (one-time) + reduced motion awareness
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      const [seen, rm] = await Promise.all([
-        hasSeenCoachDisclosure(),
-        AccessibilityInfo.isReduceMotionEnabled().catch(() => false),
-      ]);
-      if (!mounted) return;
-      setDisclosureVisible(!seen);
-      setReduceMotion(rm);
-    })();
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((rm) => {
+        if (mounted) setReduceMotion(rm);
+      })
+      .catch(() => {});
     return () => {
       mounted = false;
     };
@@ -215,21 +207,17 @@ export default function CoachingScreen() {
     runFetch({ showSkeleton: false });
   }, [runFetch]);
 
-  const dismissDisclosure = useCallback(async () => {
-    setDisclosureVisible(false);
-    await markCoachDisclosureSeen();
-  }, []);
-
   const goToDiscover = useCallback(() => {
     navigation.navigate('Main', { screen: 'Discover' });
   }, [navigation]);
 
-  const updatedLabel = useMemo(() => {
-    if (!generatedAt) return null;
+  const subtitle = useMemo(() => {
+    const base = 'Generated from your stats';
+    if (!generatedAt) return base;
     try {
-      return `Updated ${dayjs(generatedAt).fromNow()}`;
+      return `${base} · Updated ${dayjs(generatedAt).fromNow()}`;
     } catch {
-      return null;
+      return base;
     }
   }, [generatedAt]);
 
@@ -270,11 +258,9 @@ export default function CoachingScreen() {
             <Text style={[styles.pageTitle, { color: colors.text }]}>
               Your Coach
             </Text>
-            {updatedLabel ? (
-              <Text style={[styles.subtle, { color: colors.textTertiary }]}>
-                {updatedLabel}
-              </Text>
-            ) : null}
+            <Text style={[styles.subtle, { color: colors.textTertiary }]}>
+              {subtitle}
+            </Text>
           </View>
           <Ionicons
             name="fitness-outline"
@@ -282,35 +268,6 @@ export default function CoachingScreen() {
             color={colors.textSecondary}
           />
         </View>
-
-        {disclosureVisible ? (
-          <View
-            style={[
-              styles.disclosure,
-              { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
-            ]}
-          >
-            <Ionicons
-              name="information-circle-outline"
-              size={20}
-              color={colors.textSecondary}
-              style={{ marginTop: 1 }}
-            />
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={[styles.disclosureText, { color: colors.text }]}>
-                Your coach is AI, using your challenge stats. Messages and personal info are never sent.
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={dismissDisclosure}
-              hitSlop={{ top: 14, right: 14, bottom: 14, left: 14 }}
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss coach disclosure"
-            >
-              <Ionicons name="close" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        ) : null}
 
         {isEmpty ? (
           <EmptyState colors={colors} onJoin={goToDiscover} />
@@ -583,19 +540,6 @@ const styles = StyleSheet.create({
   subtle: {
     fontSize: 12,
     marginTop: 2,
-  },
-  disclosure: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-  },
-  disclosureText: {
-    fontSize: 13,
-    lineHeight: 18,
   },
   card: {
     borderWidth: 1,
