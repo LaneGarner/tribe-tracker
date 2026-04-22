@@ -30,6 +30,7 @@ const KEYS = {
   FEATURE_FLAGS: 'tribe_feature_flags',
   NOTIFICATION_PROMPT_SHOWN: 'tribe_notification_prompt_shown',
   WIZARD_SEEN: 'tribe_wizard_seen',
+  COACH_INSIGHTS: 'tribe_coach_insights',
 };
 
 // Challenge storage functions
@@ -221,6 +222,7 @@ export const clearUserData = async (): Promise<void> => {
       AsyncStorage.removeItem(KEYS.MESSAGES),
       AsyncStorage.removeItem(KEYS.BLOCKED_USERS),
       AsyncStorage.removeItem(KEYS.WIZARD_SEEN),
+      AsyncStorage.removeItem(KEYS.COACH_INSIGHTS),
     ]);
   } catch (error) {
     console.error('Error clearing user data:', error);
@@ -243,6 +245,48 @@ export const clearChatData = async (token?: string | null): Promise<void> => {
     }
   } catch (error) {
     console.error('Error clearing chat data:', error);
+  }
+};
+
+// Coach insights cache (personal AI coach on CoachingScreen).
+// Invalidated from syncMiddleware whenever the user performs a check-in mutation
+// so stale summaries don't linger after fresh data lands.
+export interface CoachInsightsCacheEntry {
+  coaching: Array<{
+    challengeId: string;
+    challengeName: string;
+    opener: string;
+    observations: string[];
+    gapRead: string;
+    thisWeekAsk: string;
+  }>;
+  errors: Array<{ challengeId: string; reason: string }>;
+  generatedAt: string;
+}
+
+export const saveCoachInsights = async (entry: CoachInsightsCacheEntry) => {
+  try {
+    await AsyncStorage.setItem(KEYS.COACH_INSIGHTS, JSON.stringify(entry));
+  } catch (error) {
+    console.error('Error saving coach insights:', error);
+  }
+};
+
+export const loadCoachInsights = async (): Promise<CoachInsightsCacheEntry | null> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.COACH_INSIGHTS);
+    return data ? (JSON.parse(data) as CoachInsightsCacheEntry) : null;
+  } catch (error) {
+    console.error('Error loading coach insights:', error);
+    return null;
+  }
+};
+
+export const clearCoachInsights = async () => {
+  try {
+    await AsyncStorage.removeItem(KEYS.COACH_INSIGHTS);
+  } catch (error) {
+    console.error('Error clearing coach insights:', error);
   }
 };
 

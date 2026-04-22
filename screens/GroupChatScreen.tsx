@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useContext, useMemo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -24,11 +24,13 @@ import {
 import { RootStackParamList, ChatMessage } from '../types';
 import { useConversationRealtime } from '../hooks/useConversationRealtime';
 import { useTypingIndicator } from '../hooks/useTypingIndicator';
+import { useChatActions } from '../hooks/useChatActions';
 import MessageBubble from '../components/chat/MessageBubble';
 import DateSeparator from '../components/chat/DateSeparator';
 import ChatInput from '../components/chat/ChatInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import EmptyChat from '../components/chat/EmptyChat';
+import MessageActionsOverlay from '../components/chat/MessageActionsOverlay';
 import { isBackendConfigured } from '../config/api';
 import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage, computeReadReceipts, ReaderInfo } from '../utils/chatUtils';
 
@@ -44,16 +46,16 @@ export default function GroupChatScreen() {
   const { user, session } = useAuth();
 
   const { conversationId, groupName } = route.params;
+  const flatListRef = useRef<FlatList<ChatDisplayItem> | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useConversationRealtime(conversationId);
   const { typingUsers, sendTypingEvent } = useTypingIndicator(conversationId);
 
-  // Set header title
   useLayoutEffect(() => {
     navigation.setOptions({ title: groupName });
   }, [navigation, groupName]);
 
-  // Memoized selector
   const selectMessages = useMemo(makeSelectMessagesByConversationId, []);
   const messages = useSelector((state: RootState) =>
     selectMessages(state, conversationId)
@@ -65,7 +67,6 @@ export default function GroupChatScreen() {
     state.chat.messageCursors[conversationId]
   );
 
-  // Fetch messages on mount
   useEffect(() => {
     if (session?.access_token && isBackendConfigured()) {
       dispatch(fetchMessagesFromServer({
@@ -75,12 +76,10 @@ export default function GroupChatScreen() {
     }
   }, [dispatch, session?.access_token, conversationId]);
 
-  // Mark as read on focus
   useEffect(() => {
     dispatch(markConversationRead(conversationId));
   }, [dispatch, conversationId]);
 
-  // Mark conversation as read (debounced) on mount and when new messages arrive
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!session?.access_token || !user?.id || !isBackendConfigured()) return;
@@ -97,7 +96,6 @@ export default function GroupChatScreen() {
     };
   }, [dispatch, session?.access_token, user?.id, conversationId, messages.length]);
 
-  // Read receipts
   const selectReadReceipts = useMemo(makeSelectReadReceiptsByConversationId, []);
   const readReceipts = useSelector((state: RootState) =>
     selectReadReceipts(state, conversationId)
@@ -108,11 +106,25 @@ export default function GroupChatScreen() {
     return computeReadReceipts(messages, readReceipts, user.id);
   }, [messages, readReceipts, user?.id]);
 
-  const handleSend = useCallback((text: string) => {
+  const flashMessage = useCallback((messageId: string) => {
+    setHighlightedId(messageId);
+    setTimeout(() => setHighlightedId(prev => (prev === messageId ? null : prev)), 1200);
+  }, []);
+
+  const chatActions = useChatActions({
+    conversationId,
+    currentUserId: user?.id,
+    flashMessage,
+  });
+
+  const handleSend = useCallback((text: string, replyToMessageId?: string) => {
     if (!user?.id) return;
     const clientId = Crypto.randomUUID();
+    const parentMsg = replyToMessageId
+      ? messages.find(m => m.id === replyToMessageId)
+      : undefined;
     const message: ChatMessage = {
-      id: clientId, // temporary, replaced by server
+      id: clientId,
       conversationId,
       senderId: user.id,
       senderName: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
@@ -122,9 +134,18 @@ export default function GroupChatScreen() {
       clientId,
       status: 'sending',
       createdAt: new Date().toISOString(),
+      replyTo: parentMsg
+        ? {
+            id: parentMsg.id,
+            senderId: parentMsg.senderId,
+            senderName: parentMsg.senderName || '',
+            contentPreview: (parentMsg.content || '').substring(0, 140),
+            isDeleted: !!parentMsg.deletedAt,
+          }
+        : undefined,
     };
     dispatch(addMessage(message));
-  }, [dispatch, user, conversationId]);
+  }, [dispatch, user, conversationId, messages]);
 
   const handleLoadMore = useCallback(() => {
     if (!hasMore || !session?.access_token) return;
@@ -135,13 +156,26 @@ export default function GroupChatScreen() {
     }));
   }, [dispatch, session?.access_token, conversationId, hasMore, cursor]);
 
+  const jumpToMessage = useCallback((messageId: string) => {
+    const reversed = [...messages].reverse();
+    const items = buildChatDisplayItems(reversed);
+    const index = items.findIndex(item => item.type !== 'date-separator' && (item as DisplayMessage).id === messageId);
+    if (index >= 0) {
+      try {
+        flatListRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+      } catch (err) {
+        console.warn('scrollToIndex failed:', err);
+      }
+      flashMessage(messageId);
+    }
+  }, [messages, flashMessage]);
+
   const renderItem = useCallback(({ item }: { item: ChatDisplayItem }) => {
     if (item.type === 'date-separator') {
       return <DateSeparator date={(item as DateSeparatorItem).date} />;
     }
     const msg = item as DisplayMessage;
     const msgReaders = readReceiptMap.get(msg.id);
-    // Exclude the message sender from readBy
     const readBy = msgReaders?.filter(r => r.userId !== msg.senderId);
     return (
       <MessageBubble
@@ -150,9 +184,14 @@ export default function GroupChatScreen() {
         showSender={true}
         showTimestamp={msg.showTimestamp}
         readBy={readBy}
+        onLongPress={chatActions.handleLongPress}
+        onSwipeReply={chatActions.beginReply}
+        onJumpToMessage={jumpToMessage}
+        onToggleReaction={chatActions.handleToggleReaction}
+        highlight={highlightedId === msg.id}
       />
     );
-  }, [user?.id, readReceiptMap]);
+  }, [user?.id, readReceiptMap, chatActions.handleLongPress, chatActions.beginReply, chatActions.handleToggleReaction, jumpToMessage, highlightedId]);
 
   const displayItems = useMemo(() => {
     const reversed = [...messages].reverse();
@@ -171,6 +210,7 @@ export default function GroupChatScreen() {
         </View>
       )}
       <FlatList
+        ref={flatListRef}
         data={displayItems}
         renderItem={renderItem}
         keyExtractor={item => item.type === 'date-separator' ? item.id : (item as DisplayMessage).clientId || item.id}
@@ -182,7 +222,24 @@ export default function GroupChatScreen() {
           typingUsers.length > 0 ? <TypingIndicator typingUsers={typingUsers} isGroupChat /> : null
         }
       />
-      <ChatInput onSend={handleSend} onTyping={sendTypingEvent} />
+      <ChatInput
+        onSend={handleSend}
+        onEdit={chatActions.handleEditSubmit}
+        onTyping={sendTypingEvent}
+        replyingTo={chatActions.replyingTo}
+        onCancelReply={chatActions.cancelReply}
+        editing={chatActions.editing}
+        onCancelEdit={chatActions.cancelEdit}
+      />
+      <MessageActionsOverlay
+        target={chatActions.actionsTarget}
+        onClose={chatActions.closeActions}
+        onReact={chatActions.handleToggleReaction}
+        onReply={chatActions.beginReply}
+        onCopy={chatActions.handleCopy}
+        onEdit={chatActions.beginEdit}
+        onDelete={chatActions.handleDelete}
+      />
     </KeyboardAvoidingView>
   );
 }

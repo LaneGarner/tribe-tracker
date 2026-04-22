@@ -1,11 +1,21 @@
-import React, { useContext } from 'react';
+import React, { useContext, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  runOnJS,
+  withSequence,
+} from 'react-native-reanimated';
 import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import Avatar from '../Avatar';
 import { ChatMessage } from '../../types';
 import { ReaderInfo } from '../../utils/chatUtils';
+import QuotedReplyPreview from './QuotedReplyPreview';
+import ReactionPills from './ReactionPills';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -18,13 +28,37 @@ interface MessageBubbleProps {
   onRetry?: () => void;
   readByOther?: boolean;
   readBy?: ReaderInfo[];
+  onLongPress?: (message: ChatMessage, bubbleY: number, bubbleHeight: number, isOwn: boolean) => void;
+  onSwipeReply?: (message: ChatMessage) => void;
+  onJumpToMessage?: (messageId: string) => void;
+  onToggleReaction?: (message: ChatMessage, emoji: string) => void;
+  highlight?: boolean;
 }
 
-export default function MessageBubble({ message, isOwn, showSender = false, showAvatar, avatarUrl, pendingConversation = false, showTimestamp = true, onRetry, readByOther, readBy }: MessageBubbleProps) {
+const SWIPE_THRESHOLD = 60;
+
+export default function MessageBubble({
+  message,
+  isOwn,
+  showSender = false,
+  showAvatar,
+  avatarUrl,
+  pendingConversation = false,
+  showTimestamp = true,
+  onRetry,
+  readByOther,
+  readBy,
+  onLongPress,
+  onSwipeReply,
+  onJumpToMessage,
+  onToggleReaction,
+  highlight,
+}: MessageBubbleProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+  const wrapperRef = useRef<View | null>(null);
 
-  // System messages are centered
+  // System messages: no gestures, no actions
   if (message.type === 'system') {
     return (
       <View style={styles.systemContainer}>
@@ -35,7 +69,70 @@ export default function MessageBubble({ message, isOwn, showSender = false, show
     );
   }
 
+  const isDeleted = !!message.deletedAt;
   const time = dayjs(message.createdAt).format('h:mm A');
+
+  const translateX = useSharedValue(0);
+  const highlightOpacity = useSharedValue(highlight ? 1 : 0);
+
+  React.useEffect(() => {
+    if (highlight) {
+      highlightOpacity.value = withSequence(
+        withTiming(1, { duration: 150 }),
+        withTiming(0, { duration: 900 })
+      );
+    }
+  }, [highlight, highlightOpacity]);
+
+  const triggerLongPress = useCallback(() => {
+    if (isDeleted) return;
+    if (!wrapperRef.current || !onLongPress) return;
+    wrapperRef.current.measureInWindow((x, y, width, height) => {
+      onLongPress(message, y, height, isOwn);
+    });
+  }, [isDeleted, message, isOwn, onLongPress]);
+
+  const triggerSwipeReply = useCallback(() => {
+    if (isDeleted) return;
+    onSwipeReply?.(message);
+  }, [isDeleted, message, onSwipeReply]);
+
+  const longPress = Gesture.LongPress()
+    .minDuration(380)
+    .enabled(!isDeleted && !!onLongPress)
+    .onStart(() => {
+      runOnJS(triggerLongPress)();
+    });
+
+  const pan = Gesture.Pan()
+    .enabled(!isDeleted && !!onSwipeReply)
+    .activeOffsetX(10)
+    .failOffsetY([-8, 8])
+    .onUpdate(e => {
+      const x = Math.max(0, Math.min(e.translationX, 90));
+      translateX.value = x;
+    })
+    .onEnd(e => {
+      if (e.translationX > SWIPE_THRESHOLD) {
+        runOnJS(triggerSwipeReply)();
+      }
+      translateX.value = withTiming(0, { duration: 160 });
+    });
+
+  const composed = Gesture.Exclusive(longPress, pan);
+
+  const bubbleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
+  const highlightStyle = useAnimatedStyle(() => ({
+    opacity: highlightOpacity.value,
+  }));
+
+  const handleToggle = (emoji: string) => {
+    if (isDeleted) return;
+    onToggleReaction?.(message, emoji);
+  };
 
   return (
     <View style={[styles.container, isOwn ? styles.ownContainer : styles.otherContainer]}>
@@ -47,34 +144,64 @@ export default function MessageBubble({ message, isOwn, showSender = false, show
           style={{ marginRight: 8 }}
         />
       )}
-      <View style={[styles.bubbleWrapper, isOwn && { alignItems: 'flex-end' }]}>
+      <View ref={wrapperRef} style={[styles.bubbleWrapper, isOwn && { alignItems: 'flex-end' }]}>
         {!isOwn && showSender && message.senderName && (
           <Text style={[styles.senderName, { color: colors.textSecondary }]}>
             {message.senderName}
           </Text>
         )}
-        <View
-          style={[
-            styles.bubble,
-            isOwn
-              ? [styles.ownBubble, { backgroundColor: colors.primary }]
-              : [styles.otherBubble, { backgroundColor: colors.surface }],
-          ]}
-        >
-          <Text
-            style={[
-              styles.messageText,
-              { color: isOwn ? '#fff' : colors.text },
-            ]}
-          >
-            {message.content}
-          </Text>
-        </View>
+        <GestureDetector gesture={composed}>
+          <Animated.View style={bubbleAnimatedStyle}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFill,
+                styles.highlight,
+                { backgroundColor: colors.primary + '33' },
+                highlightStyle,
+              ]}
+            />
+            <View
+              style={[
+                styles.bubble,
+                isOwn
+                  ? [styles.ownBubble, { backgroundColor: isDeleted ? colors.surface : colors.primary }]
+                  : [styles.otherBubble, { backgroundColor: colors.surface }],
+              ]}
+            >
+              {message.replyTo && !isDeleted && (
+                <QuotedReplyPreview reply={message.replyTo} isOwn={isOwn} onJumpToMessage={onJumpToMessage} />
+              )}
+              {isDeleted ? (
+                <Text style={[styles.deletedText, { color: colors.textTertiary }]}>Message deleted</Text>
+              ) : (
+                <Text
+                  style={[
+                    styles.messageText,
+                    { color: isOwn ? '#fff' : colors.text },
+                  ]}
+                >
+                  {message.content}
+                </Text>
+              )}
+            </View>
+          </Animated.View>
+        </GestureDetector>
+        {!isDeleted && message.reactions && message.reactions.length > 0 && (
+          <ReactionPills
+            reactions={message.reactions}
+            isOwn={isOwn}
+            onToggle={handleToggle}
+          />
+        )}
         {showTimestamp && <View style={styles.metaRow}>
           <Text style={[styles.time, { color: colors.textTertiary }]}>
             {time}
           </Text>
-          {isOwn && (
+          {message.editedAt && !isDeleted && (
+            <Text style={[styles.edited, { color: colors.textTertiary }]}>· edited</Text>
+          )}
+          {isOwn && !isDeleted && (
             <>
               {pendingConversation ? (
                 <Ionicons name="time-outline" size={12} color={colors.textTertiary} style={styles.statusIcon} />
@@ -172,14 +299,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
   },
+  deletedText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    lineHeight: 20,
+  },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 2,
     marginLeft: 4,
+    gap: 4,
   },
   time: {
     fontSize: 11,
+  },
+  edited: {
+    fontSize: 11,
+    fontStyle: 'italic',
   },
   statusIcon: {
     marginLeft: 4,
@@ -211,5 +348,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+  highlight: {
+    borderRadius: 18,
   },
 });

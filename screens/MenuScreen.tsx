@@ -44,8 +44,8 @@ export default function MenuScreen() {
 
   const featureItems: MenuItem[] = [
     { id: 'badges', label: 'Badges', icon: 'ribbon-outline', screen: 'Badges' },
-    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching', devOnly: true },
-  ].filter(i => __DEV__ || !i.devOnly);
+    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching' },
+  ];
 
   const settingsItems: MenuItem[] = [
     { id: 'apps', label: 'Apps & Devices', icon: 'phone-portrait-outline', screen: 'AppsDevices', devOnly: true },
@@ -296,7 +296,7 @@ export default function MenuScreen() {
 
         {/* Version */}
         <Text style={[styles.version, { color: colors.textTertiary }]}>
-          TribeTracker v0.0.1
+          TribeTracker v0.0.2
         </Text>
       </ScrollView>
       <TabBarGradientFade />

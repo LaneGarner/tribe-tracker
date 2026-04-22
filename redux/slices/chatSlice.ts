@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
-import { Conversation, ChatMessage, BlockedUser, ConversationMember } from '../../types';
+import { Conversation, ChatMessage, BlockedUser, ConversationMember, Reaction } from '../../types';
 import {
   saveConversations,
   loadConversations,
@@ -41,6 +41,38 @@ function mergeMessage(state: ChatState, msg: ChatMessage): boolean {
     return true;
   }
   return false;
+}
+
+function findMessage(state: ChatState, conversationId: string, messageId: string): ChatMessage | undefined {
+  const list = state.messages[conversationId];
+  if (!list) return undefined;
+  return list.find(m => m.id === messageId || m.clientId === messageId);
+}
+
+function upsertReaction(msg: ChatMessage, userId: string, emoji: string, currentUserId?: string): void {
+  if (!msg.reactions) msg.reactions = [];
+  let group = msg.reactions.find(r => r.emoji === emoji);
+  if (!group) {
+    group = { emoji, userIds: [], count: 0, selfReacted: false };
+    msg.reactions.push(group);
+  }
+  if (!group.userIds.includes(userId)) {
+    group.userIds.push(userId);
+    group.count = group.userIds.length;
+  }
+  if (currentUserId && userId === currentUserId) group.selfReacted = true;
+}
+
+function dropReaction(msg: ChatMessage, userId: string, emoji: string, currentUserId?: string): void {
+  if (!msg.reactions) return;
+  const group = msg.reactions.find(r => r.emoji === emoji);
+  if (!group) return;
+  group.userIds = group.userIds.filter(id => id !== userId);
+  group.count = group.userIds.length;
+  if (currentUserId && userId === currentUserId) group.selfReacted = false;
+  if (group.count === 0) {
+    msg.reactions = msg.reactions.filter(r => r.emoji !== emoji);
+  }
 }
 
 const initialState: ChatState = {
@@ -236,6 +268,40 @@ const chatSlice = createSlice({
         }
       }
     },
+    addReaction: (state, action: PayloadAction<{ conversationId: string; messageId: string; userId: string; emoji: string; currentUserId?: string }>) => {
+      const msg = findMessage(state, action.payload.conversationId, action.payload.messageId);
+      if (!msg) return;
+      upsertReaction(msg, action.payload.userId, action.payload.emoji, action.payload.currentUserId);
+      saveMessages(state.messages);
+    },
+    removeReaction: (state, action: PayloadAction<{ conversationId: string; messageId: string; userId: string; emoji: string; currentUserId?: string }>) => {
+      const msg = findMessage(state, action.payload.conversationId, action.payload.messageId);
+      if (!msg) return;
+      dropReaction(msg, action.payload.userId, action.payload.emoji, action.payload.currentUserId);
+      saveMessages(state.messages);
+    },
+    deleteMessage: (state, action: PayloadAction<{ conversationId: string; messageId: string; deletedAt: string }>) => {
+      const msg = findMessage(state, action.payload.conversationId, action.payload.messageId);
+      if (!msg) return;
+      msg.deletedAt = action.payload.deletedAt;
+      msg.content = '';
+      msg.reactions = [];
+      saveMessages(state.messages);
+    },
+    restoreMessage: (state, action: PayloadAction<{ conversationId: string; messageId: string; content: string }>) => {
+      const msg = findMessage(state, action.payload.conversationId, action.payload.messageId);
+      if (!msg) return;
+      msg.deletedAt = undefined;
+      msg.content = action.payload.content;
+      saveMessages(state.messages);
+    },
+    editMessage: (state, action: PayloadAction<{ conversationId: string; messageId: string; content: string; editedAt: string }>) => {
+      const msg = findMessage(state, action.payload.conversationId, action.payload.messageId);
+      if (!msg) return;
+      msg.content = action.payload.content;
+      msg.editedAt = action.payload.editedAt;
+      saveMessages(state.messages);
+    },
   },
   extraReducers: builder => {
     builder
@@ -261,15 +327,28 @@ const chatSlice = createSlice({
       })
       .addCase(fetchMessagesFromServer.fulfilled, (state, action) => {
         const { conversationId, messages, hasMore, isLoadingMore } = action.payload;
+        // Preserve reactions / optimistic flags from existing entries
+        const prevById = new Map<string, ChatMessage>();
+        for (const prev of state.messages[conversationId] || []) {
+          prevById.set(prev.id, prev);
+          if (prev.clientId) prevById.set(prev.clientId, prev);
+        }
+        const reconciled = messages.map(m => {
+          const prev = prevById.get(m.id) || (m.clientId ? prevById.get(m.clientId) : undefined);
+          if (!prev) return m;
+          return {
+            ...m,
+            reactions: m.reactions && m.reactions.length > 0 ? m.reactions : prev.reactions,
+          };
+        });
         if (isLoadingMore) {
-          // Prepend older messages
-          state.messages[conversationId] = [...messages, ...(state.messages[conversationId] || [])];
+          state.messages[conversationId] = [...reconciled, ...(state.messages[conversationId] || [])];
         } else {
-          state.messages[conversationId] = messages;
+          state.messages[conversationId] = reconciled;
         }
         state.hasMoreMessages[conversationId] = hasMore;
-        if (messages.length > 0) {
-          state.messageCursors[conversationId] = messages[0].createdAt;
+        if (reconciled.length > 0) {
+          state.messageCursors[conversationId] = reconciled[0].createdAt;
         }
         saveMessages(state.messages);
       })
@@ -300,6 +379,11 @@ export const {
   removeBlockedUser,
   updateMemberStatus,
   updateMemberLastReadAt,
+  addReaction,
+  removeReaction,
+  deleteMessage,
+  restoreMessage,
+  editMessage,
 } = chatSlice.actions;
 
 // Selectors
