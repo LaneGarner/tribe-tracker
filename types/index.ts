@@ -119,6 +119,7 @@ export interface UserProfile {
   goalSpecifics?: Record<string, string[]>;
   goalDaysPerWeek?: number;
   goalNotes?: string;
+  desiredHabits?: string[];
   startingPoint?: 'fresh' | 'returning' | 'leveling_up';
   challengeStyle?: 'gentle' | 'structured' | 'ambitious';
   updatedAt?: string;

@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   ActivityIndicator,
@@ -52,6 +51,21 @@ const CHALLENGE_STYLE_OPTIONS: { value: ChallengeStyle; label: string }[] = [
   { value: 'ambitious', label: 'Ambitious and challenging' },
 ];
 
+const DESIRED_HABITS_OPTIONS: string[] = [
+  'Drink more water',
+  'Meditate daily',
+  'Exercise regularly',
+  'Read daily',
+  'Sleep better',
+  'Less screen time',
+  'Walk outside',
+  'Journal',
+  'Cook more',
+  'Wake up early',
+  'Stretch daily',
+  'Learn something new',
+];
+
 // Per-category follow-up chips. Keys must match CHALLENGE_CATEGORIES keys.
 const SPECIFICS_MAP: Record<string, string[]> = {
   Health: ['Exercise', 'Sleep', 'Nutrition', 'Hydration'],
@@ -81,7 +95,7 @@ export default function OnboardingWizardScreen() {
   const [challengeStyle, setChallengeStyle] = useState<ChallengeStyle | null>(
     null
   );
-  const [successVision, setSuccessVision] = useState<string>('');
+  const [desiredHabits, setDesiredHabits] = useState<string[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [matches, setMatches] = useState<MatchChallengeResult[]>([]);
   const [selectedChallengeIds, setSelectedChallengeIds] = useState<Set<string>>(
@@ -91,6 +105,12 @@ export default function OnboardingWizardScreen() {
   const toggleGoal = (key: string) => {
     setGoals(prev =>
       prev.includes(key) ? prev.filter(g => g !== key) : [...prev, key]
+    );
+  };
+
+  const toggleDesiredHabit = (habit: string) => {
+    setDesiredHabits(prev =>
+      prev.includes(habit) ? prev.filter(h => h !== habit) : [...prev, habit]
     );
   };
 
@@ -108,6 +128,7 @@ export default function OnboardingWizardScreen() {
     onboardingCompleted: true,
     goals,
     goalSpecifics,
+    desiredHabits,
     startingPoint: startingPoint || undefined,
     challengeStyle: challengeStyle || undefined,
     ...extra,
@@ -135,7 +156,7 @@ export default function OnboardingWizardScreen() {
     );
   };
 
-  const handleFindMatches = async (skipVision: boolean = false) => {
+  const handleFindMatches = async () => {
     setLoadingMatches(true);
     try {
       const token = getAccessToken();
@@ -149,7 +170,7 @@ export default function OnboardingWizardScreen() {
         goalSpecifics,
         startingPoint: startingPoint || undefined,
         challengeStyle: challengeStyle || undefined,
-        chatTurn: skipVision ? '' : successVision.trim(),
+        desiredHabits,
       });
       setMatches(result);
       setStep(4);
@@ -481,41 +502,52 @@ export default function OnboardingWizardScreen() {
             </View>
           )}
 
-          {/* STEP 3 — What's the goal behind the goal? */}
+          {/* STEP 3 — Any habits you already want? */}
           {step === 3 && (
             <View>
               <Text style={[styles.title, { color: colors.text }]}>
-                What's the goal behind the goal?
+                Any habits you already want?
               </Text>
               <Text
                 style={[styles.subtitle, { color: colors.textSecondary }]}
               >
-                One sentence — or skip it.
+                Pick any that fit — or skip.
               </Text>
 
-              <TextInput
-                value={successVision}
-                onChangeText={setSuccessVision}
-                placeholder="e.g., I want to feel like myself again. Or I want to prove I can actually stick with something."
-                placeholderTextColor={colors.textTertiary}
-                multiline
-                maxLength={300}
-                style={[
-                  styles.textArea,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    color: colors.text,
-                    minHeight: 80,
-                    marginTop: 16,
-                  },
-                ]}
-              />
-              <Text
-                style={[styles.charCount, { color: colors.textTertiary }]}
-              >
-                {successVision.length}/300
-              </Text>
+              <View style={styles.chipsRow}>
+                {DESIRED_HABITS_OPTIONS.map(habit => {
+                  const selected = desiredHabits.includes(habit);
+                  return (
+                    <TouchableOpacity
+                      key={habit}
+                      onPress={() => toggleDesiredHabit(habit)}
+                      style={[
+                        styles.chip,
+                        {
+                          backgroundColor: selected
+                            ? colors.primary
+                            : colors.surface,
+                          borderColor: selected
+                            ? colors.primary
+                            : colors.border,
+                        },
+                      ]}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: selected }}
+                      accessibilityLabel={habit}
+                    >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          { color: selected ? '#fff' : colors.text },
+                        ]}
+                      >
+                        {habit}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           )}
 
@@ -841,7 +873,7 @@ export default function OnboardingWizardScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.textLinkButton}
-                onPress={() => handleFindMatches(true)}
+                onPress={handleFindMatches}
                 disabled={loadingMatches}
                 accessibilityRole="button"
                 accessibilityLabel="Skip this question"
@@ -865,7 +897,7 @@ export default function OnboardingWizardScreen() {
                       : colors.primary,
                   },
                 ]}
-                onPress={() => handleFindMatches(false)}
+                onPress={handleFindMatches}
                 disabled={loadingMatches}
                 accessibilityRole="button"
                 accessibilityLabel="Find my matches"
@@ -1011,16 +1043,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipText: { fontSize: 14, fontWeight: '500' },
-  textArea: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    marginTop: 8,
-  },
-  charCount: { fontSize: 12, marginTop: 6, textAlign: 'right' },
   matchCard: {
     padding: 16,
     borderRadius: 14,

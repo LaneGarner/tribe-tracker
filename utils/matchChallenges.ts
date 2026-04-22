@@ -12,7 +12,7 @@ export interface MatchChallengesPayload {
   goalSpecifics: Record<string, string[]>;
   startingPoint?: 'fresh' | 'returning' | 'leveling_up';
   challengeStyle?: 'gentle' | 'structured' | 'ambitious';
-  chatTurn: string;
+  desiredHabits?: string[];
 }
 
 export async function fetchChallengeMatches(
