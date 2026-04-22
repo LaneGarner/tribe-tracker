@@ -8,8 +8,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -31,6 +32,10 @@ import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 
 dayjs.extend(relativeTime);
+
+// Match HomeScreen's pill order so cards appear in the same sequence the user
+// already mentally tracks. HomeScreen owns this key.
+const HOME_CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 
 type CoachingNav = NativeStackNavigationProp<RootStackParamList, 'Coaching'>;
 
@@ -93,6 +98,7 @@ export default function CoachingScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [homeOrder, setHomeOrder] = useState<string[]>([]);
 
   const hasFetchedRef = useRef(false);
 
@@ -107,6 +113,32 @@ export default function CoachingScreen() {
       mounted = false;
     };
   }, []);
+
+  // Refresh the pill order on every focus so a reorder on Home is reflected
+  // without needing to restart the app.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      AsyncStorage.getItem(HOME_CHALLENGE_ORDER_KEY)
+        .then((raw) => {
+          if (cancelled) return;
+          if (!raw) {
+            setHomeOrder([]);
+            return;
+          }
+          try {
+            const parsed = JSON.parse(raw);
+            setHomeOrder(Array.isArray(parsed) ? parsed : []);
+          } catch {
+            setHomeOrder([]);
+          }
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   const applyResponse = useCallback((resp: CoachingApiResponse) => {
     setCoaching(resp.coaching || []);
@@ -205,6 +237,21 @@ export default function CoachingScreen() {
     }
   }, [generatedAt]);
 
+  // Match the pill order on Home. Anything the user has explicitly ordered
+  // leads; unranked challenges fall in behind, in the server's return order.
+  // Identical sort rule to HomeScreen.
+  const orderedCoaching = useMemo(() => {
+    if (homeOrder.length === 0) return coaching;
+    return [...coaching].sort((a, b) => {
+      const indexA = homeOrder.indexOf(a.challengeId);
+      const indexB = homeOrder.indexOf(b.challengeId);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  }, [coaching, homeOrder]);
+
   // Empty state fires when the server has nothing to coach on — either the
   // user isn't in any challenge, or every challenge they're in has ended /
   // not started yet.
@@ -258,7 +305,7 @@ export default function CoachingScreen() {
           <OfflineState colors={colors} onRetry={() => runFetch({ showSkeleton: true })} />
         ) : (
           <>
-            {coaching.map((entry) => (
+            {orderedCoaching.map((entry) => (
               <CoachCard key={entry.challengeId} entry={entry} colors={colors} />
             ))}
           </>
