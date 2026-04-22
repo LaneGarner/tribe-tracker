@@ -670,35 +670,37 @@ export default function DiscoverScreen() {
 
   const renderBrowse = () => (
     <>
-      <View style={styles.browseHeader}>
-        <Text style={[styles.title, { color: colors.text, textAlign: 'center' }]}>Discover</Text>
-      </View>
+      <View style={[styles.browseStickyHeader, { backgroundColor: colors.background }]}>
+        <View style={styles.browseHeader}>
+          <Text style={[styles.title, { color: colors.text, textAlign: 'center' }]}>Discover</Text>
+        </View>
 
-      <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => setMode('create')}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#F97316', '#EF4444']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.actionButtonGradient}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => setMode('create')}
+            activeOpacity={0.8}
           >
-            <Ionicons name="add-circle" size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>New Challenge</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: colors.surface, paddingVertical: 14 }]}
-          onPress={() => setMode('join')}
-        >
-          <Ionicons name="key" size={20} color={colors.text} />
-          <Text style={[styles.actionButtonTextAlt, { color: colors.text }]}>
-            Join By Code
-          </Text>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={['#F97316', '#EF4444']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.actionButtonGradient}
+            >
+              <Ionicons name="add-circle" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>New Challenge</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.surface, paddingVertical: 14 }]}
+            onPress={() => setMode('join')}
+          >
+            <Ionicons name="key" size={20} color={colors.text} />
+            <Text style={[styles.actionButtonTextAlt, { color: colors.text }]}>
+              Join By Code
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.browseIntro}>
@@ -1420,6 +1422,7 @@ export default function DiscoverScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        stickyHeaderIndices={mode === 'browse' ? [0] : undefined}
         refreshControl={
           mode === 'browse' ? (
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -1460,13 +1463,16 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 24,
   },
+  browseStickyHeader: {
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
   browseHeader: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 16,
     paddingBottom: 24,
-    marginHorizontal: -20,
-    paddingHorizontal: 12,
   },
   title: {
     fontSize: 24,
