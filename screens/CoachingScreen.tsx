@@ -36,6 +36,7 @@ type CoachingNav = NativeStackNavigationProp<RootStackParamList, 'Coaching'>;
 
 interface CoachingEntry {
   challengeId: string;
+  challengeName: string;
   opener: string;
   observations: string[];
   gapRead: string;
@@ -48,17 +49,17 @@ interface CoachingApiResponse {
   generatedAt: string;
 }
 
-async function fetchCoaching(
-  token: string,
-  challengeIds: string[]
-): Promise<CoachingApiResponse> {
+async function fetchCoaching(token: string): Promise<CoachingApiResponse> {
+  // Let the server decide what's active — it has the source of truth and
+  // won't silently drop a challenge just because the client's local state is
+  // behind.
   const response = await fetch(`${API_URL}/api/coach`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ challengeIds }),
+    body: JSON.stringify({}),
   });
   if (!response.ok) {
     const text = await response.text().catch(() => '');
@@ -74,27 +75,14 @@ export default function CoachingScreen() {
   const { session, getAccessToken } = useAuth();
   const userId = session?.user?.id;
 
-  const challenges = useSelector((state: RootState) => state.challenges.data);
   const participants = useSelector((state: RootState) => state.participants.data);
 
-  const activeChallenges = useMemo(() => {
-    if (!userId) return [];
-    const activeIds = new Set(
-      participants
-        .filter((p) => p.userId === userId)
-        .map((p) => p.challengeId)
-    );
-    return challenges.filter(
-      (c) =>
-        activeIds.has(c.id) && (c.status === 'active' || c.status === 'gap')
-    );
-  }, [challenges, participants, userId]);
-
-  const activeIds = useMemo(
-    () => activeChallenges.map((c) => c.id),
-    [activeChallenges]
-  );
-  const activeIdsKey = activeIds.join(',');
+  // Local participation check just decides whether to bother hitting the API
+  // at all. The server is authoritative on what counts as active.
+  const isInAnyChallenge = useMemo(() => {
+    if (!userId) return false;
+    return participants.some((p) => p.userId === userId);
+  }, [participants, userId]);
 
   const [coaching, setCoaching] = useState<CoachingEntry[]>([]);
   const [apiErrors, setApiErrors] = useState<
@@ -129,7 +117,7 @@ export default function CoachingScreen() {
 
   const runFetch = useCallback(
     async (opts: { showSkeleton: boolean }) => {
-      if (activeIds.length === 0) {
+      if (!isInAnyChallenge) {
         setCoaching([]);
         setApiErrors([]);
         setGeneratedAt(new Date().toISOString());
@@ -144,7 +132,7 @@ export default function CoachingScreen() {
       }
       if (opts.showSkeleton) setLoading(true);
       try {
-        const resp = await fetchCoaching(token, activeIds);
+        const resp = await fetchCoaching(token);
         applyResponse(resp);
         await saveCoachInsights({
           coaching: resp.coaching || [],
@@ -162,7 +150,7 @@ export default function CoachingScreen() {
         setLoading(false);
       }
     },
-    [activeIds, applyResponse, getAccessToken]
+    [applyResponse, getAccessToken, isInAnyChallenge]
   );
 
   // Initial load — read cache, then fetch fresh in the background.
@@ -187,24 +175,20 @@ export default function CoachingScreen() {
     };
   }, [runFetch]);
 
-  // If the set of active challenges changes (e.g. user joins a new one), refetch.
-  const lastIdsKey = useRef<string>(activeIdsKey);
+  // If the user's participation set changes (joins/leaves), refetch.
+  const lastParticipationRef = useRef<boolean>(isInAnyChallenge);
   useEffect(() => {
     if (!hasFetchedRef.current) return;
-    if (lastIdsKey.current === activeIdsKey) return;
-    lastIdsKey.current = activeIdsKey;
+    if (lastParticipationRef.current === isInAnyChallenge) return;
+    lastParticipationRef.current = isInAnyChallenge;
     runFetch({ showSkeleton: false });
-  }, [activeIdsKey, runFetch]);
+  }, [isInAnyChallenge, runFetch]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await clearCoachInsights();
     await runFetch({ showSkeleton: false });
     setRefreshing(false);
-  }, [runFetch]);
-
-  const retryChallenge = useCallback(() => {
-    runFetch({ showSkeleton: false });
   }, [runFetch]);
 
   const goToDiscover = useCallback(() => {
@@ -221,19 +205,12 @@ export default function CoachingScreen() {
     }
   }, [generatedAt]);
 
-  const challengeNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const c of activeChallenges) map.set(c.id, c.name);
-    return map;
-  }, [activeChallenges]);
-
-  const missingChallengeIds = useMemo(() => {
-    const produced = new Set(coaching.map((c) => c.challengeId));
-    return activeIds.filter((id) => !produced.has(id));
-  }, [activeIds, coaching]);
-
-  const isEmpty = activeChallenges.length === 0;
-  const showInitialSkeleton = loading && coaching.length === 0 && !error && !isEmpty;
+  // Empty state fires when the server has nothing to coach on — either the
+  // user isn't in any challenge, or every challenge they're in has ended /
+  // not started yet.
+  const isEmpty =
+    !loading && !error && coaching.length === 0 && apiErrors.length === 0;
+  const showInitialSkeleton = loading && coaching.length === 0 && !error;
 
   return (
     <SafeAreaView
@@ -272,26 +249,17 @@ export default function CoachingScreen() {
         {isEmpty ? (
           <EmptyState colors={colors} onJoin={goToDiscover} />
         ) : showInitialSkeleton ? (
-          <LoadingState colors={colors} count={Math.max(activeChallenges.length, 1)} reduceMotion={reduceMotion} />
+          <LoadingState
+            colors={colors}
+            count={Math.max(coaching.length, 1)}
+            reduceMotion={reduceMotion}
+          />
         ) : error && coaching.length === 0 ? (
           <OfflineState colors={colors} onRetry={() => runFetch({ showSkeleton: true })} />
         ) : (
           <>
             {coaching.map((entry) => (
-              <CoachCard
-                key={entry.challengeId}
-                entry={entry}
-                challengeName={challengeNameById.get(entry.challengeId) || 'Challenge'}
-                colors={colors}
-              />
-            ))}
-            {missingChallengeIds.map((id) => (
-              <MissingCard
-                key={`missing-${id}`}
-                colors={colors}
-                challengeName={challengeNameById.get(id) || 'Challenge'}
-                onRetry={retryChallenge}
-              />
+              <CoachCard key={entry.challengeId} entry={entry} colors={colors} />
             ))}
           </>
         )}
@@ -303,13 +271,12 @@ export default function CoachingScreen() {
 
 function CoachCard({
   entry,
-  challengeName,
   colors,
 }: {
   entry: CoachingEntry;
-  challengeName: string;
   colors: ReturnType<typeof getColors>;
 }) {
+  const challengeName = entry.challengeName || 'Challenge';
   return (
     <View
       style={[
@@ -361,45 +328,6 @@ function CoachCard({
           {entry.thisWeekAsk}
         </Text>
       </View>
-    </View>
-  );
-}
-
-function MissingCard({
-  challengeName,
-  colors,
-  onRetry,
-}: {
-  challengeName: string;
-  colors: ReturnType<typeof getColors>;
-  onRetry: () => void;
-}) {
-  return (
-    <View
-      style={[
-        styles.card,
-        styles.missingCard,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-      ]}
-    >
-      <Text style={[styles.cardTitle, { color: colors.textSecondary }]} numberOfLines={1}>
-        {challengeName.toUpperCase()}
-      </Text>
-      <Text style={[styles.missingText, { color: colors.textSecondary }]}>
-        Your coach is thinking — tap to retry.
-      </Text>
-      <TouchableOpacity
-        onPress={onRetry}
-        style={[styles.retryBtn, { borderColor: colors.border }]}
-        accessibilityRole="button"
-        accessibilityLabel={`Retry coaching for ${challengeName}`}
-        hitSlop={{ top: 14, right: 14, bottom: 14, left: 14 }}
-      >
-        <Ionicons name="refresh" size={16} color={colors.textSecondary} />
-        <Text style={[styles.retryBtnText, { color: colors.textSecondary }]}>
-          Retry
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -547,9 +475,6 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
-  missingCard: {
-    alignItems: 'flex-start',
-  },
   cardTitle: {
     fontSize: 11,
     fontWeight: '700',
@@ -604,11 +529,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     lineHeight: 20,
-  },
-  missingText: {
-    fontSize: 14,
-    marginTop: 4,
-    marginBottom: 10,
   },
   retryBtn: {
     flexDirection: 'row',

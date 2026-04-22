@@ -254,6 +254,7 @@ export const clearChatData = async (token?: string | null): Promise<void> => {
 export interface CoachInsightsCacheEntry {
   coaching: Array<{
     challengeId: string;
+    challengeName: string;
     opener: string;
     observations: string[];
     gapRead: string;
