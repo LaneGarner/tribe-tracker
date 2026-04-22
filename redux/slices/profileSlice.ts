@@ -7,12 +7,14 @@ interface ProfileState {
   data: UserProfile | null;
   loading: boolean;
   error: string | null;
+  hasFetchedFromServer: boolean;
 }
 
 const initialState: ProfileState = {
   data: null,
   loading: false,
   error: null,
+  hasFetchedFromServer: false,
 };
 
 // Async thunk to load profile from storage
@@ -98,6 +100,7 @@ const profileSlice = createSlice({
       state.data = null;
       state.loading = false;
       state.error = null;
+      state.hasFetchedFromServer = false;
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
@@ -127,10 +130,12 @@ const profileSlice = createSlice({
         state.data = action.payload;
         state.loading = false;
         state.error = null;
+        state.hasFetchedFromServer = true;
       })
       .addCase(fetchProfileFromServer.rejected, (state, action) => {
         state.error = action.error.message || 'Failed to fetch profile';
         state.loading = false;
+        state.hasFetchedFromServer = true;
       });
   },
 });

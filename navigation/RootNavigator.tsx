@@ -1,4 +1,5 @@
 import React, { useContext } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
@@ -53,16 +54,49 @@ export default function RootNavigator() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user } = useAuth();
-  const profile = useSelector((state: RootState) => state.profile.data);
+  const profileData = useSelector((state: RootState) => state.profile.data);
   const profileLoading = useSelector(
     (state: RootState) => state.profile.loading
   );
+  const profileHasFetched = useSelector(
+    (state: RootState) => state.profile.hasFetchedFromServer
+  );
 
-  // Show wizard when logged in, profile has loaded at least once, and the
-  // user hasn't completed onboarding yet. While profile is still loading we
-  // show the normal Main flow (avoids a flash before redirect kicks in).
+  // We consider the profile "resolved" once we've attempted a server fetch
+  // (success or fail), OR once we have local data AND are not actively
+  // loading. This prevents:
+  //   - Flash of Main before wizard for existing users with
+  //     onboardingCompleted !== true
+  //   - Flash of wizard for users who HAVE completed onboarding (we wait
+  //     until data is in)
+  const profileResolved =
+    !profileLoading && (profileHasFetched || profileData !== null);
+
+  // If the user is authenticated but the profile is null after we've
+  // resolved, they have no profile row yet — treat as needing onboarding.
+  // Otherwise check the flag explicitly.
   const needsOnboarding =
-    !!user && !profileLoading && !!profile && profile.onboardingCompleted !== true;
+    !!user && profileResolved && profileData?.onboardingCompleted !== true;
+
+  // While the user is authenticated but the profile hasn't resolved, render
+  // a lightweight loading view rather than Main (prevents flash of Main ->
+  // wizard redirect).
+  const profileStillLoading = !!user && !profileResolved;
+
+  if (profileStillLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <Stack.Navigator
