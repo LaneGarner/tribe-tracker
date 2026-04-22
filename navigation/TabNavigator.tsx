@@ -14,24 +14,21 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import HomeScreen from '../screens/HomeScreen';
-import CreateChallengeScreen from '../screens/CreateChallengeScreen';
+import DiscoverScreen from '../screens/DiscoverScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import MenuScreen from '../screens/MenuScreen';
-import ChatScreen from '../screens/ChatScreen';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { TabParamList } from '../types';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { selectTotalUnreadCount } from '../redux/slices/chatSlice';
-import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
 // Tab icon configuration - all filled icons, color changes on focus
 const TAB_ICONS: Record<string, { icon: keyof typeof Ionicons.glyphMap; size: number }> = {
   Home: { icon: 'home', size: 22 },
-  Challenges: { icon: 'flag', size: 22 },
+  Discover: { icon: 'flag', size: 22 },
   Leaderboard: { icon: 'trophy', size: 22 },
-  Chat: { icon: 'chatbubble', size: 22 },
   Menu: { icon: 'menu', size: 26 },
 };
 
@@ -45,7 +42,7 @@ const VELOCITY_THRESHOLD = 500;
 
 const TAB_BAR_PADDING = 0;
 const SELECTION_PILL_PADDING = 6;
-const PILL_HORIZONTAL_PADDING = 16; // padding on each side of content
+const PILL_HORIZONTAL_PADDING = 22; // padding on each side of content
 const MIN_PILL_WIDTH = 72;
 
 
@@ -113,13 +110,6 @@ const TabButton = ({
             size={iconConfig.size}
             color={isFocused ? colors.tabBarActive : colors.tabBarInactive}
           />
-          {route.name === 'Chat' && totalUnread > 0 && (
-            <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>
-                {totalUnread > 99 ? '99+' : totalUnread}
-              </Text>
-            </View>
-          )}
         </View>
         <Text
           numberOfLines={1}
@@ -485,7 +475,6 @@ const styles = StyleSheet.create({
 export default function TabNavigator() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const [chatTabEnabled] = useFeatureFlag(FEATURE_FLAGS.CHAT_TAB, true);
 
   return (
     <Tab.Navigator
@@ -511,12 +500,12 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Challenges"
-        component={CreateChallengeScreen}
+        name="Discover"
+        component={DiscoverScreen}
         options={{
-          title: 'Challenges',
+          title: 'Discover',
           headerShown: false,
-          tabBarLabel: 'Challenges',
+          tabBarLabel: 'Discover',
         }}
       />
       <Tab.Screen
@@ -524,24 +513,15 @@ export default function TabNavigator() {
         component={LeaderboardScreen}
         options={{
           title: 'Leaderboard',
-          tabBarLabel: 'Leaderboard',
+          tabBarLabel: 'Leaderboards',
         }}
       />
-      {chatTabEnabled && (
-        <Tab.Screen
-          name="Chat"
-          component={ChatScreen}
-          options={{
-            title: 'Tribe Chat',
-            tabBarLabel: 'Chat',
-          }}
-        />
-      )}
       <Tab.Screen
         name="Menu"
         component={MenuScreen}
         options={{
           title: 'Menu',
+          headerShown: false,
           tabBarLabel: 'Menu',
         }}
       />

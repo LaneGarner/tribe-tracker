@@ -1,8 +1,12 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { RootState } from '../redux/store';
+import { hasSeenWizard } from '../utils/storage';
 import TabNavigator from './TabNavigator';
 
 // Auth screen
@@ -10,7 +14,7 @@ import AuthScreen from '../screens/AuthScreen';
 
 // Core screens
 import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
-import CreateChallengeScreen from '../screens/CreateChallengeScreen';
+import DiscoverScreen from '../screens/DiscoverScreen';
 import ManageChildScreen from '../screens/ManageChildScreen';
 import TaskAnalyticsScreen from '../screens/TaskAnalyticsScreen';
 
@@ -42,12 +46,71 @@ import FeatureTogglesScreen from '../screens/FeatureTogglesScreen';
 // Badges screen
 import BadgesScreen from '../screens/BadgesScreen';
 
+// Onboarding wizard (first-run)
+import OnboardingWizardScreen from '../screens/OnboardingWizardScreen';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user } = useAuth();
+  const profileData = useSelector((state: RootState) => state.profile.data);
+  const profileLoading = useSelector(
+    (state: RootState) => state.profile.loading
+  );
+  const profileHasFetched = useSelector(
+    (state: RootState) => state.profile.hasFetchedFromServer
+  );
+
+  // We consider the profile "resolved" once we've attempted a server fetch
+  // (success or fail), OR once we have local data AND are not actively
+  // loading. This prevents:
+  //   - Flash of Main before wizard for existing users with
+  //     onboardingCompleted !== true
+  //   - Flash of wizard for users who HAVE completed onboarding (we wait
+  //     until data is in)
+  const profileResolved =
+    !profileLoading && (profileHasFetched || profileData !== null);
+
+  // Local flag persists independently of the profile row so that users who
+  // skip the wizard don't see it again even if the server profile lacks the
+  // onboardingCompleted column or clobbers local state.
+  const [wizardSeen, setWizardSeenState] = useState<boolean | null>(null);
+  useEffect(() => {
+    hasSeenWizard().then(setWizardSeenState);
+  }, []);
+
+  // If the user is authenticated but the profile is null after we've
+  // resolved, they have no profile row yet — treat as needing onboarding.
+  // Otherwise check the flag explicitly. Local wizardSeen flag short-circuits
+  // the profile check.
+  const needsOnboarding =
+    !!user &&
+    profileResolved &&
+    !wizardSeen &&
+    profileData?.onboardingCompleted !== true;
+
+  // While the user is authenticated but the profile hasn't resolved, or the
+  // wizard-seen flag hasn't loaded yet, render a lightweight loading view
+  // rather than Main (prevents flash of Main -> wizard redirect).
+  const profileStillLoading =
+    !!user && (!profileResolved || wizardSeen === null);
+
+  if (profileStillLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <Stack.Navigator
@@ -77,12 +140,29 @@ export default function RootNavigator() {
       ) : (
         // Logged in - show main app
         <>
+          {needsOnboarding ? (
+            <Stack.Screen
+              name="OnboardingWizard"
+              component={OnboardingWizardScreen}
+              options={{ headerShown: false, gestureEnabled: false }}
+            />
+          ) : null}
+
           {/* Main app with tabs - tabs have their own headers */}
           <Stack.Screen
             name="Main"
             component={TabNavigator}
             options={{ headerShown: false }}
           />
+
+          {/* Always register OnboardingWizard so it can be opened manually */}
+          {!needsOnboarding ? (
+            <Stack.Screen
+              name="OnboardingWizard"
+              component={OnboardingWizardScreen}
+              options={{ headerShown: false }}
+            />
+          ) : null}
 
           {/* Core screens */}
           <Stack.Screen
@@ -92,7 +172,7 @@ export default function RootNavigator() {
           />
           <Stack.Screen
             name="CreateChallenge"
-            component={CreateChallengeScreen}
+            component={DiscoverScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

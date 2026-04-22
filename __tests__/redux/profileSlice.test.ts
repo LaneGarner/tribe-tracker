@@ -55,7 +55,12 @@ const makeProfile = (overrides: Partial<UserProfile> = {}): UserProfile => ({
 });
 
 describe('profileSlice', () => {
-  const initialState = { data: null, loading: false, error: null };
+  const initialState = {
+    data: null,
+    loading: false,
+    error: null,
+    hasFetchedFromServer: false,
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -71,7 +76,7 @@ describe('profileSlice', () => {
   describe('setProfile', () => {
     it('should set data, loading=false, error=null with a profile', () => {
       const profile = makeProfile();
-      const prev = { data: null, loading: true, error: 'some error' };
+      const prev = { data: null, loading: true, error: 'some error', hasFetchedFromServer: false };
       const state = reducer(prev, setProfile(profile));
 
       expect(state.data).toEqual(profile);
@@ -80,7 +85,7 @@ describe('profileSlice', () => {
     });
 
     it('should set data to null when null is passed', () => {
-      const prev = { data: makeProfile(), loading: false, error: null };
+      const prev = { data: makeProfile(), loading: false, error: null, hasFetchedFromServer: false };
       const state = reducer(prev, setProfile(null));
 
       expect(state.data).toBeNull();
@@ -103,7 +108,7 @@ describe('profileSlice', () => {
   describe('updateProfile', () => {
     it('should shallow merge partial update and set updatedAt', () => {
       const profile = makeProfile({ fullName: 'Old Name' });
-      const prev = { data: profile, loading: false, error: null };
+      const prev = { data: profile, loading: false, error: null, hasFetchedFromServer: false };
       const state = reducer(prev, updateProfile({ fullName: 'New Name' }));
 
       expect(state.data!.fullName).toBe('New Name');
@@ -122,14 +127,14 @@ describe('profileSlice', () => {
     });
 
     it('should call saveProfile when data exists', () => {
-      const prev = { data: makeProfile(), loading: false, error: null };
+      const prev = { data: makeProfile(), loading: false, error: null, hasFetchedFromServer: false };
       reducer(prev, updateProfile({ fullName: 'Updated' }));
       expect(saveProfile).toHaveBeenCalled();
     });
 
     it('should update multiple fields at once', () => {
       const profile = makeProfile();
-      const prev = { data: profile, loading: false, error: null };
+      const prev = { data: profile, loading: false, error: null, hasFetchedFromServer: false };
       const state = reducer(
         prev,
         updateProfile({ fullName: 'Jane Doe', bio: 'Hello', city: 'NYC' })
@@ -144,7 +149,7 @@ describe('profileSlice', () => {
   describe('updatePrivacySettings', () => {
     it('should merge privacy flags and set updatedAt', () => {
       const profile = makeProfile({ hideEmail: false, hideAge: false });
-      const prev = { data: profile, loading: false, error: null };
+      const prev = { data: profile, loading: false, error: null, hasFetchedFromServer: false };
       const state = reducer(prev, updatePrivacySettings({ hideEmail: true }));
 
       expect(state.data!.hideEmail).toBe(true);
@@ -154,7 +159,7 @@ describe('profileSlice', () => {
 
     it('should update multiple privacy fields at once', () => {
       const profile = makeProfile();
-      const prev = { data: profile, loading: false, error: null };
+      const prev = { data: profile, loading: false, error: null, hasFetchedFromServer: false };
       const state = reducer(
         prev,
         updatePrivacySettings({ hideEmail: true, hideAge: true, hideBio: true })
@@ -177,7 +182,7 @@ describe('profileSlice', () => {
     });
 
     it('should call saveProfile when data exists', () => {
-      const prev = { data: makeProfile(), loading: false, error: null };
+      const prev = { data: makeProfile(), loading: false, error: null, hasFetchedFromServer: false };
       reducer(prev, updatePrivacySettings({ hideEmail: true }));
       expect(saveProfile).toHaveBeenCalled();
     });
@@ -186,7 +191,7 @@ describe('profileSlice', () => {
   describe('updateChallengeOrder', () => {
     it('should set challengeOrder array and updatedAt', () => {
       const profile = makeProfile({ challengeOrder: [] });
-      const prev = { data: profile, loading: false, error: null };
+      const prev = { data: profile, loading: false, error: null, hasFetchedFromServer: false };
       const order = ['c3', 'c1', 'c2'];
       const state = reducer(prev, updateChallengeOrder(order));
 
@@ -196,7 +201,7 @@ describe('profileSlice', () => {
 
     it('should handle empty order array', () => {
       const profile = makeProfile({ challengeOrder: ['c1', 'c2'] });
-      const prev = { data: profile, loading: false, error: null };
+      const prev = { data: profile, loading: false, error: null, hasFetchedFromServer: false };
       const state = reducer(prev, updateChallengeOrder([]));
 
       expect(state.data!.challengeOrder).toEqual([]);
@@ -208,7 +213,7 @@ describe('profileSlice', () => {
     });
 
     it('should call saveProfile when data exists', () => {
-      const prev = { data: makeProfile(), loading: false, error: null };
+      const prev = { data: makeProfile(), loading: false, error: null, hasFetchedFromServer: false };
       reducer(prev, updateChallengeOrder(['c1']));
       expect(saveProfile).toHaveBeenCalled();
     });
@@ -216,7 +221,7 @@ describe('profileSlice', () => {
 
   describe('clearProfile', () => {
     it('should reset data to null, loading=false, error=null', () => {
-      const prev = { data: makeProfile(), loading: true, error: 'some error' };
+      const prev = { data: makeProfile(), loading: true, error: 'some error', hasFetchedFromServer: false };
       const state = reducer(prev, clearProfile());
 
       expect(state.data).toBeNull();
@@ -252,7 +257,7 @@ describe('profileSlice', () => {
     });
 
     it('should clear error with null', () => {
-      const prev = { data: null, loading: false, error: 'old' };
+      const prev = { data: null, loading: false, error: 'old', hasFetchedFromServer: false };
       const state = reducer(prev, setError(null));
       expect(state.error).toBeNull();
     });

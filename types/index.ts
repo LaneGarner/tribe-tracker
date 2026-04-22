@@ -113,6 +113,15 @@ export interface UserProfile {
   role?: string;
   permissionTier?: string;
   districtId?: string;
+  // Onboarding / first-run wizard
+  onboardingCompleted?: boolean;
+  goals?: string[];
+  goalSpecifics?: Record<string, string[]>;
+  goalDaysPerWeek?: number;
+  goalNotes?: string;
+  desiredHabits?: string[];
+  startingPoint?: 'fresh' | 'returning' | 'leveling_up';
+  challengeStyle?: 'gentle' | 'structured' | 'ambitious';
   updatedAt?: string;
 }
 
@@ -245,11 +254,12 @@ export type RootStackParamList = {
   SystemAdmin: undefined;
   FeatureToggles: undefined;
   Badges: undefined;
+  OnboardingWizard: { fromDiscover?: boolean } | undefined;
 };
 
 export type TabParamList = {
   Home: { selectChallengeId?: string } | undefined;
-  Challenges: undefined;
+  Discover: undefined;
   Leaderboard: { challengeId?: string } | undefined;
   Chat: undefined;
   Menu: undefined;

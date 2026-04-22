@@ -60,7 +60,7 @@ function AppContent() {
   const { colorScheme } = useContext(ThemeContext);
   const { isLoading: authLoading, isConfigured, user, session } = useAuth();
   const [isInitializing, setIsInitializing] = useState(true);
-  const prevUserRef = useRef<typeof user>(undefined);
+  const prevUserRef = useRef<typeof user>(null);
 
   // Configure notification handler on mount
   useEffect(() => {

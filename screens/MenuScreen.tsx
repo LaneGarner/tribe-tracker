@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import { ThemeContext, ThemePreference, getColors } from '../theme/ThemeContext';
@@ -16,12 +17,11 @@ import { useAuth } from '../context/AuthContext';
 import { clearAllAppData, clearChatData } from '../utils/storage';
 import { RootStackParamList } from '../types';
 import { RootState, AppDispatch } from '../redux/store';
-import { selectTotalUnreadCount, loadChatFromStorage } from '../redux/slices/chatSlice';
+import { loadChatFromStorage } from '../redux/slices/chatSlice';
 import SegmentedControl from '../components/SegmentedControl';
 import Avatar from '../components/Avatar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
-import { useFeatureFlag, FEATURE_FLAGS } from '../hooks/useFeatureFlag';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -31,6 +31,7 @@ interface MenuItem {
   icon: keyof typeof Ionicons.glyphMap;
   screen?: keyof RootStackParamList;
   action?: () => void;
+  devOnly?: boolean;
 }
 
 export default function MenuScreen() {
@@ -40,22 +41,17 @@ export default function MenuScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { user, signOut, getAccessToken } = useAuth();
   const profile = useSelector((state: RootState) => state.profile.data);
-  const totalUnread = useSelector(selectTotalUnreadCount);
-  const [chatTabEnabled] = useFeatureFlag(FEATURE_FLAGS.CHAT_TAB, true);
 
   const featureItems: MenuItem[] = [
     { id: 'badges', label: 'Badges', icon: 'ribbon-outline', screen: 'Badges' },
-    ...(!chatTabEnabled
-      ? [{ id: 'chat', label: 'Chat', icon: 'chatbubble-outline' as const, screen: 'Chat' as const }]
-      : []),
-    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching' },
-  ];
+    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching', devOnly: true },
+  ].filter(i => __DEV__ || !i.devOnly);
 
   const settingsItems: MenuItem[] = [
-    { id: 'apps', label: 'Apps & Devices', icon: 'phone-portrait-outline', screen: 'AppsDevices' },
+    { id: 'apps', label: 'Apps & Devices', icon: 'phone-portrait-outline', screen: 'AppsDevices', devOnly: true },
     { id: 'notifications', label: 'Notifications', icon: 'notifications-outline', screen: 'Notifications' },
-    { id: 'preferences', label: 'Preferences', icon: 'globe-outline', screen: 'Preferences' },
-  ];
+    { id: 'preferences', label: 'Preferences', icon: 'globe-outline', screen: 'Preferences', devOnly: true },
+  ].filter(i => __DEV__ || !i.devOnly);
 
   const legalSupportItems: MenuItem[] = [
     { id: 'privacy', label: 'Privacy Center', icon: 'shield-outline', screen: 'PrivacyCenter' },
@@ -125,6 +121,7 @@ export default function MenuScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -191,13 +188,6 @@ export default function MenuScreen() {
               <Text style={[styles.menuItemText, { color: colors.text }]}>
                 {item.label}
               </Text>
-              {item.id === 'chat' && totalUnread > 0 && (
-                <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.unreadBadgeText}>
-                    {totalUnread > 99 ? '99+' : totalUnread}
-                  </Text>
-                </View>
-              )}
               <Ionicons
                 name="chevron-forward"
                 size={20}
@@ -253,7 +243,7 @@ export default function MenuScreen() {
               style={[styles.menuItem, { backgroundColor: colors.surface }]}
               onPress={handleClearChatData}
             >
-              <Ionicons name="chatbubble-outline" size={22} color={colors.error} />
+              <Ionicons name="trash-outline" size={22} color={colors.error} />
               <Text style={[styles.menuItemText, { color: colors.error }]}>
                 Clear Chat Data
               </Text>
@@ -310,6 +300,7 @@ export default function MenuScreen() {
         </Text>
       </ScrollView>
       <TabBarGradientFade />
+      </SafeAreaView>
     </View>
   );
 }

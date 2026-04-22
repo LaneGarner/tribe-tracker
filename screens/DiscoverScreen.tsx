@@ -54,6 +54,7 @@ import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
 import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
+import HeaderChatButton from '../components/ui/HeaderChatButton';
 import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
 import ColorThemePicker from '../components/challenge/ColorThemePicker';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
@@ -68,7 +69,7 @@ type CreateChallengeNavigationProp = NativeStackNavigationProp<
 
 type CreateChallengeRouteProp = RouteProp<RootStackParamList, 'CreateChallenge'>;
 
-export default function CreateChallengeScreen() {
+export default function DiscoverScreen() {
   const navigation = useNavigation<CreateChallengeNavigationProp>();
   const route = useRoute<CreateChallengeRouteProp>();
   const dispatch = useDispatch<AppDispatch>();
@@ -667,10 +668,10 @@ export default function CreateChallengeScreen() {
     ));
   };
 
-  const renderBrowse = () => (
-    <>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Challenges</Text>
+  const renderBrowseStickyHeader = () => (
+    <View style={[styles.browseStickyHeader, { backgroundColor: colors.background }]}>
+      <View style={styles.browseHeader}>
+        <Text style={[styles.title, { color: colors.text, textAlign: 'center' }]}>Discover</Text>
       </View>
 
       <View style={styles.actionButtons}>
@@ -699,6 +700,44 @@ export default function CreateChallengeScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+    </View>
+  );
+
+  const renderBrowse = () => (
+    <>
+      <View style={styles.browseIntro}>
+        <Text style={[styles.browseIntroTitle, { color: colors.text }]}>
+          Public Challenges
+        </Text>
+        <Text style={[styles.browseIntroSubtitle, { color: colors.textSecondary }]}>
+          Join a challenge, commit with a group, stack real wins together.
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        onPress={() => navigation.navigate('OnboardingWizard', { fromDiscover: true })}
+        activeOpacity={0.85}
+        style={[
+          styles.wizardPromptCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="Not sure where to start? Answer a few questions for a short list of matches."
+      >
+        <Ionicons name="sparkles" size={20} color="#3B82F6" />
+        <Text
+          style={[styles.wizardPromptCardText, { color: colors.text }]}
+          numberOfLines={2}
+        >
+          Not sure where to start?{' '}
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>
+            Answer a few questions
+          </Text>{' '}
+          for a short list of matches.
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+      </TouchableOpacity>
+
 
       <Text style={[styles.sectionTitle, { color: colors.text }]}>
         Active
@@ -1385,16 +1424,19 @@ export default function CreateChallengeScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        stickyHeaderIndices={mode === 'browse' ? [0] : undefined}
         refreshControl={
           mode === 'browse' ? (
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           ) : undefined
         }
       >
+        {mode === 'browse' && renderBrowseStickyHeader()}
         {mode === 'browse' && renderBrowse()}
         {mode === 'join' && renderJoin()}
       </ScrollView>
       <TabBarGradientFade />
+      {mode === 'browse' && <HeaderChatButton />}
     </SafeAreaView>
   );
 }
@@ -1421,6 +1463,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  browseStickyHeader: {
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  browseHeader: {
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingTop: 16,
     paddingBottom: 24,
   },
@@ -1464,6 +1517,33 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
+  },
+  browseIntro: {
+    marginBottom: 20,
+  },
+  browseIntroTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  browseIntroSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  wizardPromptCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginBottom: 20,
+  },
+  wizardPromptCardText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   emptyState: {
     alignItems: 'center',

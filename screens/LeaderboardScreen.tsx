@@ -46,6 +46,7 @@ import { getGradientForChallenge } from '../constants/gradients';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
+import HeaderChatButton from '../components/ui/HeaderChatButton';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
 
@@ -292,11 +293,17 @@ export default function LeaderboardScreen() {
         paddingTop: insets.top + 16,
         backgroundColor: colors.background,
       }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboard</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>
       </View>
       {/* Challenge selector tabs - sticky outside ScrollView */}
       {orderedChallenges.length > 1 && (
         <View style={[styles.challengeSelectorSticky, { backgroundColor: colors.background }]}>
+          <Text
+            style={[styles.pillsHeader, { color: colors.textSecondary }]}
+            accessibilityRole="header"
+          >
+            My Rankings
+          </Text>
           {isExpoGo || !DraggableFlatList ? (
             // Expo Go: arrows inside chips for reordering
             <ScrollView
@@ -511,6 +518,7 @@ export default function LeaderboardScreen() {
         )}
       </ScrollView>
       <TabBarGradientFade />
+      <HeaderChatButton />
     </View>
   );
 }
@@ -522,14 +530,24 @@ const styles = StyleSheet.create({
   stickyHeader: {
     paddingHorizontal: 20,
     paddingBottom: 12,
+    alignItems: 'center',
     zIndex: 10,
   },
   challengeSelectorSticky: {
     paddingBottom: 8,
   },
+  pillsHeader: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    paddingHorizontal: 20,
+    marginBottom: 6,
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,

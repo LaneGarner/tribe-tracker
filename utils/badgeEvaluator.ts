@@ -12,7 +12,7 @@ interface UserStats {
   publicChallengesCreated: number;
   completedChallengeCount: number;
   profileComplete: boolean;
-  podiumResults: { challengeId: string; rank: number }[];
+  podiumCount: number;
   totalWins: number;
   level: number;
 }
@@ -42,8 +42,8 @@ function gatherStats(state: RootState, userId: string): UserStats {
 
   const completedChallengeCount = completedChallenges.length;
 
-  // Calculate podium results for completed challenges
-  const podiumResults: { challengeId: string; rank: number }[] = [];
+  // Count podium finishes (top 3) and wins (1st) across all completed challenges
+  let podiumCount = 0;
   let totalWins = 0;
 
   for (const challenge of completedChallenges) {
@@ -55,7 +55,7 @@ function gatherStats(state: RootState, userId: string): UserStats {
     if (userIndex !== -1) {
       const userPoints = participants[userIndex].totalPoints;
       const rank = participants.filter(p => p.totalPoints > userPoints).length + 1;
-      podiumResults.push({ challengeId: challenge.id, rank });
+      if (rank <= 3) podiumCount++;
       if (rank === 1) totalWins++;
     }
   }
@@ -77,7 +77,7 @@ function gatherStats(state: RootState, userId: string): UserStats {
     publicChallengesCreated,
     completedChallengeCount,
     profileComplete,
-    podiumResults,
+    podiumCount,
     totalWins,
     level: state.badges.level,
   };
@@ -93,14 +93,28 @@ function isAlreadyEarned(
   );
 }
 
-// Map slug to what stat it checks, since requirementType is generic ("event"/"count")
-function getStatForSlug(slug: string): 'checkin' | 'challenge_join' | 'challenge_create' | 'challenge_public' | 'challenge_complete' | 'wins' | 'profile' | 'invite' | null {
-  if (slug === 'first_checkin' || slug === 'getting_started' || slug === 'building_habit' || slug.startsWith('checkins_')) return 'checkin';
-  if (slug === 'first_challenge' || slug === 'challenges_5' || slug === 'challenges_10') return 'challenge_join';
+// Map slug to what stat it checks. requirementType is generic ('event' / 'count' / 'streak' / 'level').
+// Placement-related slugs (podium_*, wins_*) are treated as count-based single-earn here, not per-challenge.
+type StatKind =
+  | 'checkin'
+  | 'challenge_join'
+  | 'challenge_create'
+  | 'challenge_public'
+  | 'challenge_complete'
+  | 'podium'
+  | 'wins'
+  | 'profile'
+  | 'invite'
+  | null;
+
+function getStatForSlug(slug: string): StatKind {
+  if (slug === 'first_checkin' || slug.startsWith('checkins_')) return 'checkin';
+  if (slug === 'first_challenge' || slug.startsWith('challenges_joined_')) return 'challenge_join';
   if (slug === 'create_challenge') return 'challenge_create';
-  if (slug === 'public_challenge') return 'challenge_public';
-  if (slug === 'challenge_complete') return 'challenge_complete';
-  if (slug === 'wins_3') return 'wins';
+  if (slug === 'public_challenge' || slug.startsWith('public_')) return 'challenge_public';
+  if (slug === 'challenge_complete' || slug.startsWith('challenges_completed_')) return 'challenge_complete';
+  if (slug.startsWith('podium_')) return 'podium';
+  if (slug.startsWith('wins_')) return 'wins';
   if (slug === 'profile_complete') return 'profile';
   if (slug === 'first_invite' || slug === 'invites_5') return 'invite';
   return null;
@@ -123,36 +137,23 @@ function checkBadge(
     metadata: {},
   });
 
-  if (isAlreadyEarned(earned, def.id)) {
-    // For non-challenge-scoped badges, skip if already earned
-    if (requirementType !== 'placement') return newBadges;
-  }
+  // All badges in the new tiered system are single-earn (no per-challenge scoping).
+  if (isAlreadyEarned(earned, def.id)) return newBadges;
 
   switch (requirementType) {
     case 'streak':
-      if (stats.maxLongestStreak >= value && !isAlreadyEarned(earned, def.id)) {
+      if (stats.maxLongestStreak >= value) {
+        newBadges.push(makeBadge());
+      }
+      break;
+
+    case 'level':
+      if (stats.level >= value) {
         newBadges.push(makeBadge());
       }
       break;
 
     case 'placement':
-      // value = max rank (1 for gold, 2 for silver, 3 for bronze)
-      for (const result of stats.podiumResults) {
-        if (
-          result.rank <= value &&
-          !isAlreadyEarned(earned, def.id, result.challengeId)
-        ) {
-          newBadges.push(makeBadge(result.challengeId));
-        }
-      }
-      break;
-
-    case 'level':
-      if (stats.level >= value && !isAlreadyEarned(earned, def.id)) {
-        newBadges.push(makeBadge());
-      }
-      break;
-
     case 'event':
     case 'count': {
       const stat = getStatForSlug(slug);
@@ -174,6 +175,9 @@ function checkBadge(
         case 'challenge_complete':
           met = stats.completedChallengeCount >= value;
           break;
+        case 'podium':
+          met = stats.podiumCount >= value;
+          break;
         case 'wins':
           met = stats.totalWins >= value;
           break;
@@ -187,7 +191,7 @@ function checkBadge(
           break;
       }
 
-      if (met && !isAlreadyEarned(earned, def.id)) {
+      if (met) {
         newBadges.push(makeBadge());
       }
       break;

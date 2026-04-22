@@ -204,37 +204,39 @@ export default function PrivacyCenterScreen() {
         </View>
 
         {/* Account Type */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="people-outline" size={20} color={colors.text} />
-            <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
-              Account Type
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.accountTypeCard,
-              { backgroundColor: colors.warning + '15' },
-            ]}
-          >
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                Child Account (Under 13)
-              </Text>
-              <Text
-                style={[styles.settingDescription, { color: colors.textSecondary }]}
-              >
-                Child accounts require adult supervision
+        {__DEV__ && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="people-outline" size={20} color={colors.text} />
+              <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
+                Account Type
               </Text>
             </View>
-            <Toggle
-              value={profile?.isChildAccount ?? false}
-              onValueChange={toggleChildAccount}
-              variant="warning"
-              accessibilityLabel="Toggle child account"
-            />
+            <View
+              style={[
+                styles.accountTypeCard,
+                { backgroundColor: colors.warning + '15' },
+              ]}
+            >
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>
+                  Child Account (Under 13)
+                </Text>
+                <Text
+                  style={[styles.settingDescription, { color: colors.textSecondary }]}
+                >
+                  Child accounts require adult supervision
+                </Text>
+              </View>
+              <Toggle
+                value={profile?.isChildAccount ?? false}
+                onValueChange={toggleChildAccount}
+                variant="warning"
+                accessibilityLabel="Toggle child account"
+              />
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
     </View>
   );
