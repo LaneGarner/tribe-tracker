@@ -866,7 +866,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
+    paddingTop: 20,
+    paddingHorizontal: 12,
     paddingBottom: 34,
   },
   joinButton: {
