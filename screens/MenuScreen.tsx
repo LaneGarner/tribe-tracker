@@ -243,7 +243,7 @@ export default function MenuScreen() {
               style={[styles.menuItem, { backgroundColor: colors.surface }]}
               onPress={handleClearChatData}
             >
-              <Ionicons name="chatbubble-outline" size={22} color={colors.error} />
+              <Ionicons name="trash-outline" size={22} color={colors.error} />
               <Text style={[styles.menuItemText, { color: colors.error }]}>
                 Clear Chat Data
               </Text>
