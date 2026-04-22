@@ -28,6 +28,7 @@ import {
   fetchChallengeMatches,
   MatchChallengeResult,
 } from '../utils/matchChallenges';
+import { setWizardSeen } from '../utils/storage';
 
 type WizardNavProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -141,13 +142,14 @@ export default function OnboardingWizardScreen() {
   const handleSkip = () => {
     Alert.alert(
       'Skip setup?',
-      "You can browse challenges anytime from the Challenges tab. We won't show this again.",
+      "You can browse challenges anytime from the Discover tab. We won't show this again.",
       [
         { text: 'Keep going', style: 'cancel' },
         {
           text: 'Skip',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            await setWizardSeen();
             dispatch(updateProfile({ onboardingCompleted: true }));
             navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
           },
@@ -218,18 +220,21 @@ export default function OnboardingWizardScreen() {
       });
   };
 
-  const handleJoinAll = () => {
+  const handleJoinAll = async () => {
+    await setWizardSeen();
     joinSelectedMatches();
     completeOnboarding();
     navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   };
 
-  const handleSkipMatches = () => {
+  const handleSkipMatches = async () => {
+    await setWizardSeen();
     completeOnboarding();
     navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   };
 
-  const handleCreateChallengeFromEmpty = () => {
+  const handleCreateChallengeFromEmpty = async () => {
+    await setWizardSeen();
     completeOnboarding();
     navigation.reset({
       index: 1,

@@ -29,6 +29,7 @@ const KEYS = {
   BLOCKED_USERS: 'tribe_blocked_users',
   FEATURE_FLAGS: 'tribe_feature_flags',
   NOTIFICATION_PROMPT_SHOWN: 'tribe_notification_prompt_shown',
+  WIZARD_SEEN: 'tribe_wizard_seen',
 };
 
 // Challenge storage functions
@@ -219,6 +220,7 @@ export const clearUserData = async (): Promise<void> => {
       AsyncStorage.removeItem(KEYS.CONVERSATIONS),
       AsyncStorage.removeItem(KEYS.MESSAGES),
       AsyncStorage.removeItem(KEYS.BLOCKED_USERS),
+      AsyncStorage.removeItem(KEYS.WIZARD_SEEN),
     ]);
   } catch (error) {
     console.error('Error clearing user data:', error);
@@ -350,5 +352,23 @@ export const loadBlockedUsers = async (): Promise<BlockedUser[]> => {
   } catch (error) {
     console.error('Error loading blocked users:', error);
     return [];
+  }
+};
+
+export const setWizardSeen = async (seen: boolean = true): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(KEYS.WIZARD_SEEN, seen ? 'true' : 'false');
+  } catch (error) {
+    console.error('Error setting wizard seen flag:', error);
+  }
+};
+
+export const hasSeenWizard = async (): Promise<boolean> => {
+  try {
+    const value = await AsyncStorage.getItem(KEYS.WIZARD_SEEN);
+    return value === 'true';
+  } catch (error) {
+    console.error('Error reading wizard seen flag:', error);
+    return false;
   }
 };

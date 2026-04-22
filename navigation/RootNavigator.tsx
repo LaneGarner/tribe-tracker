@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
@@ -6,6 +6,7 @@ import { RootStackParamList } from '../types';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { RootState } from '../redux/store';
+import { hasSeenWizard } from '../utils/storage';
 import TabNavigator from './TabNavigator';
 
 // Auth screen
@@ -72,16 +73,29 @@ export default function RootNavigator() {
   const profileResolved =
     !profileLoading && (profileHasFetched || profileData !== null);
 
+  // Local flag persists independently of the profile row so that users who
+  // skip the wizard don't see it again even if the server profile lacks the
+  // onboardingCompleted column or clobbers local state.
+  const [wizardSeen, setWizardSeenState] = useState<boolean | null>(null);
+  useEffect(() => {
+    hasSeenWizard().then(setWizardSeenState);
+  }, []);
+
   // If the user is authenticated but the profile is null after we've
   // resolved, they have no profile row yet — treat as needing onboarding.
-  // Otherwise check the flag explicitly.
+  // Otherwise check the flag explicitly. Local wizardSeen flag short-circuits
+  // the profile check.
   const needsOnboarding =
-    !!user && profileResolved && profileData?.onboardingCompleted !== true;
+    !!user &&
+    profileResolved &&
+    !wizardSeen &&
+    profileData?.onboardingCompleted !== true;
 
-  // While the user is authenticated but the profile hasn't resolved, render
-  // a lightweight loading view rather than Main (prevents flash of Main ->
-  // wizard redirect).
-  const profileStillLoading = !!user && !profileResolved;
+  // While the user is authenticated but the profile hasn't resolved, or the
+  // wizard-seen flag hasn't loaded yet, render a lightweight loading view
+  // rather than Main (prevents flash of Main -> wizard redirect).
+  const profileStillLoading =
+    !!user && (!profileResolved || wizardSeen === null);
 
   if (profileStillLoading) {
     return (
