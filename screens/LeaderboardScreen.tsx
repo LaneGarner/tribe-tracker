@@ -45,7 +45,6 @@ import ChallengeChip from '../components/challenge/ChallengeChip';
 import { getGradientForChallenge } from '../constants/gradients';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
-import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 import HeaderChatButton from '../components/ui/HeaderChatButton';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
@@ -519,7 +518,6 @@ export default function LeaderboardScreen() {
           </View>
         )}
       </ScrollView>
-      <TabBarGradientFade />
       <HeaderChatButton />
     </View>
   );

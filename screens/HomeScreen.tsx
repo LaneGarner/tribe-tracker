@@ -60,7 +60,6 @@ import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView'
 import Skeleton from '../components/ui/Skeleton';
 import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCalendar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
-import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 const ALL_PILL_ID = '__all__';
@@ -1165,8 +1164,6 @@ export default function HomeScreen() {
         )}
 
       </Animated.ScrollView>
-
-      <TabBarGradientFade backgroundColor={backgroundImage ? '#000' : undefined} />
 
       {/* Floating Points Badge */}
       {activeChallenges.length > 0 && (

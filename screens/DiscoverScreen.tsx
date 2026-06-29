@@ -59,7 +59,6 @@ import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
 import ColorThemePicker from '../components/challenge/ColorThemePicker';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { CARD_GRADIENTS, getGradientForIndex } from '../constants/gradients';
-import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 import { pickImage, uploadChallengeBackground, deleteChallengeBackground } from '../utils/imageUpload';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
@@ -1470,7 +1469,6 @@ export default function DiscoverScreen() {
         {mode === 'browse' && renderBrowse()}
         {mode === 'join' && renderJoin()}
       </ScrollView>
-      <TabBarGradientFade />
       {mode === 'browse' && <HeaderChatButton />}
     </SafeAreaView>
   );
