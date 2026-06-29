@@ -31,6 +31,7 @@ import {
   getCurrentChallengeDay,
   getDaysBetween,
   getRecurringCycleInfo,
+  getToday,
 } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
@@ -152,6 +153,36 @@ export default function ChallengeDetailScreen() {
         text: 'Edit Challenge',
         onPress: () => navigation.navigate('CreateChallenge', { mode: 'create', challengeId: challenge.id }),
       });
+      const isActiveOngoing =
+        challenge.isOngoing &&
+        getChallengeStatus(challenge.startDate, challenge.endDate || challenge.startDate, challenge) === 'active';
+      if (isActiveOngoing) {
+        options.push({
+          text: 'End Challenge',
+          onPress: () => {
+            Alert.alert(
+              'End Challenge',
+              'This will end the challenge today and mark it completed. Participants can no longer check in. This cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'End Challenge',
+                  style: 'destructive',
+                  onPress: () => {
+                    dispatch(updateChallenge({
+                      ...challenge,
+                      isOngoing: false,
+                      endDate: getToday(),
+                      status: 'completed',
+                      updatedAt: new Date().toISOString(),
+                    }));
+                  },
+                },
+              ]
+            );
+          },
+        });
+      }
       options.push({
         text: 'Delete Challenge',
         style: 'destructive',
@@ -571,22 +602,24 @@ export default function ChallengeDetailScreen() {
                   Day {currentDay}
                 </Text>
                 <Text style={[styles.progressTotal, { color: colors.textSecondary }]}>
-                  of {totalDays}
+                  {challenge.isOngoing ? 'Ongoing' : `of ${totalDays}`}
                 </Text>
               </View>
-              <View
-                style={[styles.progressBar, { backgroundColor: colors.border, marginBottom: 20 }]}
-              >
+              {!challenge.isOngoing && (
                 <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      backgroundColor: colors.primary,
-                      width: `${(currentDay / totalDays) * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
+                  style={[styles.progressBar, { backgroundColor: colors.border, marginBottom: 20 }]}
+                >
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        backgroundColor: colors.primary,
+                        width: `${(currentDay / totalDays) * 100}%`,
+                      },
+                    ]}
+                  />
+                </View>
+              )}
             </>
           )}
           {status === 'gap' && cycleInfo && (
@@ -617,10 +650,12 @@ export default function ChallengeDetailScreen() {
               <Ionicons name="flag-outline" size={20} color={colors.success} />
               <View style={styles.dateInfo}>
                 <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>
-                  {cycleInfo ? 'Cycle Ends' : status === 'completed' ? 'Ended' : 'Ends'}
+                  {cycleInfo ? 'Cycle Ends' : challenge.isOngoing ? 'Ongoing' : status === 'completed' ? 'Ended' : 'Ends'}
                 </Text>
                 <Text style={[styles.dateValue, { color: colors.text }]}>
-                  {formatDate(cycleInfo ? cycleInfo.cycleEndDate : (challenge.endDate || challenge.startDate))}
+                  {challenge.isOngoing && !challenge.endDate
+                    ? 'No end date'
+                    : formatDate(cycleInfo ? cycleInfo.cycleEndDate : (challenge.endDate || challenge.startDate))}
                 </Text>
               </View>
             </View>

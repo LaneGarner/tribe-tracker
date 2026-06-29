@@ -401,7 +401,9 @@ export default function LeaderboardScreen() {
                 <Text style={[styles.selectedChallengeDuration, { color: colors.textSecondary }]}>
                   {cycleInfo
                     ? `Cycle ${cycleInfo.currentCycle} · ${selectedChallenge.durationDays} day cycles`
-                    : `${selectedChallenge.durationDays} day challenge · ${getDaysRemaining(selectedChallenge.endDate || selectedChallenge.startDate)} days remaining`
+                    : selectedChallenge.isOngoing
+                      ? 'Ongoing challenge · no end date'
+                      : `${selectedChallenge.durationDays} day challenge · ${getDaysRemaining(selectedChallenge.endDate || selectedChallenge.startDate)} days remaining`
                   }
                 </Text>
               </View>

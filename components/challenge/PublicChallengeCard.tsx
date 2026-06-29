@@ -42,7 +42,7 @@ export default function PublicChallengeCard({
       ? `, ${challenge.participantCount} ${challenge.participantCount === 1 ? 'member' : 'members'}`
       : '';
   const statusLabel = status === 'active' ? 'active' : status === 'upcoming' ? 'starting soon' : 'completed';
-  const a11yLabel = `${challenge.name}${challenge.creatorName ? ` by ${challenge.creatorName}` : ''}, ${challenge.durationDays} days, ${challenge.habits.length} habits${participantLabel}, ${statusLabel}`;
+  const a11yLabel = `${challenge.name}${challenge.creatorName ? ` by ${challenge.creatorName}` : ''}, ${challenge.isOngoing ? 'ongoing' : `${challenge.durationDays} days`}, ${challenge.habits.length} habits${participantLabel}, ${statusLabel}`;
 
   const cardContent = (
     <>
@@ -67,7 +67,7 @@ export default function PublicChallengeCard({
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Ionicons name="calendar-outline" size={16} color="rgba(255,255,255,0.8)" />
-          <Text style={styles.statText}>{challenge.durationDays} days</Text>
+          <Text style={styles.statText}>{challenge.isOngoing ? 'Ongoing' : `${challenge.durationDays} days`}</Text>
         </View>
         <View style={styles.statItem}>
           <Ionicons name="checkbox-outline" size={16} color="rgba(255,255,255,0.8)" />
@@ -91,7 +91,9 @@ export default function PublicChallengeCard({
               <View style={styles.activeDot} />
               <Text style={styles.statusText}>Active</Text>
             </View>
-            {daysRemaining > 0 && (
+            {challenge.isOngoing ? (
+              <Text style={styles.daysRemaining}>No end date</Text>
+            ) : daysRemaining > 0 && (
               <Text style={styles.daysRemaining}>
                 {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left
               </Text>
@@ -113,7 +115,7 @@ export default function PublicChallengeCard({
       </View>
 
       {/* Progress bar for active challenges */}
-      {status === 'active' && (
+      {status === 'active' && !challenge.isOngoing && (
         <View style={styles.progressBar}>
           <View
             style={[

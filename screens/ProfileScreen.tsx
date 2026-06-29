@@ -670,7 +670,7 @@ export default function ProfileScreen() {
                         <View style={styles.statItem}>
                           <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
                           <Text style={[styles.statText, { color: colors.textSecondary }]}>
-                            {participation.daysLeft} days left
+                            {participation.challenge?.isOngoing ? 'Ongoing' : `${participation.daysLeft} days left`}
                           </Text>
                         </View>
                       </View>
