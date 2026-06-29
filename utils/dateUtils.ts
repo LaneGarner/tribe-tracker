@@ -166,6 +166,11 @@ export function getChallengeStatus(
     return info?.status ?? 'active';
   }
 
+  // Ongoing challenges never auto-complete; they run until manually ended
+  if (challenge?.isOngoing) {
+    return dayjs(getToday()).isBefore(dayjs(startDate)) ? 'upcoming' : 'active';
+  }
+
   const today = getToday();
   const start = dayjs(startDate);
   const end = dayjs(endDate);

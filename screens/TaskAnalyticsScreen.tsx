@@ -92,7 +92,8 @@ export default function TaskAnalyticsScreen() {
 
   const status = getChallengeStatus(
     challenge.startDate,
-    challenge.endDate || challenge.startDate
+    challenge.endDate || challenge.startDate,
+    challenge
   );
   const currentDay =
     status === 'active' ? getCurrentChallengeDay(challenge.startDate) : challenge.durationDays;
@@ -211,8 +212,9 @@ export default function TaskAnalyticsScreen() {
           {challenge.name}
         </Text>
         <Text style={[styles.dateRange, { color: colors.textSecondary }]}>
-          {formatDate(challenge.startDate)} -{' '}
-          {formatDate(challenge.endDate || challenge.startDate)}
+          {challenge.isOngoing && !challenge.endDate
+            ? `Started ${formatDate(challenge.startDate)} · Ongoing`
+            : `${formatDate(challenge.startDate)} - ${formatDate(challenge.endDate || challenge.startDate)}`}
         </Text>
 
         {isParticipant && (

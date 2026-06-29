@@ -51,6 +51,7 @@ export default {
     },
     plugins: [
       'expo-font',
+      'react-native-bottom-tabs',
       '@react-native-community/datetimepicker',
       [
         'expo-image-picker',
@@ -64,6 +65,14 @@ export default {
         {
           icon: './assets/icon.png',
           color: '#3B82F6',
+        },
+      ],
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            deploymentTarget: '16.1',
+          },
         },
       ],
     ],

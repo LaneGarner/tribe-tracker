@@ -45,7 +45,6 @@ import ChallengeChip from '../components/challenge/ChallengeChip';
 import { getGradientForChallenge } from '../constants/gradients';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
-import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 import HeaderChatButton from '../components/ui/HeaderChatButton';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
@@ -401,7 +400,9 @@ export default function LeaderboardScreen() {
                 <Text style={[styles.selectedChallengeDuration, { color: colors.textSecondary }]}>
                   {cycleInfo
                     ? `Cycle ${cycleInfo.currentCycle} · ${selectedChallenge.durationDays} day cycles`
-                    : `${selectedChallenge.durationDays} day challenge · ${getDaysRemaining(selectedChallenge.endDate || selectedChallenge.startDate)} days remaining`
+                    : selectedChallenge.isOngoing
+                      ? 'Ongoing challenge · no end date'
+                      : `${selectedChallenge.durationDays} day challenge · ${getDaysRemaining(selectedChallenge.endDate || selectedChallenge.startDate)} days remaining`
                   }
                 </Text>
               </View>
@@ -517,7 +518,6 @@ export default function LeaderboardScreen() {
           </View>
         )}
       </ScrollView>
-      <TabBarGradientFade />
       <HeaderChatButton />
     </View>
   );

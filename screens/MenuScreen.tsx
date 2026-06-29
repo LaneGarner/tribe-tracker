@@ -21,7 +21,6 @@ import { loadChatFromStorage } from '../redux/slices/chatSlice';
 import SegmentedControl from '../components/SegmentedControl';
 import Avatar from '../components/Avatar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
-import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -299,7 +298,6 @@ export default function MenuScreen() {
           TribeTracker v0.0.2
         </Text>
       </ScrollView>
-      <TabBarGradientFade />
       </SafeAreaView>
     </View>
   );

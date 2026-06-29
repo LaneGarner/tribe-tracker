@@ -29,7 +29,6 @@ import {
 } from '../utils/storage';
 import Skeleton from '../components/ui/Skeleton';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
-import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 
 dayjs.extend(relativeTime);
 
@@ -311,7 +310,6 @@ export default function CoachingScreen() {
           </>
         )}
       </ScrollView>
-      <TabBarGradientFade />
     </SafeAreaView>
   );
 }

@@ -107,7 +107,12 @@ export default function ChallengeCard({
                 : 'Completed'}
             </Text>
           )}
-          {!cycleInfo && status === 'active' && daysRemaining > 0 && (
+          {!cycleInfo && status === 'active' && challenge.isOngoing && (
+            <Text style={styles.daysRemaining}>
+              Ongoing
+            </Text>
+          )}
+          {!cycleInfo && status === 'active' && !challenge.isOngoing && daysRemaining > 0 && (
             <Text style={styles.daysRemaining}>
               {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining
             </Text>
@@ -154,7 +159,18 @@ export default function ChallengeCard({
       )}
 
       {/* Progress bar */}
-      {status === 'active' && (
+      {status === 'active' && challenge.isOngoing && (
+        <View style={styles.progressSection}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressLabel}>Progress</Text>
+            <Text style={styles.progressPercent}>Ongoing</Text>
+          </View>
+          <Text style={styles.progressDayText}>
+            Day {currentDay}
+          </Text>
+        </View>
+      )}
+      {status === 'active' && !challenge.isOngoing && (
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressLabel}>Progress</Text>

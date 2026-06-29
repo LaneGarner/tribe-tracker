@@ -18,6 +18,8 @@ export interface Challenge {
   inviteCode?: string;
   status: 'upcoming' | 'active' | 'completed' | 'gap';
   participantCount: number;
+  // Ongoing challenge: no end date until manually ended by the creator
+  isOngoing?: boolean;
   // Recurring challenge fields
   isRecurring?: boolean;
   recurrenceIntervalDays?: number;

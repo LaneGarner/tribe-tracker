@@ -59,7 +59,6 @@ import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
 import ColorThemePicker from '../components/challenge/ColorThemePicker';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { CARD_GRADIENTS, getGradientForIndex } from '../constants/gradients';
-import { TabBarGradientFade } from '../components/ui/TabBarGradientFade';
 import { pickImage, uploadChallengeBackground, deleteChallengeBackground } from '../utils/imageUpload';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
@@ -121,6 +120,7 @@ export default function DiscoverScreen() {
   });
   const [habits, setHabits] = useState<HabitItem[]>([makeHabitItem()]);
   const [isPublic, setIsPublic] = useState(true);
+  const [isOngoing, setIsOngoing] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrencePreset, setRecurrencePreset] = useState<'weekly' | 'biweekly' | 'monthly' | 'custom'>('weekly');
   const [gapDays, setGapDays] = useState('0');
@@ -154,6 +154,7 @@ export default function DiscoverScreen() {
           : [makeHabitItem()]
       );
       setIsPublic(existingChallenge.isPublic);
+      setIsOngoing(existingChallenge.isOngoing ?? false);
       if (existingChallenge.isRecurring) {
         setIsRecurring(true);
         setGapDays(String(existingChallenge.gapDays ?? 0));
@@ -315,7 +316,7 @@ export default function DiscoverScreen() {
     if (!name.trim()) {
       newErrors.name = 'Challenge name is required';
     }
-    if (!durationDays.trim() || parseInt(durationDays) <= 0) {
+    if (!isOngoing && (!durationDays.trim() || parseInt(durationDays) <= 0)) {
       newErrors.duration = 'Duration is required';
     }
     if (validHabits.length === 0) {
@@ -435,7 +436,8 @@ export default function DiscoverScreen() {
 
     const today = getToday();
     const isFutureStart = dayjs(startDate).isAfter(dayjs(today), 'day');
-    const parsedDuration = parseInt(durationDays) || 30;
+    // Ongoing challenges have no fixed length; duration is an inert 0 (DB column is NOT NULL)
+    const parsedDuration = isOngoing ? 0 : parseInt(durationDays) || 30;
     const newChallenge: Challenge = {
       id: challengeId,
       name: name.trim(),
@@ -444,7 +446,7 @@ export default function DiscoverScreen() {
       creatorName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
       durationDays: parsedDuration,
       startDate,
-      endDate,
+      endDate: isOngoing ? undefined : endDate,
       habits: validHabits,
       backgroundImageUrl,
       themeColor,
@@ -454,7 +456,8 @@ export default function DiscoverScreen() {
       inviteCode: isPublic ? undefined : generateInviteCode(),
       status: isFutureStart ? 'upcoming' : 'active',
       participantCount: 0,
-      ...(isRecurring && {
+      ...(isOngoing && { isOngoing: true }),
+      ...(!isOngoing && isRecurring && {
         isRecurring: true,
         recurrenceIntervalDays: parsedDuration,
         gapDays: parseInt(gapDays) || 0,
@@ -481,6 +484,7 @@ export default function DiscoverScreen() {
       setThemeColor(0);
       setCustomThemeColor(null);
       setUseBackgroundImage(true);
+      setIsOngoing(false);
       setIsRecurring(false);
       setRecurrencePreset('weekly');
       setGapDays('0');
@@ -992,6 +996,31 @@ export default function DiscoverScreen() {
           />
         </TouchableOpacity>
 
+        <View style={[styles.toggleRow, { marginTop: 8 }]}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={[styles.toggleLabel, { color: colors.text }]}>
+              Ongoing (no end date)
+            </Text>
+            <Text style={[styles.helperText, { color: colors.textTertiary, marginTop: 2 }]}>
+              Runs indefinitely until you end it
+            </Text>
+          </View>
+          <Toggle
+            value={isOngoing}
+            onValueChange={(val) => {
+              setIsOngoing(val);
+              if (val) {
+                setIsRecurring(false);
+                setErrors(e => ({ ...e, duration: undefined }));
+              }
+            }}
+            accessibilityLabel="Toggle ongoing challenge with no end date"
+            disabled={isScheduleLocked || isEditMode}
+          />
+        </View>
+
+        {!isOngoing && (
+          <>
         <Text style={[styles.label, { color: colors.text }]}>
           Duration (days) <Text style={{ color: colors.error }}>*</Text>
         </Text>
@@ -1051,6 +1080,8 @@ export default function DiscoverScreen() {
           <Text style={[styles.helperText, { color: colors.textSecondary }]}>
             Schedule cannot be changed for active challenges
           </Text>
+        )}
+          </>
         )}
 
         {showStartPicker && Platform.OS === 'ios' && (
@@ -1127,14 +1158,17 @@ export default function DiscoverScreen() {
             value={isRecurring}
             onValueChange={(val) => {
               setIsRecurring(val);
-              if (val && recurrencePreset !== 'custom') {
-                const presetDays = recurrencePreset === 'weekly' ? 7 : recurrencePreset === 'biweekly' ? 14 : 30;
-                setDurationDays(String(presetDays));
-                setEndDate(getChallengeEndDate(startDate, presetDays));
+              if (val) {
+                setIsOngoing(false);
+                if (recurrencePreset !== 'custom') {
+                  const presetDays = recurrencePreset === 'weekly' ? 7 : recurrencePreset === 'biweekly' ? 14 : 30;
+                  setDurationDays(String(presetDays));
+                  setEndDate(getChallengeEndDate(startDate, presetDays));
+                }
               }
             }}
             accessibilityLabel="Toggle recurring challenge"
-            disabled={isScheduleLocked}
+            disabled={isScheduleLocked || isOngoing}
           />
         </View>
 
@@ -1435,7 +1469,6 @@ export default function DiscoverScreen() {
         {mode === 'browse' && renderBrowse()}
         {mode === 'join' && renderJoin()}
       </ScrollView>
-      <TabBarGradientFade />
       {mode === 'browse' && <HeaderChatButton />}
     </SafeAreaView>
   );
