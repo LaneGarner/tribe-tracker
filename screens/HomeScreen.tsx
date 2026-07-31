@@ -17,7 +17,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
 import dayjs from 'dayjs';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -60,6 +60,8 @@ import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView'
 import Skeleton from '../components/ui/Skeleton';
 import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCalendar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { useCapabilityGate } from '../hooks/useCapabilityGate';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 const ALL_PILL_ID = '__all__';
@@ -77,7 +79,8 @@ export default function HomeScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
-  const insets = useSafeAreaInsets();
+  const { requireCapability } = useCapabilityGate();
+  const { topTabContentOffset } = useResponsiveLayout();
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const checkins = useSelector((state: RootState) => state.checkins.data);
@@ -640,7 +643,7 @@ export default function HomeScreen() {
 
   // Expose background image state to tab bar via screen options
   useEffect(() => {
-    navigation.setOptions({ hasBackgroundImage: !!backgroundImage });
+    navigation.setOptions({ hasBackgroundImage: !!backgroundImage } as any);
   }, [backgroundImage, navigation]);
 
   const overlayColor = colorScheme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.35)';
@@ -811,7 +814,13 @@ export default function HomeScreen() {
         </View>
       )}
       <SafeAreaView
-        style={[styles.container, { backgroundColor: 'transparent' }]}
+        style={[
+          styles.container,
+          {
+            backgroundColor: 'transparent',
+            paddingTop: topTabContentOffset,
+          },
+        ]}
         edges={['top']}
       >
       {/* Sticky logo header */}
@@ -1152,7 +1161,11 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.textButton}
-              onPress={() => navigation.navigate('CreateChallenge', { mode: 'create' })}
+              onPress={() =>
+                requireCapability('canCreatePersonalChallenge', () =>
+                  navigation.navigate('CreateChallenge', { mode: 'create' })
+                )
+              }
               accessibilityLabel="Create your own challenge"
               accessibilityRole="button"
             >

@@ -36,6 +36,7 @@ import ChatInput from '../components/chat/ChatInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import EmptyChat from '../components/chat/EmptyChat';
 import MessageActionsOverlay from '../components/chat/MessageActionsOverlay';
+import { useContentReport } from '../hooks/useContentReport';
 import { useChatActions } from '../hooks/useChatActions';
 import { isBackendConfigured, API_URL } from '../config/api';
 import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage, computeReadReceipts, ReaderInfo } from '../utils/chatUtils';
@@ -50,6 +51,7 @@ export default function DirectMessageScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
+  const { reportContent } = useContentReport();
 
   const { conversationId, otherUserName } = route.params;
   const flatListRef = useRef<FlatList<ChatDisplayItem> | null>(null);
@@ -292,6 +294,18 @@ export default function DirectMessageScreen() {
   const handleOptionsMenu = () => {
     Alert.alert('Chat Options', undefined, [
       {
+        text: 'Report User',
+        onPress: () => {
+          if (otherMember) {
+            reportContent({
+              targetType: 'user',
+              targetId: otherMember.userId,
+              contextId: conversationId,
+            });
+          }
+        },
+      },
+      {
         text: 'Block User',
         style: 'destructive',
         onPress: handleBlockUser,
@@ -432,6 +446,14 @@ export default function DirectMessageScreen() {
         onCopy={chatActions.handleCopy}
         onEdit={chatActions.beginEdit}
         onDelete={chatActions.handleDelete}
+        onReport={message =>
+          reportContent({
+            targetType: 'message',
+            targetId: message.id,
+            contextId: conversationId,
+          })
+        }
+        onBlock={handleBlockUser}
       />
     </KeyboardAvoidingView>
   );

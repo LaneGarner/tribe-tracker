@@ -9,7 +9,6 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -46,6 +45,7 @@ import { getGradientForChallenge } from '../constants/gradients';
 import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import HeaderChatButton from '../components/ui/HeaderChatButton';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
 
@@ -64,7 +64,7 @@ export default function LeaderboardScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
-  const insets = useSafeAreaInsets();
+  const { insets, topTabContentOffset } = useResponsiveLayout();
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const participants = useSelector((state: RootState) => state.participants.data);
@@ -289,7 +289,7 @@ export default function LeaderboardScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Sticky header */}
       <View style={[styles.stickyHeader, {
-        paddingTop: insets.top + 16,
+        paddingTop: insets.top + (topTabContentOffset || 16),
         backgroundColor: colors.background,
       }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Leaderboards</Text>

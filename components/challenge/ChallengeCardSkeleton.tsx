@@ -15,7 +15,7 @@ export default function ChallengeCardSkeleton() {
       <View style={styles.header}>
         <View style={styles.titleSection}>
           <Skeleton width={180} height={24} style={styles.whiteSkeleton} />
-          <Skeleton width={120} height={16} style={[styles.whiteSkeleton, { marginTop: 8 }]} />
+          <Skeleton width={120} height={16} style={{ ...styles.whiteSkeleton, marginTop: 8 }} />
         </View>
         <Skeleton width={70} height={50} borderRadius={12} style={styles.whiteSkeleton} />
       </View>
@@ -24,15 +24,15 @@ export default function ChallengeCardSkeleton() {
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Skeleton width={60} height={12} style={styles.whiteSkeleton} />
-          <Skeleton width={50} height={32} style={[styles.whiteSkeleton, { marginTop: 4 }]} />
+          <Skeleton width={50} height={32} style={{ ...styles.whiteSkeleton, marginTop: 4 }} />
         </View>
         <View style={styles.statItem}>
           <Skeleton width={60} height={12} style={styles.whiteSkeleton} />
-          <Skeleton width={40} height={32} style={[styles.whiteSkeleton, { marginTop: 4 }]} />
+          <Skeleton width={40} height={32} style={{ ...styles.whiteSkeleton, marginTop: 4 }} />
         </View>
         <View style={styles.statItem}>
           <Skeleton width={70} height={12} style={styles.whiteSkeleton} />
-          <Skeleton width={40} height={32} style={[styles.whiteSkeleton, { marginTop: 4 }]} />
+          <Skeleton width={40} height={32} style={{ ...styles.whiteSkeleton, marginTop: 4 }} />
         </View>
       </View>
 

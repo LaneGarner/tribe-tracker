@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tribe Tracker — How it works</title>
+<style>
+  :root{ --blue:#2563EB; --blue-bg:#EAF1FF; --amber:#B45309; --amber-bg:#FFF4E2; --gray:#374151; --gray-bg:#F3F4F6; --line:#C7D2E0; --ink:#111827; --muted:#6B7280; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:var(--ink); }
+  @page{ size:letter landscape; margin:0.55in; }
+  .wrap{ max-width:980px; margin:0 auto; text-align:center; }
+
+  h1{ font-size:25px; margin-bottom:4px; }
+  .intro{ font-size:14px; color:var(--muted); margin-bottom:8px; }
+
+  /* org tree */
+  .tree{ display:inline-block; text-align:center; margin-top:4px; }
+  .tree ul{ display:flex; justify-content:center; padding-top:22px; position:relative; }
+  .tree li{ list-style:none; position:relative; padding:22px 12px 0; }
+  .tree li::before,.tree li::after{ content:''; position:absolute; top:0; right:50%; border-top:2px solid var(--line); width:50%; height:22px; }
+  .tree li::after{ right:auto; left:50%; border-left:2px solid var(--line); }
+  .tree li:first-child::before,.tree li:last-child::after{ border:0; }
+  .tree li:last-child::before{ border-right:2px solid var(--line); }
+  .tree>ul>li{ padding-top:0; }
+  .tree>ul>li::before,.tree>ul>li::after{ display:none; }
+  .tree ul ul::before{ content:''; position:absolute; top:0; left:50%; border-left:2px solid var(--line); width:0; height:22px; }
+
+  .box{ display:inline-block; border-radius:14px; padding:12px 16px; border:2px solid; min-width:200px; text-align:left; }
+  .icon{ font-size:20px; line-height:1; }
+  .box .name{ font-size:15px; font-weight:700; margin:4px 0 2px; }
+  .box .can{ font-size:12.5px; color:var(--muted); }
+
+  .district{ background:var(--blue-bg); border-color:var(--blue); min-width:300px; text-align:center; }
+  .district .name{ color:var(--blue); font-size:17px; }
+  .school{ background:#fff; border-color:var(--line); min-width:230px; }
+  .school .head{ font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; padding-bottom:8px; margin-bottom:8px; border-bottom:1px solid var(--line); }
+  .person{ display:flex; gap:8px; align-items:flex-start; margin:7px 0; }
+  .person .who{ font-size:13px; font-weight:700; }
+  .person .who.lead{ color:var(--amber); }
+  .person .who.staff{ color:var(--gray); }
+  .person .desc{ font-size:11.5px; color:var(--muted); }
+  .person .t{ flex:1; }
+
+  .arrow-note{ font-size:12px; font-weight:700; color:var(--blue); margin:2px 0 0; }
+
+  .reach{ display:flex; gap:14px; justify-content:center; margin-top:18px; }
+  .reach .r{ flex:1; max-width:330px; border-radius:12px; padding:12px 16px; text-align:left; }
+  .reach .blue{ background:var(--blue-bg); border:1px solid var(--blue); }
+  .reach .amber{ background:var(--amber-bg); border:1px solid #E7B173; }
+  .reach .r .t1{ font-size:13px; font-weight:700; }
+  .reach .blue .t1{ color:var(--blue); }
+  .reach .amber .t1{ color:var(--amber); }
+  .reach .r .t2{ font-size:12.5px; color:var(--gray); margin-top:2px; }
+
+  .rule{ margin-top:16px; font-size:13.5px; color:var(--ink); background:var(--gray-bg); border-radius:10px; padding:10px 14px; display:inline-block; }
+  .rule b{ color:var(--blue); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>How Tribe Tracker works for a school district</h1>
+  <p class="intro">Everyone uses the same app. A few people can <b>create</b> challenges for a group — everyone else <b>joins</b> them.</p>
+
+  <div class="tree">
+    <ul>
+      <li>
+        <div class="box district">
+          <div class="icon">🧑‍💼</div>
+          <div class="name">District Wellness Manager</div>
+          <div class="can">Creates challenges for the whole district</div>
+        </div>
+        <div class="arrow-note">↓ reaches every school below ↓</div>
+        <ul>
+          <li>
+            <div class="box school">
+              <div class="head">🏫 Elementary School 1</div>
+              <div class="person"><span class="icon">🧑‍🏫</span><span class="t"><div class="who lead">School Lead</div><div class="desc">Creates challenges just for this school</div></span></div>
+              <div class="person"><span class="icon">👥</span><span class="t"><div class="who staff">Staff</div><div class="desc">Join challenges &amp; check in daily</div></span></div>
+            </div>
+          </li>
+          <li>
+            <div class="box school">
+              <div class="head">🏫 Middle School 1</div>
+              <div class="person"><span class="icon">🧑‍🏫</span><span class="t"><div class="who lead">School Lead</div><div class="desc">Creates challenges just for this school</div></span></div>
+              <div class="person"><span class="icon">👥</span><span class="t"><div class="who staff">Staff</div><div class="desc">Join challenges &amp; check in daily</div></span></div>
+            </div>
+          </li>
+          <li>
+            <div class="box school">
+              <div class="head">🏫 High School 1</div>
+              <div class="person"><span class="icon">🧑‍🏫</span><span class="t"><div class="who lead">School Lead</div><div class="desc">Creates challenges just for this school</div></span></div>
+              <div class="person"><span class="icon">👥</span><span class="t"><div class="who staff">Staff</div><div class="desc">Join challenges &amp; check in daily</div></span></div>
+            </div>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <div class="reach">
+    <div class="r blue">
+      <div class="t1">🏆 A district challenge</div>
+      <div class="t2">Made by the District Manager → <b>everyone at every school</b> can join.</div>
+    </div>
+    <div class="r amber">
+      <div class="t1">🏆 A school challenge</div>
+      <div class="t2">Made by a School Lead → <b>only that one school's staff</b> can join.</div>
+    </div>
+  </div>
+
+  <div class="rule">Rule of thumb: <b>the bigger your role, the more people your challenges reach.</b> And everyone — including the managers — can join in and play.</div>
+
+</div>
+</body>
+</html>

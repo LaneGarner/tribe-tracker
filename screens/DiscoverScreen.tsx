@@ -23,7 +23,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useDispatch, useSelector } from 'react-redux';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { CHALLENGE_CATEGORIES, DEFAULT_CATEGORY } from '../constants/categories';
@@ -60,6 +60,19 @@ import ColorThemePicker from '../components/challenge/ColorThemePicker';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { CARD_GRADIENTS, getGradientForIndex } from '../constants/gradients';
 import { pickImage, uploadChallengeBackground, deleteChallengeBackground } from '../utils/imageUpload';
+import { useCapabilityGate } from '../hooks/useCapabilityGate';
+import { useAIConsent } from '../context/AIConsentContext';
+import {
+  AIChallengeDraftError,
+  generateAIChallengeDraft,
+} from '../services/aiChallengeDrafts';
+import { useContentReport } from '../hooks/useContentReport';
+import {
+  ChallengeCreationError,
+  createChallengeOnServer,
+} from '../services/challenges';
+import { useMembership } from '../context/MembershipContext';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -75,7 +88,15 @@ export default function DiscoverScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, getAccessToken } = useAuth();
-  const insets = useSafeAreaInsets();
+  const {
+    hasCapability,
+    requireCapability,
+    isLoading: membershipLoading,
+  } = useCapabilityGate();
+  const { refreshMembership } = useMembership();
+  const { ensureAIConsent } = useAIConsent();
+  const { reportContent } = useContentReport();
+  const { insets, topTabContentOffset } = useResponsiveLayout();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
@@ -94,8 +115,28 @@ export default function DiscoverScreen() {
     editChallengeId ? state.challenges.data.find(c => c.id === editChallengeId) : undefined
   );
   const isEditMode = Boolean(editChallengeId && existingChallenge);
+  const canCustomize =
+    isEditMode || hasCapability('canCustomizeChallenges');
+  const requestCustomization = (action: () => void) => {
+    if (canCustomize) action();
+    else requireCapability('canCustomizeChallenges', action);
+  };
   const isActiveChallenge = existingChallenge?.status === 'active';
   const [initialFetchDone, setInitialFetchDone] = useState(false);
+
+  useEffect(() => {
+    if (
+      mode === 'create' &&
+      !isEditMode &&
+      !membershipLoading &&
+      !hasCapability('canCreatePersonalChallenge')
+    ) {
+      setMode('browse');
+      navigation.navigate('Paywall', {
+        feature: 'canCreatePersonalChallenge',
+      });
+    }
+  }, [mode, isEditMode, membershipLoading, hasCapability, navigation]);
 
   // Fetch public challenges when in browse mode
   useEffect(() => {
@@ -131,6 +172,9 @@ export default function DiscoverScreen() {
   const [useBackgroundImage, setUseBackgroundImage] = useState(true);
   const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [inviteCode, setInviteCode] = useState(route.params?.inviteCode || '');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
+  const [hasGeneratedDraft, setHasGeneratedDraft] = useState(false);
 
   // Pre-fill invite code from deep link
   useEffect(() => {
@@ -309,6 +353,63 @@ export default function DiscoverScreen() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
+  const generateDraft = () => {
+    requireCapability('canGenerateChallenge', async () => {
+      const prompt = aiPrompt.trim();
+      if (!prompt) {
+        Alert.alert(
+          'Describe Your Goal',
+          'Add a short goal before generating a draft.'
+        );
+        return;
+      }
+      if (!(await ensureAIConsent('challenge_generation'))) return;
+      const token = getAccessToken();
+      if (!token) {
+        Alert.alert('Sign In Required', 'Please sign in and try again.');
+        return;
+      }
+      setIsGeneratingDraft(true);
+      try {
+        const draft = await generateAIChallengeDraft(token, prompt);
+        setName(draft.name);
+        setDescription(draft.description || '');
+        setDurationDays(String(draft.durationDays));
+        setEndDate(getChallengeEndDate(startDate, draft.durationDays));
+        setHabits(
+          draft.habits.length
+            ? draft.habits.map(habit => makeHabitItem(habit))
+            : [makeHabitItem()]
+        );
+        if (
+          draft.category &&
+          CHALLENGE_CATEGORIES.some(item => item.key === draft.category)
+        ) {
+          setCategory(draft.category);
+        }
+        setHasGeneratedDraft(true);
+        Alert.alert(
+          'Draft Ready',
+          'Review and edit every field before creating your challenge.'
+        );
+      } catch (error) {
+        const message =
+          error instanceof AIChallengeDraftError
+            ? error.message
+            : 'Unable to create a challenge draft right now.';
+        Alert.alert(
+          error instanceof AIChallengeDraftError &&
+            error.code === 'unavailable'
+            ? 'Draft Unavailable'
+            : 'Draft Unavailable',
+          message
+        );
+      } finally {
+        setIsGeneratingDraft(false);
+      }
+    });
+  };
+
   const handleCreate = () => {
     const validHabits = habits.map(h => h.text.trim()).filter(Boolean);
     const newErrors: typeof errors = {};
@@ -469,7 +570,58 @@ export default function DiscoverScreen() {
       updatedAt: new Date().toISOString(),
     };
 
-    dispatch(addChallenge(newChallenge));
+    let createdChallenge = newChallenge;
+    if (isBackendConfigured()) {
+      const token = getAccessToken();
+      if (!token) {
+        setIsCreating(false);
+        Alert.alert(
+          'Sign In Required',
+          'Sign in again before creating this challenge.'
+        );
+        return;
+      }
+      try {
+        createdChallenge = await createChallengeOnServer(newChallenge, token);
+        dispatch(importChallenge(createdChallenge));
+        await refreshMembership();
+      } catch (error) {
+        if (backgroundImageUrl) {
+          await deleteChallengeBackground(challengeId).catch(() => undefined);
+        }
+        setIsCreating(false);
+        if (
+          error instanceof ChallengeCreationError &&
+          error.code === 'free_active_challenge_limit'
+        ) {
+          await refreshMembership();
+          Alert.alert(
+            'One Active Challenge on Free',
+            'You can still join unlimited invited and organization challenges. Complete your active challenge or upgrade to create another.',
+            [
+              { text: 'Not Now', style: 'cancel' },
+              {
+                text: 'See Pro',
+                onPress: () =>
+                  navigation.navigate('Paywall', {
+                    feature: 'canCreatePersonalChallenge',
+                  }),
+              },
+            ]
+          );
+          return;
+        }
+        Alert.alert(
+          'Challenge Not Created',
+          error instanceof Error
+            ? error.message
+            : 'Please check your connection and try again.'
+        );
+        return;
+      }
+    } else {
+      dispatch(addChallenge(newChallenge));
+    }
     setIsCreating(false);
 
     const resetForm = () => {
@@ -496,7 +648,7 @@ export default function DiscoverScreen() {
       const participation: ChallengeParticipant = {
         id: Crypto.randomUUID(),
         challengeId: challengeId,
-        challengeName: newChallenge.name,
+        challengeName: createdChallenge.name,
         userId: user?.id || 'anonymous',
         userName: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous',
         userEmail: user?.email || '',
@@ -509,7 +661,7 @@ export default function DiscoverScreen() {
         updatedAt: new Date().toISOString(),
       };
       dispatch(addParticipant(participation));
-      dispatch(updateChallenge({ ...newChallenge, participantCount: 1 }));
+      dispatch(updateChallenge({ ...createdChallenge, participantCount: 1 }));
     };
 
     Alert.alert(
@@ -525,7 +677,7 @@ export default function DiscoverScreen() {
           text: 'Join Challenge',
           onPress: () => {
             joinChallenge();
-            Alert.alert('Joined!', `You've joined "${newChallenge.name}"`, [
+            Alert.alert('Joined!', `You've joined "${createdChallenge.name}"`, [
               { text: 'OK', onPress: resetForm },
             ]);
           },
@@ -681,7 +833,11 @@ export default function DiscoverScreen() {
       <View style={styles.actionButtons}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => setMode('create')}
+          onPress={() =>
+            requireCapability('canCreatePersonalChallenge', () =>
+              setMode('create')
+            )
+          }
           activeOpacity={0.8}
         >
           <LinearGradient
@@ -805,6 +961,97 @@ export default function DiscoverScreen() {
       </View>
 
       <FormScrollView ref={scrollViewRef} style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {!isEditMode ? (
+          <View
+            style={[
+              styles.aiDraftCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.aiDraftHeading}>
+              <Ionicons name="sparkles" size={20} color="#F59E0B" />
+              <Text style={[styles.aiDraftTitle, { color: colors.text }]}>
+                Start with an AI draft
+              </Text>
+              <Text style={[styles.proPill, { color: '#92400E' }]}>PRO</Text>
+            </View>
+            <Text style={[styles.aiDraftDescription, { color: colors.textSecondary }]}>
+              Describe the outcome you want. The result fills this editable
+              form; nothing is published automatically.
+            </Text>
+            <TextInput
+              style={[
+                styles.input,
+                styles.textArea,
+                {
+                  backgroundColor: colors.background,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
+              value={aiPrompt}
+              onChangeText={setAiPrompt}
+              placeholder="e.g., Help me build a consistent morning walking habit"
+              placeholderTextColor={colors.textTertiary}
+              multiline
+              numberOfLines={2}
+            />
+            <TouchableOpacity
+              style={[
+                styles.aiDraftButton,
+                {
+                  backgroundColor: colors.primary,
+                  opacity: isGeneratingDraft ? 0.6 : 1,
+                },
+              ]}
+              disabled={isGeneratingDraft}
+              onPress={generateDraft}
+            >
+              {isGeneratingDraft ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="sparkles-outline" size={18} color="#fff" />
+                  <Text style={styles.aiDraftButtonText}>Generate draft</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            {hasGeneratedDraft ? (
+              <TouchableOpacity
+                style={styles.reportAiDraftButton}
+                onPress={() =>
+                  reportContent({
+                    targetType: 'other',
+                    notes: [
+                      'Reported AI-generated challenge draft.',
+                      `Name: ${name.trim().slice(0, 160)}`,
+                      `Description: ${description.trim().slice(0, 500)}`,
+                      `Actions: ${habits
+                        .map(habit => habit.text.trim())
+                        .filter(Boolean)
+                        .join(' | ')
+                        .slice(0, 900)}`,
+                    ].join('\n'),
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel="Report AI-generated draft"
+                accessibilityHint="Reports this generated draft to TribeTracker for safety review"
+              >
+                <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
+                <Text
+                  style={[
+                    styles.reportAiDraftText,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  Report this AI draft
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
         <Text style={[styles.label, { color: colors.text }]}>
           Challenge Name <Text style={{ color: colors.error }}>*</Text>
         </Text>
@@ -908,7 +1155,9 @@ export default function DiscoverScreen() {
           </Text>
           <Toggle
             value={!useBackgroundImage}
-            onValueChange={(val) => setUseBackgroundImage(!val)}
+            onValueChange={(val) =>
+              requestCustomization(() => setUseBackgroundImage(!val))
+            }
             accessibilityLabel="Toggle between color theme and background image"
           />
         </View>
@@ -917,11 +1166,15 @@ export default function DiscoverScreen() {
           <ColorThemePicker
             selectedIndex={customThemeColor ? null : themeColor}
             customColor={customThemeColor}
-            onSelectPreset={(index) => {
-              setThemeColor(index);
-              setCustomThemeColor(null);
-            }}
-            onSelectCustom={setCustomThemeColor}
+            onSelectPreset={(index) =>
+              requestCustomization(() => {
+                setThemeColor(index);
+                setCustomThemeColor(null);
+              })
+            }
+            onSelectCustom={color =>
+              requestCustomization(() => setCustomThemeColor(color))
+            }
           />
         ) : (
           <>
@@ -933,7 +1186,7 @@ export default function DiscoverScreen() {
                   borderColor: colors.border,
                 },
               ]}
-              onPress={handlePickBackground}
+              onPress={() => requestCustomization(handlePickBackground)}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel={backgroundImageUri ? 'Change background image' : 'Add background image'}
@@ -1007,13 +1260,15 @@ export default function DiscoverScreen() {
           </View>
           <Toggle
             value={isOngoing}
-            onValueChange={(val) => {
-              setIsOngoing(val);
-              if (val) {
-                setIsRecurring(false);
-                setErrors(e => ({ ...e, duration: undefined }));
-              }
-            }}
+            onValueChange={(val) =>
+              requestCustomization(() => {
+                setIsOngoing(val);
+                if (val) {
+                  setIsRecurring(false);
+                  setErrors(e => ({ ...e, duration: undefined }));
+                }
+              })
+            }
             accessibilityLabel="Toggle ongoing challenge with no end date"
             disabled={isScheduleLocked || isEditMode}
           />
@@ -1156,17 +1411,19 @@ export default function DiscoverScreen() {
           </Text>
           <Toggle
             value={isRecurring}
-            onValueChange={(val) => {
-              setIsRecurring(val);
-              if (val) {
-                setIsOngoing(false);
-                if (recurrencePreset !== 'custom') {
-                  const presetDays = recurrencePreset === 'weekly' ? 7 : recurrencePreset === 'biweekly' ? 14 : 30;
-                  setDurationDays(String(presetDays));
-                  setEndDate(getChallengeEndDate(startDate, presetDays));
+            onValueChange={(val) =>
+              requestCustomization(() => {
+                setIsRecurring(val);
+                if (val) {
+                  setIsOngoing(false);
+                  if (recurrencePreset !== 'custom') {
+                    const presetDays = recurrencePreset === 'weekly' ? 7 : recurrencePreset === 'biweekly' ? 14 : 30;
+                    setDurationDays(String(presetDays));
+                    setEndDate(getChallengeEndDate(startDate, presetDays));
+                  }
                 }
-              }
-            }}
+              })
+            }
             accessibilityLabel="Toggle recurring challenge"
             disabled={isScheduleLocked || isOngoing}
           />
@@ -1439,7 +1696,13 @@ export default function DiscoverScreen() {
   if (mode === 'create') {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            paddingTop: topTabContentOffset,
+          },
+        ]}
         edges={['top']}
       >
         <View style={styles.createModeContainer}>
@@ -1451,7 +1714,13 @@ export default function DiscoverScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.background,
+          paddingTop: topTabContentOffset,
+        },
+      ]}
       edges={['top']}
     >
       <ScrollView
@@ -1588,6 +1857,56 @@ const styles = StyleSheet.create({
   },
   form: {
     flex: 1,
+  },
+  aiDraftCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 22,
+    padding: 16,
+  },
+  aiDraftHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  aiDraftTitle: { fontSize: 16, fontWeight: '700' },
+  aiDraftDescription: { fontSize: 13, lineHeight: 19, marginBottom: 12 },
+  aiDraftButton: {
+    alignItems: 'center',
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    minHeight: 46,
+  },
+  aiDraftButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 7,
+  },
+  reportAiDraftButton: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    flexDirection: 'row',
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+  },
+  reportAiDraftText: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  proPill: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: '800',
+    marginLeft: 'auto',
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   label: {
     fontSize: 14,

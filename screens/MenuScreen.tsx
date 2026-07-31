@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +22,13 @@ import { loadChatFromStorage } from '../redux/slices/chatSlice';
 import SegmentedControl from '../components/SegmentedControl';
 import Avatar from '../components/Avatar';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
+import { APP_LINKS } from '../config/links';
+import { openExternalLink } from '../utils/openExternalLink';
+import { deleteAccount } from '../services/account';
+import { MembershipCapability } from '../types/membership';
+import { useCapabilityGate } from '../hooks/useCapabilityGate';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { useMembership } from '../context/MembershipContext';
 
 type MenuNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -31,6 +39,7 @@ interface MenuItem {
   screen?: keyof RootStackParamList;
   action?: () => void;
   devOnly?: boolean;
+  capability?: MembershipCapability;
 }
 
 export default function MenuScreen() {
@@ -40,23 +49,38 @@ export default function MenuScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { user, signOut, getAccessToken } = useAuth();
   const profile = useSelector((state: RootState) => state.profile.data);
+  const { requireCapability } = useCapabilityGate();
+  const { topTabContentOffset } = useResponsiveLayout();
+  const { membership } = useMembership();
 
   const featureItems: MenuItem[] = [
+    { id: 'membership', label: 'Membership', icon: 'sparkles-outline', screen: 'Membership' },
     { id: 'badges', label: 'Badges', icon: 'ribbon-outline', screen: 'Badges' },
-    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching' },
+    { id: 'coaching', label: 'Coaching', icon: 'fitness-outline', screen: 'Coaching', capability: 'canUseEnhancedAccountability' },
   ];
+  if (membership.organizations.length > 0) {
+    featureItems.splice(1, 0, {
+      id: 'organizations',
+      label: 'Organizations',
+      icon: 'people-outline',
+      screen: 'Organizations',
+    });
+  }
 
-  const settingsItems: MenuItem[] = [
+  const settingsItems: MenuItem[] = ([
+    { id: 'updates', label: 'Updates', icon: 'notifications-outline', screen: 'NotificationInbox' },
     { id: 'apps', label: 'Apps & Devices', icon: 'phone-portrait-outline', screen: 'AppsDevices', devOnly: true },
-    { id: 'notifications', label: 'Notifications', icon: 'notifications-outline', screen: 'Notifications' },
+    { id: 'notifications', label: 'Notification Settings', icon: 'options-outline', screen: 'Notifications' },
     { id: 'preferences', label: 'Preferences', icon: 'globe-outline', screen: 'Preferences', devOnly: true },
-  ].filter(i => __DEV__ || !i.devOnly);
+  ] satisfies MenuItem[]).filter(i => __DEV__ || !i.devOnly);
 
   const legalSupportItems: MenuItem[] = [
     { id: 'privacy', label: 'Privacy Center', icon: 'shield-outline', screen: 'PrivacyCenter' },
-    { id: 'terms', label: 'Terms of Service', icon: 'document-text-outline' },
-    { id: 'privacyPolicy', label: 'Privacy Policy', icon: 'lock-closed-outline' },
+    { id: 'terms', label: 'Terms of Service', icon: 'document-text-outline', action: () => openExternalLink(APP_LINKS.terms) },
+    { id: 'privacyPolicy', label: 'Privacy Policy', icon: 'lock-closed-outline', action: () => openExternalLink(APP_LINKS.privacy) },
+    { id: 'community', label: 'Community Guidelines', icon: 'people-outline', action: () => openExternalLink(APP_LINKS.communityGuidelines) },
     { id: 'help', label: 'Help', icon: 'help-circle-outline', screen: 'Help' },
+    { id: 'support', label: 'Contact Support', icon: 'mail-outline', action: () => openExternalLink(APP_LINKS.support) },
   ];
 
   const handleClearChatData = () => {
@@ -97,7 +121,58 @@ export default function MenuScreen() {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account?',
+      'This permanently deletes your TribeTracker account. Personal history cannot be restored. If you have an Apple or Google subscription, deleting the account does not automatically cancel billing.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Confirm Permanent Deletion',
+              'Delete your account and personal data now?',
+              [
+                { text: 'Keep Account', style: 'cancel' },
+                {
+                  text: 'Delete Account',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const token = getAccessToken();
+                    if (!token) {
+                      Alert.alert('Unable to Delete', 'Please sign in again and retry.');
+                      return;
+                    }
+                    try {
+                      await deleteAccount(token);
+                      await signOut();
+                    } catch (error) {
+                      Alert.alert(
+                        'Deletion Failed',
+                        error instanceof Error
+                          ? error.message
+                          : 'Account deletion is temporarily unavailable.'
+                      );
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
   const handleMenuPress = (item: MenuItem) => {
+    if (item.capability) {
+      requireCapability(item.capability, () => {
+        if (item.screen) navigation.navigate(item.screen as any);
+      });
+      return;
+    }
     if (item.action) {
       item.action();
     } else if (item.screen) {
@@ -120,7 +195,10 @@ export default function MenuScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { paddingTop: topTabContentOffset }]}
+        edges={['top']}
+      >
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -253,34 +331,47 @@ export default function MenuScreen() {
               />
             </TouchableOpacity>
           )}
-          {/* Clear All Data - destructive action */}
-          <TouchableOpacity
-            style={[styles.menuItem, { backgroundColor: colors.surface }]}
-            onPress={handleClearData}
-          >
-            <Ionicons name="trash-outline" size={22} color={colors.error} />
-            <Text style={[styles.menuItemText, { color: colors.error }]}>
-              Clear All Data
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors.textTertiary}
-            />
-          </TouchableOpacity>
+          {__DEV__ && (
+            <TouchableOpacity
+              style={[styles.menuItem, { backgroundColor: colors.surface }]}
+              onPress={handleClearData}
+            >
+              <Ionicons name="trash-outline" size={22} color={colors.error} />
+              <Text style={[styles.menuItemText, { color: colors.error }]}>
+                Clear Local Data
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textTertiary}
+              />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Sign out */}
         {user && (
-          <TouchableOpacity
-            style={[styles.signOutButton, { backgroundColor: colors.surface }]}
-            onPress={signOut}
-          >
-            <Ionicons name="log-out-outline" size={22} color={colors.error} />
-            <Text style={[styles.signOutText, { color: colors.error }]}>
-              Sign Out
-            </Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[styles.signOutButton, { backgroundColor: colors.surface }]}
+              onPress={signOut}
+            >
+              <Ionicons name="log-out-outline" size={22} color={colors.error} />
+              <Text style={[styles.signOutText, { color: colors.error }]}>
+                Sign Out
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteAccountButton}
+              onPress={handleDeleteAccount}
+              accessibilityRole="button"
+              accessibilityLabel="Permanently delete account"
+            >
+              <Text style={[styles.deleteAccountText, { color: colors.error }]}>
+                Delete Account
+              </Text>
+            </TouchableOpacity>
+          </>
         )}
 
         {/* Auth button for guests */}
@@ -295,7 +386,7 @@ export default function MenuScreen() {
 
         {/* Version */}
         <Text style={[styles.version, { color: colors.textTertiary }]}>
-          TribeTracker v0.0.2
+          TribeTracker v{Constants.expoConfig?.version || '1.0.0'}
         </Text>
       </ScrollView>
       </SafeAreaView>
@@ -324,6 +415,14 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
+  },
+  deleteAccountButton: {
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  deleteAccountText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   userName: {
     fontSize: 16,

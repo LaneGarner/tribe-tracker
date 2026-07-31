@@ -28,6 +28,7 @@ interface BadgeGridProps {
   onBadgePress?: (badge: BadgeDefinition, userBadge?: UserBadge) => void;
   showOnlyEarned?: boolean;
   numColumns?: number;
+  lockProBadges?: boolean;
 }
 
 interface BadgeItem {
@@ -42,6 +43,7 @@ export default function BadgeGrid({
   onBadgePress,
   showOnlyEarned = false,
   numColumns = 3,
+  lockProBadges = false,
 }: BadgeGridProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -120,6 +122,11 @@ export default function BadgeGrid({
                         earned={item.isEarned}
                         size="md"
                         earnedDate={earnedDate}
+                        locked={
+                          lockProBadges &&
+                          item.definition.requiredPlan === 'pro' &&
+                          !item.isEarned
+                        }
                         onPress={
                           onBadgePress
                             ? () => onBadgePress(item.definition, item.userBadge)

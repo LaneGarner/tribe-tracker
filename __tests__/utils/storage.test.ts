@@ -96,7 +96,7 @@ describe('saveProfile / loadProfile', () => {
     const profile = {
       id: 'u1', email: 'test@test.com', fullName: 'Test', hideEmail: false, hideAge: false,
       hideHeight: false, hideWeight: false, hideLocation: false, hideBio: false,
-      profileVisible: true, pushNotifications: true, emailNotifications: false,
+      profileVisible: true, pushNotifications: true,
       isChildAccount: false, parentVerified: false, challengeOrder: [],
     };
     await saveProfile(profile as any);

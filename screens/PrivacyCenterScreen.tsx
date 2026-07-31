@@ -15,6 +15,30 @@ import { updatePrivacySettings, updateProfile } from '../redux/slices/profileSli
 import { removeBlockedUser } from '../redux/slices/chatSlice';
 import Toggle from '../components/Toggle';
 import Avatar from '../components/Avatar';
+import { useAIConsent } from '../context/AIConsentContext';
+import { AIConsentPurpose } from '../services/aiConsent';
+
+const AI_PURPOSES: Array<{
+  purpose: AIConsentPurpose;
+  label: string;
+  description: string;
+}> = [
+  {
+    purpose: 'personal_coaching',
+    label: 'Personal coaching',
+    description: 'Use relevant challenge activity for personalized guidance.',
+  },
+  {
+    purpose: 'challenge_matching',
+    label: 'Challenge recommendations',
+    description: 'Use your goals to find challenges that may fit.',
+  },
+  {
+    purpose: 'challenge_generation',
+    label: 'Challenge drafts',
+    description: 'Use your prompt to create an editable challenge draft.',
+  },
+];
 
 export default function PrivacyCenterScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -23,6 +47,7 @@ export default function PrivacyCenterScreen() {
 
   const profile = useSelector((state: RootState) => state.profile.data);
   const blockedUsers = useSelector((state: RootState) => state.chat.blockedUsers);
+  const { hasAIConsent, grantAIConsent, revokeAIConsent } = useAIConsent();
 
   const privacySettings = [
     {
@@ -71,10 +96,6 @@ export default function PrivacyCenterScreen() {
     );
   };
 
-  const toggleChildAccount = () => {
-    dispatch(updateProfile({ isChildAccount: !profile?.isChildAccount }));
-  };
-
   const toggleProfileVisible = () => {
     dispatch(updateProfile({ profileVisible: !profile?.profileVisible }));
   };
@@ -119,6 +140,49 @@ export default function PrivacyCenterScreen() {
               accessibilityLabel="Toggle profile visibility"
             />
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
+              AI-assisted features
+            </Text>
+          </View>
+          <Text style={[styles.settingDescription, { color: colors.textSecondary, marginBottom: 10 }]}>
+            Consent is recorded separately for each purpose. Chat messages are
+            excluded, and you can revoke access at any time.
+          </Text>
+          {AI_PURPOSES.map(item => (
+            <View
+              key={item.purpose}
+              style={[styles.settingRow, { backgroundColor: colors.surface }]}
+            >
+              <View style={styles.settingInfo}>
+                <Text style={[styles.settingLabel, { color: colors.text }]}>
+                  {item.label}
+                </Text>
+                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                  {item.description}
+                </Text>
+              </View>
+              <Toggle
+                value={hasAIConsent(item.purpose)}
+                onValueChange={value => {
+                  const action = value
+                    ? grantAIConsent(item.purpose)
+                    : revokeAIConsent(item.purpose);
+                  action.catch(error =>
+                    Alert.alert(
+                      'Unable to Update',
+                      error instanceof Error ? error.message : 'Please try again.'
+                    )
+                  );
+                }}
+                accessibilityLabel={`Allow ${item.label.toLowerCase()}`}
+              />
+            </View>
+          ))}
         </View>
 
         <View style={styles.section}>
@@ -203,40 +267,6 @@ export default function PrivacyCenterScreen() {
           )}
         </View>
 
-        {/* Account Type */}
-        {__DEV__ && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="people-outline" size={20} color={colors.text} />
-              <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
-                Account Type
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.accountTypeCard,
-                { backgroundColor: colors.warning + '15' },
-              ]}
-            >
-              <View style={styles.settingInfo}>
-                <Text style={[styles.settingLabel, { color: colors.text }]}>
-                  Child Account (Under 13)
-                </Text>
-                <Text
-                  style={[styles.settingDescription, { color: colors.textSecondary }]}
-                >
-                  Child accounts require adult supervision
-                </Text>
-              </View>
-              <Toggle
-                value={profile?.isChildAccount ?? false}
-                onValueChange={toggleChildAccount}
-                variant="warning"
-                accessibilityLabel="Toggle child account"
-              />
-            </View>
-          </View>
-        )}
       </ScrollView>
     </View>
   );

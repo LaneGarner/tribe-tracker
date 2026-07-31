@@ -25,6 +25,12 @@ import {
   cancelAllNotifications,
 } from '../utils/notifications';
 import { registerAndSavePushToken } from '../utils/pushToken';
+import { useAuth } from '../context/AuthContext';
+import {
+  getUserNotificationPreferences,
+  updateUserNotificationPreferences,
+  UserNotificationPreferences,
+} from '../services/userNotifications';
 
 function timeStringToDate(time: string): Date {
   const [hour, minute] = time.split(':').map(Number);
@@ -55,6 +61,7 @@ export default function NotificationsScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+  const { getAccessToken } = useAuth();
 
   const profile = useSelector((state: RootState) => state.profile.data);
   const settings: NotificationSettings = {
@@ -65,12 +72,44 @@ export default function NotificationsScreen() {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState<'reminder' | 'streak' | null>(null);
   const [tempPickerDate, setTempPickerDate] = useState(new Date());
+  const [updatePreferences, setUpdatePreferences] = useState<UserNotificationPreferences>({
+    inAppEnabled: true,
+  });
+  const [updatePreferencesError, setUpdatePreferencesError] = useState('');
+  const [savingUpdatePreferences, setSavingUpdatePreferences] = useState(false);
 
   useEffect(() => {
     getPermissionStatus().then(status => {
       setPermissionDenied(status === 'denied');
     });
   }, []);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    getUserNotificationPreferences(token)
+      .then(setUpdatePreferences)
+      .catch(error => setUpdatePreferencesError(
+        error instanceof Error ? error.message : 'Update preferences could not be loaded.'
+      ));
+  }, [getAccessToken]);
+
+  const saveUpdatePreferences = async (partial: Partial<UserNotificationPreferences>) => {
+    const token = getAccessToken();
+    if (!token) return;
+    const next = { ...updatePreferences, ...partial };
+    setUpdatePreferences(next);
+    setSavingUpdatePreferences(true);
+    setUpdatePreferencesError('');
+    try {
+      setUpdatePreferences(await updateUserNotificationPreferences(token, next));
+    } catch (error) {
+      setUpdatePreferencesError(error instanceof Error ? error.message : 'Update preferences could not be saved.');
+      setUpdatePreferences(updatePreferences);
+    } finally {
+      setSavingUpdatePreferences(false);
+    }
+  };
 
   const updateSettings = useCallback(
     (partial: Partial<NotificationSettings>) => {
@@ -207,6 +246,21 @@ export default function NotificationsScreen() {
             <Ionicons name="open-outline" size={16} color={colors.textSecondary} />
           </Pressable>
         )}
+
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="notifications-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Account updates</Text>
+          </View>
+          <Text style={[styles.settingDescription, { color: colors.textSecondary, marginBottom: 12 }]}>
+            Access requests, new members, and challenge starts appear in the in-app Updates inbox.
+          </Text>
+          {updatePreferencesError ? <Text style={[styles.settingDescription, { color: colors.error, marginBottom: 10 }]}>{updatePreferencesError}</Text> : null}
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}><Text style={[styles.settingLabel, { color: colors.text }]}>Show in-app updates</Text><Text style={[styles.settingDescription, { color: colors.textSecondary }]}>Turn this off to hide the inbox and unread count.</Text></View>
+            <Toggle value={updatePreferences.inAppEnabled} disabled={savingUpdatePreferences} onValueChange={value => void saveUpdatePreferences({ inAppEnabled: value })} accessibilityLabel="Show in-app updates" />
+          </View>
+        </View>
 
         {/* Push Notifications Card */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
@@ -396,33 +450,6 @@ export default function NotificationsScreen() {
           </View>
         </View>
 
-        {/* Email Notifications Card */}
-        <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="mail-outline" size={20} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Email Notifications
-            </Text>
-          </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>
-                Email Notifications
-              </Text>
-              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                Receive email updates
-              </Text>
-            </View>
-            <Toggle
-              value={profile?.emailNotifications ?? false}
-              onValueChange={() =>
-                dispatch(updateProfile({ emailNotifications: !profile?.emailNotifications }))
-              }
-              accessibilityLabel="Toggle email notifications"
-            />
-          </View>
-        </View>
       </ScrollView>
 
       {/* iOS Time Picker Modal */}

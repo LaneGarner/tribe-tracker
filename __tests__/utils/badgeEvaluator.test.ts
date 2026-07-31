@@ -124,6 +124,33 @@ describe('evaluateNewBadges', () => {
       expect(result[0].earnedAt).toBeDefined();
     });
 
+    it('leaves Pro badge awarding to the server', () => {
+      const state = makeState({
+        badges: {
+          definitions: [makeBadgeDef({ requiredPlan: 'pro' })],
+          earned: [],
+          totalPoints: 0,
+          level: 1,
+          loading: false,
+          error: null,
+        },
+        checkins: {
+          data: [
+            {
+              id: 'c1',
+              challengeId: 'ch1',
+              userId: USER_ID,
+              checkinDate: '2024-06-15',
+            },
+          ],
+          loading: false,
+          error: null,
+        },
+      });
+
+      expect(evaluateNewBadges(state, USER_ID)).toEqual([]);
+    });
+
     it('does NOT earn first_checkin badge with 0 checkins', () => {
       const state = makeState({
         badges: {

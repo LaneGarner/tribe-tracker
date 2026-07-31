@@ -6,10 +6,10 @@ export interface ChallengeCategory {
 
 export const CHALLENGE_CATEGORIES: ChallengeCategory[] = [
   { key: 'General', label: 'General', icon: 'grid-outline' },
-  { key: 'Health', label: 'Health', icon: 'heart-outline' },
+  { key: 'Health', label: 'Physical Wellness', icon: 'heart-outline' },
   { key: 'Discipline', label: 'Discipline', icon: 'shield-checkmark-outline' },
-  { key: 'Addiction', label: 'Addiction', icon: 'ban-outline' },
-  { key: 'Mental Health', label: 'Mental Health', icon: 'leaf-outline' },
+  { key: 'Addiction', label: 'Habit Change', icon: 'refresh-outline' },
+  { key: 'Mental Health', label: 'Mindfulness & Stress', icon: 'leaf-outline' },
   { key: 'Lifestyle', label: 'Lifestyle', icon: 'sunny-outline' },
 ];
 

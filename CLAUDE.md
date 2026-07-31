@@ -86,7 +86,7 @@ GestureHandlerRootView
 
 ### Notification System
 - Local push notifications via `expo-notifications`
-- Email notifications via Supabase Edge Function (`supabase/functions/notify-join`)
+- In-app and push notifications for reminders and account activity
 - Types: daily reminders (20:00 default), streak warnings (21:00), challenge start/end (1 day before)
 - Android channel: "habit-reminders" with HIGH importance
 - Settings stored in profile's `notificationSettings`
@@ -130,7 +130,6 @@ Auth: Supabase JWT tokens passed via `Authorization: Bearer <token>`
 **Vercel config**: URL rewrites for `/invite/:code` → `/api/invite/:code` and `/challenge/:id` → `/api/challenge/:id`
 
 ### Supabase Edge Functions
-- `notify-join` (Deno): Sends HTML email via Gmail OAuth when user joins a challenge. Checks creator has email_notifications enabled. Fire-and-forget (always returns 200).
 - Env vars: `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_FROM_EMAIL`
 
 ### Database (Supabase)
