@@ -31,6 +31,7 @@ jest.mock('../../utils/storage', () => ({
   saveBlockedUsers: jest.fn(),
   loadBlockedUsers: jest.fn(() => Promise.resolve([])),
   addToPendingSync: jest.fn(),
+  clearCoachInsights: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../../utils/badgeEvaluator', () => ({
@@ -143,7 +144,6 @@ const makeProfile = (overrides: Partial<UserProfile> = {}): UserProfile => ({
   hideBio: false,
   profileVisible: true,
   pushNotifications: true,
-  emailNotifications: true,
   isChildAccount: false,
   parentVerified: false,
   challengeOrder: [],

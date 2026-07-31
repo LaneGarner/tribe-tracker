@@ -36,21 +36,32 @@ import {
 import { AppDispatch, store } from './redux/store';
 import { ThemeContext, ThemeProvider, getColors } from './theme/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { MembershipProvider } from './context/MembershipContext';
+import { AIConsentProvider } from './context/AIConsentContext';
 import { isBackendConfigured } from './config/api';
 import { RootStackParamList } from './types';
-import { setPendingInviteCode, consumePendingInviteCode, setPendingChallengeId, consumePendingChallengeId } from './utils/pendingInvite';
+import {
+  consumePendingChallengeId,
+  consumePendingInviteCode,
+  consumePendingOrganizationInviteToken,
+  setPendingChallengeId,
+  setPendingInviteCode,
+  setPendingOrganizationInviteToken,
+} from './utils/pendingInvite';
 import { configureNotificationHandler } from './utils/notifications';
 import useNotificationScheduler from './hooks/useNotificationScheduler';
 import { registerAndSavePushToken } from './utils/pushToken';
+import { WEB_BASE_URL } from './config/links';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 const linking = {
-  prefixes: [Linking.createURL('/'), 'https://tribe-tracker-backend.vercel.app'],
+  prefixes: [Linking.createURL('/'), WEB_BASE_URL],
   config: {
     screens: {
       CreateChallenge: 'invite/:inviteCode',
       ChallengeDetail: 'challenge/:challengeId',
+      OrganizationInvite: 'organization-invite/:token',
     },
   },
 };
@@ -107,6 +118,13 @@ function AppContent() {
   // Handle pending deep links after login
   useEffect(() => {
     if (user && !isInitializing && navigationRef.isReady()) {
+      const organizationToken = consumePendingOrganizationInviteToken();
+      if (organizationToken) {
+        setTimeout(() => {
+          navigationRef.navigate('OrganizationInvite', { token: organizationToken });
+        }, 500);
+        return;
+      }
       const code = consumePendingInviteCode();
       if (code) {
         setTimeout(() => {
@@ -127,6 +145,11 @@ function AppContent() {
   useEffect(() => {
     const storePendingDeepLink = (url: string) => {
       if (user) return;
+      const organizationInviteMatch = url.match(/organization-invite\/([A-Za-z0-9_-]+)/);
+      if (organizationInviteMatch) {
+        setPendingOrganizationInviteToken(organizationInviteMatch[1]);
+        return;
+      }
       const inviteMatch = url.match(/invite\/([A-Za-z0-9]+)/);
       if (inviteMatch) {
         setPendingInviteCode(inviteMatch[1]);
@@ -222,7 +245,11 @@ export default function App() {
       <Provider store={store}>
         <ThemeProvider>
           <AuthProvider>
-            <AppContent />
+            <MembershipProvider>
+              <AIConsentProvider>
+                <AppContent />
+              </AIConsentProvider>
+            </MembershipProvider>
           </AuthProvider>
         </ThemeProvider>
       </Provider>

@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-nativ
 import { MessageCircle } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { selectTotalUnreadCount } from '../../redux/slices/chatSlice';
+import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 
 interface HeaderChatButtonProps {
   color?: string;
@@ -29,7 +29,7 @@ export default function HeaderChatButton({
   const colors = getColors(colorScheme);
   const navigation = useNavigation<any>();
   const unread = useSelector(selectTotalUnreadCount);
-  const insets = useSafeAreaInsets();
+  const { insets, topTabContentOffset } = useResponsiveLayout();
 
   const iconColor = color || (onDarkBackground ? '#FFFFFF' : colors.text);
   const unreadLabel =
@@ -62,7 +62,7 @@ export default function HeaderChatButton({
     <View
       style={[
         styles.floatingContainer,
-        { top: insets.top + 8 },
+        { top: insets.top + (topTabContentOffset || 8) },
         style,
       ]}
       pointerEvents="box-none"

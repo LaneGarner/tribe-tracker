@@ -47,7 +47,6 @@ const makeProfile = (overrides: Partial<UserProfile> = {}): UserProfile => ({
   hideBio: false,
   profileVisible: true,
   pushNotifications: true,
-  emailNotifications: true,
   isChildAccount: false,
   parentVerified: false,
   challengeOrder: [],

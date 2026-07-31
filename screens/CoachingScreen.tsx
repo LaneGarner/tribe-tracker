@@ -291,6 +291,10 @@ export default function CoachingScreen() {
             color={colors.textSecondary}
           />
         </View>
+        <Text style={[styles.subtle, { color: colors.textTertiary, marginBottom: 16 }]}>
+          General wellness guidance based on your challenge activity. It is not
+          medical or mental health treatment.
+        </Text>
 
         {isEmpty ? (
           <EmptyState colors={colors} onJoin={goToDiscover} />

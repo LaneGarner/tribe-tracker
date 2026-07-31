@@ -5,6 +5,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,10 +19,11 @@ import {
   makeSelectReadReceiptsByConversationId,
   fetchMessagesFromServer,
   addMessage,
+  addBlockedUser,
   markConversationRead,
   markConversationAsRead,
 } from '../redux/slices/chatSlice';
-import { RootStackParamList, ChatMessage } from '../types';
+import { RootStackParamList, ChatMessage, BlockedUser } from '../types';
 import { useConversationRealtime } from '../hooks/useConversationRealtime';
 import { useTypingIndicator } from '../hooks/useTypingIndicator';
 import { useChatActions } from '../hooks/useChatActions';
@@ -31,6 +33,7 @@ import ChatInput from '../components/chat/ChatInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import EmptyChat from '../components/chat/EmptyChat';
 import MessageActionsOverlay from '../components/chat/MessageActionsOverlay';
+import { useContentReport } from '../hooks/useContentReport';
 import { isBackendConfigured } from '../config/api';
 import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage, computeReadReceipts, ReaderInfo } from '../utils/chatUtils';
 
@@ -44,6 +47,7 @@ export default function GroupChatScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
+  const { reportContent } = useContentReport();
 
   const { conversationId, groupName } = route.params;
   const flatListRef = useRef<FlatList<ChatDisplayItem> | null>(null);
@@ -239,6 +243,36 @@ export default function GroupChatScreen() {
         onCopy={chatActions.handleCopy}
         onEdit={chatActions.beginEdit}
         onDelete={chatActions.handleDelete}
+        onReport={message =>
+          reportContent({
+            targetType: 'message',
+            targetId: message.id,
+            contextId: conversationId,
+          })
+        }
+        onBlock={message =>
+          Alert.alert(
+            'Block User',
+            `Block ${message.senderName || 'this user'}? You will no longer be able to message each other.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: () => {
+                  const blocked: BlockedUser = {
+                    id: Crypto.randomUUID(),
+                    blockedId: message.senderId,
+                    blockedName: message.senderName,
+                    blockedPhotoUrl: message.senderPhotoUrl,
+                    createdAt: new Date().toISOString(),
+                  };
+                  dispatch(addBlockedUser(blocked));
+                },
+              },
+            ]
+          )
+        }
       />
     </KeyboardAvoidingView>
   );

@@ -35,6 +35,7 @@ import {
 } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
+import { useContentReport } from '../hooks/useContentReport';
 
 type ChallengeDetailRouteProp = RouteProp<RootStackParamList, 'ChallengeDetail'>;
 type ChallengeDetailNavigationProp = NativeStackNavigationProp<
@@ -49,6 +50,7 @@ export default function ChallengeDetailScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
+  const { reportContent } = useContentReport();
   const headerHeight = useHeaderHeight();
 
   const { challengeId } = route.params;
@@ -307,6 +309,17 @@ export default function ChallengeDetailScreen() {
       });
     }
 
+    if (!isCreator) {
+      options.push({
+        text: 'Report Challenge',
+        onPress: () =>
+          reportContent({
+            targetType: 'challenge',
+            targetId: challenge.id,
+          }),
+      });
+    }
+
     options.push({ text: 'Cancel', style: 'cancel' });
 
     Alert.alert('Challenge Options', undefined, options);
@@ -352,7 +365,7 @@ export default function ChallengeDetailScreen() {
           >
             <Ionicons name="stats-chart" size={22} color={headerIconColor} />
           </TouchableOpacity>
-          {(isCreator || isJoined) && (
+          {challenge && (
             <TouchableOpacity
               onPress={handleOptionsMenu}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

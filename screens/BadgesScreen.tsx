@@ -22,10 +22,14 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { isBackendConfigured } from '../config/api';
 import { BadgeDefinition, UserBadge } from '../types';
+import { RootStackParamList } from '../types';
 import BadgeGrid from '../components/badges/BadgeGrid';
 import BadgeGridSkeleton from '../components/badges/BadgeGridSkeleton';
 import LevelBadge, { LEVEL_COLORS } from '../components/badges/LevelBadge';
 import HexBadge from '../components/badges/HexBadge';
+import { useMembership } from '../context/MembershipContext';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type TabType = 'earned' | 'available';
 
@@ -50,10 +54,15 @@ function getTierForDefinition(def: BadgeDefinition): BadgeTier {
 }
 
 export default function BadgesScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { session } = useAuth();
+  const { membership } = useMembership();
+  const hasExpandedBadges =
+    membership.capabilities.canUseExpandedBadgesAndLevels;
 
   const { definitions, earned, totalPoints, level, loading } = useSelector(
     (state: RootState) => state.badges
@@ -139,6 +148,7 @@ export default function BadgesScreen() {
         }
       >
         {/* Level & Progress Section */}
+        {hasExpandedBadges ? (
         <View style={[styles.levelSection, { backgroundColor: colors.surface }]}>
           <TouchableOpacity
             style={styles.levelInfoButton}
@@ -178,6 +188,40 @@ export default function BadgesScreen() {
             />
           </View>
         </View>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.basicBadgeSummary,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onPress={() =>
+              navigation.navigate('Paywall', {
+                feature: 'Expanded badges and levels',
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Unlock expanded badges and levels with Pro"
+          >
+            <View style={styles.basicBadgeSummaryIcon}>
+              <Ionicons name="ribbon-outline" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.basicBadgeSummaryCopy}>
+              <Text style={[styles.basicBadgeSummaryTitle, { color: colors.text }]}>
+                Basic badges are included
+              </Text>
+              <Text
+                style={[
+                  styles.basicBadgeSummaryText,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Keep earning starter milestones. Pro adds deeper achievements
+                and level progression.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        )}
 
         {/* Tabs */}
         <View style={styles.tabContainer}>
@@ -229,6 +273,7 @@ export default function BadgesScreen() {
                     definitions={tierDefs}
                     earned={earned}
                     onBadgePress={handleBadgePress}
+                    lockProBadges={!hasExpandedBadges}
                   />
                 </View>
               );
@@ -272,6 +317,11 @@ export default function BadgesScreen() {
                   earned={!!selectedBadge.userBadge}
                   size="lg"
                   showName={false}
+                  locked={
+                    !hasExpandedBadges &&
+                    selectedBadge.definition.requiredPlan === 'pro' &&
+                    !selectedBadge.userBadge
+                  }
                 />
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
                   {selectedBadge.definition.name}
@@ -308,11 +358,52 @@ export default function BadgesScreen() {
                     </View>
                   )}
                 </View>
+                {!hasExpandedBadges &&
+                  selectedBadge.definition.requiredPlan === 'pro' &&
+                  !selectedBadge.userBadge && (
+                    <TouchableOpacity
+                      style={[
+                        styles.upgradeButton,
+                        { backgroundColor: colors.primary },
+                      ]}
+                      onPress={() => {
+                        closeModal();
+                        navigation.navigate('Paywall', {
+                          feature: 'Expanded badges and levels',
+                        });
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="View Pro membership for this badge"
+                    >
+                      <Text style={styles.closeButtonText}>
+                        Unlock with Pro
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 <TouchableOpacity
-                  style={[styles.closeButton, { backgroundColor: colors.primary }]}
+                  style={[
+                    styles.closeButton,
+                    {
+                      backgroundColor:
+                        !hasExpandedBadges &&
+                        selectedBadge.definition.requiredPlan === 'pro' &&
+                        !selectedBadge.userBadge
+                          ? colors.surfaceSecondary
+                          : colors.primary,
+                    },
+                  ]}
                   onPress={closeModal}
                 >
-                  <Text style={styles.closeButtonText}>Close</Text>
+                  <Text
+                    style={[
+                      styles.closeButtonText,
+                      !hasExpandedBadges &&
+                        selectedBadge.definition.requiredPlan === 'pro' &&
+                        !selectedBadge.userBadge && { color: colors.text },
+                    ]}
+                  >
+                    Close
+                  </Text>
                 </TouchableOpacity>
               </>
             )}
@@ -442,6 +533,35 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 16,
   },
+  basicBadgeSummary: {
+    minHeight: 96,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  basicBadgeSummaryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  basicBadgeSummaryCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  basicBadgeSummaryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  basicBadgeSummaryText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
   progressInfo: {
     marginTop: 16,
     alignItems: 'center',
@@ -517,6 +637,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
+  },
+  upgradeButton: {
+    width: '100%',
+    minHeight: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
   },
   modalTitle: {
     fontSize: 22,

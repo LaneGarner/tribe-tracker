@@ -101,7 +101,6 @@ export interface UserProfile {
   profileVisible: boolean;
   // Notification settings
   pushNotifications: boolean;
-  emailNotifications: boolean;
   notificationSettings?: NotificationSettings;
   expoPushToken?: string;
   // Child account
@@ -169,6 +168,7 @@ export interface BadgeDefinition {
   requirementValue?: number;
   sortOrder: number;
   imageUrl?: string;
+  requiredPlan?: 'free' | 'pro';
 }
 
 export interface UserBadge {
@@ -255,12 +255,21 @@ export type RootStackParamList = {
   ChallengeDetail: { challengeId: string };
   CreateChallenge: { mode?: 'browse' | 'create' | 'join'; challengeId?: string; inviteCode?: string } | undefined;
   ViewMember: { userId: string };
-  ManageChild: { childId: string };
   TaskAnalytics: { challengeId: string };
   Profile: { userId?: string } | undefined;
   PrivacyCenter: undefined;
   Notifications: undefined;
+  NotificationInbox: undefined;
   Preferences: undefined;
+  Membership: undefined;
+  Paywall: { feature?: string } | undefined;
+  Organizations: undefined;
+  OrganizationDetail: {
+    organizationId: string;
+    organizationName: string;
+    roles: import('./membership').OrganizationRole[];
+  };
+  OrganizationInvite: { token: string };
   Help: undefined;
   Chat: undefined;
   GroupChat: { conversationId: string; groupName: string };
@@ -269,11 +278,6 @@ export type RootStackParamList = {
   NewGroupChat: undefined;
   Coaching: undefined;
   AppsDevices: undefined;
-  BuildingManagement: undefined;
-  DistrictManagement: undefined;
-  StaffManagement: undefined;
-  SystemAdmin: undefined;
-  FeatureToggles: undefined;
   Badges: undefined;
   OnboardingWizard: { fromDiscover?: boolean } | undefined;
 };

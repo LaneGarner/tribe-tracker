@@ -39,6 +39,8 @@ interface MessageActionsOverlayProps {
   onCopy: (message: ChatMessage) => void;
   onEdit: (message: ChatMessage) => void;
   onDelete: (message: ChatMessage) => void;
+  onReport: (message: ChatMessage) => void;
+  onBlock: (message: ChatMessage) => void;
 }
 
 const SCREEN = Dimensions.get('window');
@@ -51,6 +53,8 @@ export default function MessageActionsOverlay({
   onCopy,
   onEdit,
   onDelete,
+  onReport,
+  onBlock,
 }: MessageActionsOverlayProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -89,10 +93,11 @@ export default function MessageActionsOverlay({
   const { message, bubbleY, bubbleHeight, isOwn } = target;
   const canModify = isOwn && !message.deletedAt;
   const canCopy = !message.deletedAt && message.type !== 'system';
+  const canReport = !isOwn && !message.deletedAt && message.type !== 'system';
 
   // Position emoji row above the bubble if there's room, otherwise below.
   const emojiRowHeight = 52;
-  const actionListHeight = 48 * (2 + (canModify ? 2 : 0));
+  const actionListHeight = 48 * (2 + (canModify ? 2 : 0) + (canReport ? 2 : 0));
   const gap = 10;
   const totalHeight = emojiRowHeight + gap + actionListHeight;
   const availableBelow = SCREEN.height - (bubbleY + bubbleHeight);
@@ -161,6 +166,30 @@ export default function MessageActionsOverlay({
                 divider
                 onPress={() => {
                   onEdit(message);
+                  onClose();
+                }}
+              />
+            )}
+            {canReport && (
+              <ActionRow
+                icon="flag-outline"
+                label="Report"
+                color={colors.error}
+                divider
+                onPress={() => {
+                  onReport(message);
+                  onClose();
+                }}
+              />
+            )}
+            {canReport && (
+              <ActionRow
+                icon="ban-outline"
+                label="Block User"
+                color={colors.error}
+                divider
+                onPress={() => {
+                  onBlock(message);
                   onClose();
                 }}
               />

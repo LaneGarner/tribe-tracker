@@ -15,14 +15,19 @@ import AuthScreen from '../screens/AuthScreen';
 // Core screens
 import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
-import ManageChildScreen from '../screens/ManageChildScreen';
 import TaskAnalyticsScreen from '../screens/TaskAnalyticsScreen';
 
 // Profile & Settings screens
 import ProfileScreen from '../screens/ProfileScreen';
 import PrivacyCenterScreen from '../screens/PrivacyCenterScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import NotificationInboxScreen from '../screens/NotificationInboxScreen';
 import PreferencesScreen from '../screens/PreferencesScreen';
+import MembershipScreen from '../screens/MembershipScreen';
+import PaywallScreen from '../screens/PaywallScreen';
+import OrganizationsScreen from '../screens/OrganizationsScreen';
+import OrganizationDetailScreen from '../screens/OrganizationDetailScreen';
+import OrganizationInviteScreen from '../screens/OrganizationInviteScreen';
 import HelpScreen from '../screens/HelpScreen';
 
 // Chat screens
@@ -36,20 +41,25 @@ import NewGroupChatScreen from '../screens/NewGroupChatScreen';
 import CoachingScreen from '../screens/CoachingScreen';
 import AppsDevicesScreen from '../screens/AppsDevicesScreen';
 
-// Enterprise screens
-import BuildingManagementScreen from '../screens/BuildingManagementScreen';
-import DistrictManagementScreen from '../screens/DistrictManagementScreen';
-import StaffManagementScreen from '../screens/StaffManagementScreen';
-import SystemAdminScreen from '../screens/SystemAdminScreen';
-import FeatureTogglesScreen from '../screens/FeatureTogglesScreen';
-
 // Badges screen
 import BadgesScreen from '../screens/BadgesScreen';
+import { withCapabilityGate } from '../components/membership/withCapabilityGate';
+import { withAIConsentGate } from '../components/membership/withAIConsentGate';
 
 // Onboarding wizard (first-run)
 import OnboardingWizardScreen from '../screens/OnboardingWizardScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const ProAnalyticsScreen = withCapabilityGate(
+  TaskAnalyticsScreen,
+  'canViewAnalytics',
+  'Advanced analytics are part of Pro'
+);
+const ProCoachingScreen = withCapabilityGate(
+  withAIConsentGate(CoachingScreen),
+  'canUseEnhancedAccountability',
+  'Personalized coaching is part of Pro'
+);
 
 export default function RootNavigator() {
   const { colorScheme } = useContext(ThemeContext);
@@ -181,13 +191,8 @@ export default function RootNavigator() {
             options={{ title: 'Profile' }}
           />
           <Stack.Screen
-            name="ManageChild"
-            component={ManageChildScreen}
-            options={{ title: 'Manage Child' }}
-          />
-          <Stack.Screen
             name="TaskAnalytics"
-            component={TaskAnalyticsScreen}
+            component={ProAnalyticsScreen}
             options={{ title: 'Analytics' }}
           />
 
@@ -208,9 +213,39 @@ export default function RootNavigator() {
             options={{ title: 'Notifications' }}
           />
           <Stack.Screen
+            name="NotificationInbox"
+            component={NotificationInboxScreen}
+            options={{ title: 'Updates' }}
+          />
+          <Stack.Screen
             name="Preferences"
             component={PreferencesScreen}
             options={{ title: 'Preferences' }}
+          />
+          <Stack.Screen
+            name="Membership"
+            component={MembershipScreen}
+            options={{ title: 'Membership' }}
+          />
+          <Stack.Screen
+            name="Paywall"
+            component={PaywallScreen}
+            options={{ title: 'TribeTracker Pro', presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="Organizations"
+            component={OrganizationsScreen}
+            options={{ title: 'Organizations' }}
+          />
+          <Stack.Screen
+            name="OrganizationDetail"
+            component={OrganizationDetailScreen}
+            options={{ title: 'Organization' }}
+          />
+          <Stack.Screen
+            name="OrganizationInvite"
+            component={OrganizationInviteScreen}
+            options={{ title: 'Organization Invitation' }}
           />
           <Stack.Screen
             name="Help"
@@ -252,40 +287,13 @@ export default function RootNavigator() {
           {/* Placeholder screens */}
           <Stack.Screen
             name="Coaching"
-            component={CoachingScreen}
+            component={ProCoachingScreen}
             options={{ title: 'Coaching' }}
           />
           <Stack.Screen
             name="AppsDevices"
             component={AppsDevicesScreen}
             options={{ title: 'Apps & Devices' }}
-          />
-
-          {/* Enterprise screens */}
-          <Stack.Screen
-            name="BuildingManagement"
-            component={BuildingManagementScreen}
-            options={{ title: 'Building Management' }}
-          />
-          <Stack.Screen
-            name="DistrictManagement"
-            component={DistrictManagementScreen}
-            options={{ title: 'District Management' }}
-          />
-          <Stack.Screen
-            name="StaffManagement"
-            component={StaffManagementScreen}
-            options={{ title: 'Staff Management' }}
-          />
-          <Stack.Screen
-            name="SystemAdmin"
-            component={SystemAdminScreen}
-            options={{ title: 'System Admin' }}
-          />
-          <Stack.Screen
-            name="FeatureToggles"
-            component={FeatureTogglesScreen}
-            options={{ title: 'Feature Toggles' }}
           />
 
           {/* Badges */}

@@ -19,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { CHALLENGE_CATEGORIES } from '../constants/categories';
+import { CHALLENGE_CATEGORIES, getCategoryLabel } from '../constants/categories';
 import { updateProfile } from '../redux/slices/profileSlice';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { RootState } from '../redux/store';
@@ -29,6 +29,8 @@ import {
   MatchChallengeResult,
 } from '../utils/matchChallenges';
 import { setWizardSeen } from '../utils/storage';
+import { useCapabilityGate } from '../hooks/useCapabilityGate';
+import { useAIConsent } from '../context/AIConsentContext';
 
 type WizardNavProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -73,8 +75,8 @@ const DESIRED_HABITS_OPTIONS: string[] = [
 const SPECIFICS_MAP: Record<string, string[]> = {
   Health: ['Exercise', 'Sleep', 'Nutrition', 'Hydration'],
   Discipline: ['Focus', 'Morning routine', 'Screen time', 'Habits'],
-  Addiction: ['Smoking', 'Alcohol', 'Social media', 'Sugar', 'Other'],
-  'Mental Health': ['Anxiety', 'Sleep', 'Focus', 'Stress', 'Meditation'],
+  Addiction: ['Unwanted habits', 'Digital habits', 'Sugar', 'Consistency', 'Other'],
+  'Mental Health': ['Mindfulness', 'Sleep', 'Focus', 'Stress', 'Meditation'],
   Lifestyle: ['Reading', 'Side project', 'Learning', 'Relationships'],
   General: [],
 };
@@ -88,6 +90,8 @@ export default function OnboardingWizardScreen() {
   const dispatch = useDispatch();
   const { user, getAccessToken } = useAuth();
   const profile = useSelector((state: RootState) => state.profile.data);
+  const { requireCapability } = useCapabilityGate();
+  const { ensureAIConsent } = useAIConsent();
 
   const [step, setStep] = useState<Step>(1);
   const [goals, setGoals] = useState<string[]>([]);
@@ -166,7 +170,8 @@ export default function OnboardingWizardScreen() {
     );
   };
 
-  const handleFindMatches = async () => {
+  const findMatches = async () => {
+    if (!(await ensureAIConsent('challenge_matching'))) return;
     setLoadingMatches(true);
     try {
       const token = getAccessToken();
@@ -187,6 +192,12 @@ export default function OnboardingWizardScreen() {
     } finally {
       setLoadingMatches(false);
     }
+  };
+
+  const handleFindMatches = () => {
+    requireCapability('canGenerateChallenge', () => {
+      void findMatches();
+    });
   };
 
   const toggleSelectMatch = (challengeId: string) => {
@@ -250,6 +261,8 @@ export default function OnboardingWizardScreen() {
   };
 
   const handleCreateChallengeFromEmpty = async () => {
+    const allowed = requireCapability('canCreatePersonalChallenge', () => {});
+    if (!allowed) return;
     await setWizardSeen();
     completeOnboarding();
     if (fromDiscover) {
@@ -380,7 +393,7 @@ export default function OnboardingWizardScreen() {
                         { color: colors.textSecondary },
                       ]}
                     >
-                      {entry.key}
+                      {getCategoryLabel(entry.key)}
                     </Text>
                     <View style={styles.chipsRow}>
                       {entry.options.map(opt => {

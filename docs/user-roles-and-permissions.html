@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tribe Tracker — Roles & Permissions</title>
+<style>
+  :root {
+    --blue: #2563EB;
+    --blue-soft: #EFF4FF;
+    --ink: #111827;
+    --muted: #6B7280;
+    --line: #E5E7EB;
+    --green: #047857;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink); line-height: 1.55; margin: 0; font-size: 13.5px;
+  }
+  @page { size: letter; margin: 0.7in; }
+  .doc { max-width: 800px; margin: 0 auto; }
+
+  header { border-bottom: 3px solid var(--blue); padding-bottom: 14px; margin-bottom: 22px; }
+  .eyebrow { color: var(--blue); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+  h1 { font-size: 26px; margin: 6px 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; }
+
+  h2 { font-size: 16px; margin: 26px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
+  h2 .n { color: var(--blue); margin-right: 8px; }
+  p { margin: 8px 0; }
+  .lead { font-size: 14px; }
+  strong { font-weight: 700; }
+  section { page-break-inside: avoid; }
+
+  /* hierarchy */
+  .tree { margin: 16px 0 8px; }
+  .node { border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; position: relative; }
+  .node .role { font-weight: 700; font-size: 14px; }
+  .node .scope { color: var(--muted); font-size: 12px; }
+  .node .does { font-size: 12.5px; margin-top: 4px; }
+  .lvl-sys { background: #111827; color: #fff; border-color: #111827; }
+  .lvl-sys .scope { color: #9CA3AF; }
+  .lvl-district { background: var(--blue-soft); border-color: #BFD3FF; }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--blue); color: #fff; vertical-align: middle; margin-left: 8px; }
+  .badge.amber { background: #B45309; }
+  .connector { width: 2px; height: 16px; background: var(--line); margin: 0 0 0 32px; }
+  .indent-1 { margin-left: 28px; }
+  .indent-2 { margin-left: 56px; }
+
+  /* matrix */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  th, td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; vertical-align: top; }
+  thead th { background: #F9FAFB; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+  thead th.role-col { background: var(--blue); color: #fff; text-align: center; width: 15%; }
+  td.cap { font-weight: 600; width: 40%; }
+  td.mark { text-align: center; }
+  .yes { color: var(--green); font-weight: 700; }
+  .no { color: #D1D5DB; }
+  .scoped { color: var(--blue); font-weight: 600; font-size: 11px; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .card h3 { margin: 0 0 4px; font-size: 13.5px; }
+  .card .tag { font-size: 11px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 0.5px; }
+  .card.bldg .tag { color: #B45309; }
+  .card ul { margin: 6px 0 0; padding-left: 18px; }
+  .card li { font-size: 12.5px; margin: 3px 0; }
+
+  .scenario { background: #F9FAFB; border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 12px 0; }
+  .scenario p { margin: 6px 0; font-size: 13px; }
+  .scenario .who { font-weight: 700; color: var(--blue); }
+
+  code { background: #F3F4F6; border-radius: 4px; padding: 1px 5px; font-size: 12px; font-family: 'SF Mono', Menlo, monospace; }
+  .note { font-size: 12.5px; color: var(--muted); }
+  .footer { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<header>
+  <div class="eyebrow">Tribe Tracker · Product Architecture</div>
+  <h1>User Roles &amp; Permissions</h1>
+  <div class="sub">How elevated permissions work for districts and schools (enterprise model)</div>
+</header>
+
+<section>
+<p class="lead">Everyone in Tribe Tracker is fundamentally a <strong>user</strong>. Some users are simply granted
+<strong>more permissions</strong> — the ability to create challenges for a group and to see how their group is
+doing. There is no "admin" label shown anywhere in the app; these are real-world roles like
+<strong>District Wellness Manager</strong> and <strong>Building Manager</strong>. Behind the scenes, those
+users are flagged with a role that unlocks extra capabilities, scoped to the part of the
+organization they're responsible for.</p>
+</section>
+
+<section>
+<h2><span class="n">1</span>The hierarchy</h2>
+<p>Below the platform owner there are <strong>two elevated roles</strong> — one scoped to a whole district,
+one scoped to a single school/building — and then everyday staff who take part.</p>
+
+<div class="tree">
+  <div class="node lvl-sys">
+    <span class="role">Platform Owner</span> <span class="scope">— you / Tribe Tracker</span>
+    <div class="does">Sets up districts, manages billing &amp; the overall app. Not a customer-facing role.</div>
+  </div>
+  <div class="connector"></div>
+  <div class="node lvl-district indent-1">
+    <span class="role">District Wellness Manager</span><span class="badge">Elevated role 1</span>
+    <div class="scope">Scope: the entire district (all of its schools)</div>
+    <div class="does">Sees who's using the app across the district and creates <strong>district-wide challenges</strong>.</div>
+  </div>
+  <div class="connector indent-1"></div>
+  <div class="node indent-2" style="border-color:#FCD9A6;background:#FFF8EE;">
+    <span class="role">Building Manager</span><span class="badge amber">Elevated role 2</span>
+    <div class="scope">Scope: one school / building — typically a teacher or site wellness lead</div>
+    <div class="does">Creates <strong>building challenges</strong> for that school's staff and sees their building's activity.</div>
+  </div>
+  <div class="connector indent-2"></div>
+  <div class="node indent-2">
+    <span class="role">Staff / Participants</span>
+    <div class="scope">Scope: themselves</div>
+    <div class="does">Join challenges, check in on habits, appear on leaderboards, chat.</div>
+  </div>
+</div>
+<p class="note">Organizationally, a building lives inside a district, so a District Manager's view naturally
+includes the buildings beneath them. The two roles are "children" of the platform owner in the sense
+that the owner grants and oversees them.</p>
+</section>
+
+<section>
+<h2><span class="n">2</span>Who can do what</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Capability</th>
+      <th class="role-col">Platform Owner</th>
+      <th class="role-col">District Manager</th>
+      <th class="role-col">Building Manager</th>
+      <th class="role-col">Staff</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td class="cap">Set up districts &amp; buildings, manage billing</td><td class="mark yes">✓</td><td class="mark no">—</td><td class="mark no">—</td><td class="mark no">—</td></tr>
+    <tr><td class="cap">See app usage across the whole district</td><td class="mark yes">✓</td><td class="mark yes">✓</td><td class="mark no">—</td><td class="mark no">—</td></tr>
+    <tr><td class="cap">Create district-wide challenges</td><td class="mark yes">✓</td><td class="mark yes">✓</td><td class="mark no">—</td><td class="mark no">—</td></tr>
+    <tr><td class="cap">See activity within a single building</td><td class="mark yes">✓</td><td class="mark scoped">district</td><td class="mark yes">✓</td><td class="mark no">—</td></tr>
+    <tr><td class="cap">Create building (school-level) challenges</td><td class="mark yes">✓</td><td class="mark scoped">optional</td><td class="mark yes">✓</td><td class="mark no">—</td></tr>
+    <tr><td class="cap">Manage staff / membership in their scope</td><td class="mark yes">✓</td><td class="mark scoped">district</td><td class="mark scoped">building</td><td class="mark no">—</td></tr>
+    <tr><td class="cap">Edit / end a challenge they created</td><td class="mark yes">✓</td><td class="mark yes">✓</td><td class="mark yes">✓</td><td class="mark no">—</td></tr>
+    <tr><td class="cap">Join challenges, check in, leaderboards, chat</td><td class="mark yes">✓</td><td class="mark yes">✓</td><td class="mark yes">✓</td><td class="mark yes">✓</td></tr>
+  </tbody>
+</table>
+<p class="note"><span class="scoped">district</span> / <span class="scoped">building</span> = allowed, but only within that person's own slice of the organization.</p>
+</section>
+
+<section>
+<h2><span class="n">3</span>The key idea: challenges have an owner level</h2>
+<p>Permissions hang off <strong>scope</strong>. A challenge is created at a level, and that level decides who sees it.</p>
+<div class="cards">
+  <div class="card">
+    <div class="tag">District challenge</div>
+    <h3>Created by the District Wellness Manager</h3>
+    <ul>
+      <li>Visible to staff at <strong>every school</strong> in the district</li>
+      <li>Good for district-wide initiatives (e.g. a step challenge for all employees)</li>
+      <li>Rolls up into district usage reporting</li>
+    </ul>
+  </div>
+  <div class="card bldg">
+    <div class="tag">Building challenge</div>
+    <h3>Created by a Building Manager (teacher)</h3>
+    <ul>
+      <li>Visible only to staff at <strong>that one school</strong></li>
+      <li>Good for site-specific goals (e.g. one school's hydration challenge)</li>
+      <li>Stays contained to that building</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<section>
+<h2><span class="n">4</span>Example</h2>
+<div class="scenario">
+  <p><span class="who">District Wellness Manager</span> creates a <em>"District Step Challenge — January."</em>
+  Every staff member, at all 12 schools, can see and join it. She opens her dashboard and sees that
+  340 of 600 employees have signed up.</p>
+  <p><span class="who">Teacher at Lincoln Elementary</span> creates a <em>"Lincoln Staff Hydration Challenge."</em>
+  Only Lincoln staff see it. The district manager can also see it (it's in her district); a teacher at a
+  different school cannot.</p>
+  <p><span class="who">A staff member</span> opens the app, sees both challenges they're eligible for, joins,
+  and checks in each day — exactly like any other Tribe Tracker user.</p>
+</div>
+</section>
+
+<section>
+<h2><span class="n">5</span>How this maps to data</h2>
+<p>The app already has the scaffolding for this — <code>districts</code> and <code>buildings</code> tables and
+District / Building / Staff management screens. The model below builds on that.</p>
+<ul>
+  <li><strong>User</strong> gains a <code>role</code> (<code>staff</code> · <code>building_manager</code> · <code>district_manager</code>) plus a
+  <code>district_id</code> and, for building managers, a <code>building_id</code>. That pairing is what scopes their powers.</li>
+  <li><strong>Challenge</strong> gains an <code>owner_level</code> (<code>district</code> or <code>building</code>) and the matching
+  <code>district_id</code> / <code>building_id</code>. Visibility is "show me challenges for my building, plus district
+  challenges for my district."</li>
+  <li><strong>Permission checks</strong> are simple: can this user create at this level, and is the target within
+  their district/building? No new "admin account" type is needed — it's a flag on the normal user.</li>
+</ul>
+</section>
+
+<section>
+<h2><span class="n">6</span>Notes</h2>
+<ul>
+  <li><strong>No "admin" in the UI.</strong> Internally it's a role flag; to users it reads as "District Wellness
+  Manager" or "Building Manager" (or whatever official titles the district uses).</li>
+  <li><strong>Monetization fit.</strong> This is a natural B2B unit: sell per district (or per seat), with the
+  district manager as the buyer/owner of their organization's space.</li>
+  <li><strong>Extensible.</strong> The same scope pattern supports future levels (e.g. region above district)
+  without rethinking the model.</li>
+</ul>
+</section>
+
+<div class="footer">Tribe Tracker — internal architecture note · roles &amp; permissions · draft for discussion</div>
+
+</div>
+</body>
+</html>

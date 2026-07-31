@@ -1,5 +1,6 @@
 let pendingInviteCode: string | null = null;
 let pendingChallengeId: string | null = null;
+let pendingOrganizationInviteToken: string | null = null;
 
 export function setPendingInviteCode(code: string) {
   pendingInviteCode = code;
@@ -19,4 +20,14 @@ export function consumePendingChallengeId(): string | null {
   const id = pendingChallengeId;
   pendingChallengeId = null;
   return id;
+}
+
+export function setPendingOrganizationInviteToken(token: string) {
+  pendingOrganizationInviteToken = token;
+}
+
+export function consumePendingOrganizationInviteToken(): string | null {
+  const token = pendingOrganizationInviteToken;
+  pendingOrganizationInviteToken = null;
+  return token;
 }

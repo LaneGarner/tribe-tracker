@@ -210,11 +210,18 @@ export function evaluateNewBadges(
 ): UserBadge[] {
   const { definitions, earned } = state.badges;
   if (definitions.length === 0) return [];
+  // Pro badge awards are server-authoritative because membership lives outside
+  // Redux and may change while the app is offline. Keeping them out of the
+  // optimistic evaluator prevents a Free member from briefly seeing a paid
+  // badge that the backend will reject.
+  const locallyAwardableDefinitions = definitions.filter(
+    definition => definition.requiredPlan !== 'pro'
+  );
 
   const stats = gatherStats(state, userId);
   const allNew: UserBadge[] = [];
 
-  for (const def of definitions) {
+  for (const def of locallyAwardableDefinitions) {
     const newBadges = checkBadge(def, stats, [...earned, ...allNew]);
     allNew.push(...newBadges);
   }
@@ -223,14 +230,14 @@ export function evaluateNewBadges(
   // (earning badges increases points which may increase level)
   if (allNew.length > 0) {
     const newPoints = allNew.reduce((sum, b) => {
-      const def = definitions.find(d => d.id === b.badgeId);
+      const def = locallyAwardableDefinitions.find(d => d.id === b.badgeId);
       return sum + (def?.points || 0);
     }, 0);
     const newLevel = calculateLevel(state.badges.totalPoints + newPoints);
     if (newLevel > stats.level) {
       const updatedStats = { ...stats, level: newLevel };
       const allEarned = [...earned, ...allNew];
-      for (const def of definitions) {
+      for (const def of locallyAwardableDefinitions) {
         if (def.requirementType === 'level') {
           const levelBadges = checkBadge(def, updatedStats, allEarned);
           allNew.push(...levelBadges);

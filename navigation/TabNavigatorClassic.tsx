@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -338,8 +338,8 @@ const GlassTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const activeDescriptor = descriptors[activeRoute.key];
   const hasBackgroundImage = (activeDescriptor?.options as any)?.hasBackgroundImage ?? false;
 
-  const horizontalMargin = screenWidth < 380 ? '1%' : '2%';
-  const containerStyle = [
+  const horizontalMargin = screenWidth < 380 ? 4 : 8;
+  const containerStyle: ViewStyle[] = [
     styles.tabBarContainer,
     { left: horizontalMargin, right: horizontalMargin, paddingBottom: insets.bottom > 0 ? insets.bottom - 16 : 4 },
   ];

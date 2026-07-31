@@ -48,3 +48,7 @@ google-service-account-key.json
 
 # Supabase
 supabase/.temp/
+
+# Generated review artifacts and local scratch files
+/output/
+/tmp/

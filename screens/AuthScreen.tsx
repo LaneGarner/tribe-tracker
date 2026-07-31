@@ -17,6 +17,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootStackParamList } from '../types';
+import { APP_LINKS } from '../config/links';
+import { openExternalLink } from '../utils/openExternalLink';
 
 type AuthScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -35,6 +37,7 @@ export default function AuthScreen() {
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [adultTermsAccepted, setAdultTermsAccepted] = useState(false);
 
   const handleForgotPassword = () => {
     Alert.prompt(
@@ -73,6 +76,14 @@ export default function AuthScreen() {
 
     if (!isLogin && !fullName) {
       Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+
+    if (!isLogin && !adultTermsAccepted) {
+      Alert.alert(
+        'Confirmation Required',
+        'Please confirm that you are an adult and agree to the Terms and Privacy Policy.'
+      );
       return;
     }
 
@@ -261,6 +272,31 @@ export default function AuthScreen() {
                 />
               </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              style={styles.consentRow}
+              onPress={() => setAdultTermsAccepted(value => !value)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: adultTermsAccepted }}
+              accessibilityLabel="Confirm adult eligibility and agreement to Terms and Privacy Policy"
+            >
+              <Ionicons
+                name={adultTermsAccepted ? 'checkbox' : 'square-outline'}
+                size={24}
+                color={adultTermsAccepted ? colors.primary : colors.textSecondary}
+              />
+              <Text style={[styles.consentText, { color: colors.text }]}>
+                I confirm I am an adult and agree to the Terms and Privacy Policy.
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.legalLinks}>
+              <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.terms)}>
+                <Text style={[styles.legalLink, { color: colors.primary }]}>Terms</Text>
+              </TouchableOpacity>
+              <Text style={{ color: colors.textTertiary }}>·</Text>
+              <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.privacy)}>
+                <Text style={[styles.legalLink, { color: colors.primary }]}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
 
@@ -268,10 +304,10 @@ export default function AuthScreen() {
           style={[
             styles.button,
             { backgroundColor: colors.primary },
-            (isLoading || !email || !password || (!isLogin && !fullName)) && styles.buttonDisabled,
+            (isLoading || !email || !password || (!isLogin && (!fullName || !adultTermsAccepted))) && styles.buttonDisabled,
           ]}
           onPress={handleSubmit}
-          disabled={isLoading || !email || !password || (!isLogin && !fullName)}
+          disabled={isLoading || !email || !password || (!isLogin && (!fullName || !adultTermsAccepted))}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" />
@@ -357,6 +393,26 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 14,
     top: 14,
+  },
+  consentRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    width: '100%',
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    marginLeft: 10,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  legalLink: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   forgotButton: {
     marginTop: 24,

@@ -13,6 +13,7 @@ interface HexBadgeProps {
   showName?: boolean;
   earnedDate?: string;
   onPress?: () => void;
+  locked?: boolean;
 }
 
 const SIZES = {
@@ -44,6 +45,7 @@ export default function HexBadge({
   showName = true,
   earnedDate,
   onPress,
+  locked = false,
 }: HexBadgeProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -184,6 +186,20 @@ export default function HexBadge({
   const content = (
     <View style={styles.container}>
       {useImage ? renderImageBadge() : renderIconBadge()}
+      {locked && (
+        <View
+          style={[
+            styles.lockedOverlay,
+            {
+              width: dim.hex,
+              height: dim.hex,
+              borderRadius: dim.hex / 2,
+            },
+          ]}
+        >
+          <Ionicons name="lock-closed" size={dim.icon * 0.72} color="#FFFFFF" />
+        </View>
+      )}
 
       {/* Badge name */}
       {showName && (
@@ -200,6 +216,16 @@ export default function HexBadge({
           >
             {badge.name}
           </Text>
+          {locked && (
+            <Text
+              style={[
+                styles.proLabel,
+                { color: colors.primary, fontSize: Math.max(9, dim.fontSize - 2) },
+              ]}
+            >
+              PRO
+            </Text>
+          )}
           {earnedDate && earned && (
             <Text
               style={[
@@ -246,12 +272,25 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
+  lockedOverlay: {
+    position: 'absolute',
+    top: 0,
+    backgroundColor: 'rgba(12, 18, 28, 0.68)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   badgeName: {
     textAlign: 'center',
     fontWeight: '600',
   },
   earnedDate: {
     textAlign: 'center',
+    marginTop: 2,
+  },
+  proLabel: {
+    textAlign: 'center',
+    fontWeight: '800',
+    letterSpacing: 0.7,
     marginTop: 2,
   },
 });
