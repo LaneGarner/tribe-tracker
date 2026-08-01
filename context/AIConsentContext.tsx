@@ -100,7 +100,7 @@ export function AIConsentProvider({ children }: { children: React.ReactNode }) {
       return new Promise<boolean>(resolve => {
         Alert.alert(
           'Allow AI-assisted guidance?',
-          'TribeTracker will send the goals, challenge details, check-ins, and streak information needed for this feature to its AI service. Chat messages are not included. This is general wellness support, not medical treatment.',
+          'TribeTracker will send the goals, challenge details, check-ins, and streak information needed for this feature to a third-party AI provider. Chat messages are not included. This is general wellness support, not medical treatment.',
           [
             { text: 'Not Now', style: 'cancel', onPress: () => resolve(false) },
             {

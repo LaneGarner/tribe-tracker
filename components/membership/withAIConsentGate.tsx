@@ -2,6 +2,8 @@ import React, { useContext } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAIConsent } from '../../context/AIConsentContext';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
+import { APP_LINKS } from '../../config/links';
+import { openExternalLink } from '../../utils/openExternalLink';
 
 export function withAIConsentGate<P extends object>(
   Screen: React.ComponentType<P>
@@ -24,9 +26,10 @@ export function withAIConsentGate<P extends object>(
           Choose whether to use AI guidance
         </Text>
         <Text style={[styles.body, { color: colors.textSecondary }]}>
-          AI guidance uses relevant goals, challenge details, check-ins, and
-          streak information. It does not use your chat messages. The result is
-          general wellness support, not medical or mental health treatment.
+          TribeTracker sends relevant goals, challenge details, check-ins, and
+          streak information to a third-party AI provider. It does not send your
+          chat messages. The result is general wellness support, not medical or
+          mental health treatment.
         </Text>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.primary }]}
@@ -37,6 +40,16 @@ export function withAIConsentGate<P extends object>(
         <Text style={[styles.note, { color: colors.textTertiary }]}>
           You can change this later in Privacy Center.
         </Text>
+        <TouchableOpacity
+          style={styles.privacyLink}
+          onPress={() => openExternalLink(APP_LINKS.privacy)}
+          accessibilityRole="link"
+          accessibilityLabel="Read the TribeTracker privacy policy"
+        >
+          <Text style={[styles.privacyLinkText, { color: colors.primary }]}>
+            Privacy Policy
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -49,4 +62,6 @@ const styles = StyleSheet.create({
   button: { borderRadius: 12, marginTop: 24, paddingHorizontal: 22, paddingVertical: 14 },
   buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   note: { fontSize: 12, marginTop: 12 },
+  privacyLink: { paddingHorizontal: 12, paddingVertical: 10 },
+  privacyLinkText: { fontSize: 13, fontWeight: '700' },
 });

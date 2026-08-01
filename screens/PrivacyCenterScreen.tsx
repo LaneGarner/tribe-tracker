@@ -151,7 +151,8 @@ export default function PrivacyCenterScreen() {
           </View>
           <Text style={[styles.settingDescription, { color: colors.textSecondary, marginBottom: 10 }]}>
             Consent is recorded separately for each purpose. Chat messages are
-            excluded, and you can revoke access at any time.
+            excluded. Data needed for each feature is sent to a third-party AI
+            provider, and you can revoke access at any time.
           </Text>
           {AI_PURPOSES.map(item => (
             <View

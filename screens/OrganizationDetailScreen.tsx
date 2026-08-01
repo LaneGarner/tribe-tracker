@@ -49,7 +49,6 @@ export default function OrganizationDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [teamName, setTeamName] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
   const selectedTeam = teams.find(team => team.id === selectedTeamId);
   const canManageVisibleMembers =
     isOrganizationAdmin ||
@@ -140,32 +139,6 @@ export default function OrganizationDetailScreen() {
     } catch (error) {
       Alert.alert(
         'Unable to Create Team',
-        error instanceof Error ? error.message : 'Please try again.'
-      );
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  const sendEmailInvitation = async () => {
-    const email = inviteEmail.trim();
-    const token = getAccessToken();
-    if (!token || !email) return;
-    setWorking(true);
-    try {
-      await createOrganizationInvitation(token, {
-        organizationId,
-        teamId: selectedTeamId,
-        email,
-      });
-      setInviteEmail('');
-      Alert.alert(
-        'Invitation Created',
-        `An invitation for ${email} has been queued for delivery.`
-      );
-    } catch (error) {
-      Alert.alert(
-        'Unable to Invite',
         error instanceof Error ? error.message : 'Please try again.'
       );
     } finally {
@@ -318,7 +291,13 @@ export default function OrganizationDetailScreen() {
               </Text>
             </View>
             {team.roles.includes('team_manager') || isOrganizationAdmin ? (
-              <TouchableOpacity onPress={() => shareJoinLink(team.id)}>
+              <TouchableOpacity
+                onPress={() => shareJoinLink(team.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`Share a join link for ${team.name}`}
+                accessibilityHint="Opens the system share sheet with a secure link"
+                hitSlop={10}
+              >
                 <Ionicons name="person-add-outline" size={22} color={colors.primary} />
               </TouchableOpacity>
             ) : null}
@@ -332,41 +311,27 @@ export default function OrganizationDetailScreen() {
             Invite {selectedTeam ? `to ${selectedTeam.name}` : 'to organization'}
           </Text>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <TextInput
-              value={inviteEmail}
-              onChangeText={setInviteEmail}
-              placeholder="Email address"
-              placeholderTextColor={colors.textTertiary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={[
-                styles.input,
-                { borderColor: colors.border, color: colors.text },
-              ]}
-            />
+            <Text style={[styles.body, { color: colors.textSecondary }]}>
+              Share a secure join link. Anyone with the link can sign in or create
+              an account, then join {selectedTeam ? selectedTeam.name : organizationName}.
+            </Text>
             <TouchableOpacity
-              disabled={working || !inviteEmail.trim()}
+              disabled={working}
               style={[
                 styles.primaryButton,
-                {
-                  backgroundColor: colors.primary,
-                  opacity: inviteEmail.trim() ? 1 : 0.5,
-                },
+                { backgroundColor: colors.primary, marginTop: 14 },
               ]}
-              onPress={sendEmailInvitation}
-            >
-              <Ionicons name="mail-outline" size={18} color="#fff" />
-              <Text style={styles.primaryButtonText}>Send email invitation</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.linkButton}
               onPress={() => shareJoinLink(selectedTeamId)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                selectedTeam
+                  ? `Share a join link for ${selectedTeam.name}`
+                  : `Share a join link for ${organizationName}`
+              }
+              accessibilityHint="Opens the system share sheet with a secure link"
             >
-              <Ionicons name="link-outline" size={18} color={colors.primary} />
-              <Text style={[styles.linkButtonText, { color: colors.primary }]}>
-                Share a reusable join link
-              </Text>
+              <Ionicons name="share-outline" size={18} color="#fff" />
+              <Text style={styles.primaryButtonText}>Share join link</Text>
             </TouchableOpacity>
           </View>
         </>
@@ -462,13 +427,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
   },
-  linkButton: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingTop: 14,
-  },
-  linkButtonText: { fontSize: 14, fontWeight: '700', marginLeft: 7 },
   roleButton: { padding: 8 },
   roleButtonText: { fontSize: 13, fontWeight: '700' },
 });
