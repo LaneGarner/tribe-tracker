@@ -10,6 +10,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { setSyncAuth } from '../redux/syncMiddleware';
 import { isBackendConfigured } from '../config/api';
 import { clearUserData } from '../utils/storage';
+import { APP_LINKS } from '../config/links';
 
 interface AuthState {
   user: User | null;
@@ -45,14 +46,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!state.isConfigured) {
-      setState(prev => ({ ...prev, isLoading: false }));
+      setState((prev) => ({ ...prev, isLoading: false }));
       return;
     }
 
     // Get initial session
     // Note: SDK's _listenForAuthEvents handles realtime.setAuth automatically
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         session,
         user: session?.user ?? null,
@@ -64,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         session,
         user: session?.user ?? null,
@@ -80,7 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const configured = state.isConfigured && isBackendConfigured();
     setSyncAuth(token, configured);
   }, [state.session, state.isConfigured]);
-
 
   const signUp = useCallback(
     async (email: string, password: string, fullName?: string) => {
@@ -109,7 +109,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: APP_LINKS.passwordReset,
+    });
     return { error };
   }, []);
 

@@ -9,12 +9,9 @@ import {
   BILLING_MODE,
   REVENUECAT_API_KEY,
   REVENUECAT_ENTITLEMENT_ID,
+  REVENUECAT_PRODUCT_IDS,
 } from '../../config/billing';
-import {
-  BillingAdapter,
-  BillingCustomerState,
-  BillingProduct,
-} from './types';
+import { BillingAdapter, BillingCustomerState, BillingProduct } from './types';
 
 const MOCK_KEY_PREFIX = 'tribe_mock_billing_';
 
@@ -30,7 +27,9 @@ function customerState(info: CustomerInfo): BillingCustomerState {
   };
 }
 
-function billingPeriod(aPackage: PurchasesPackage): BillingProduct['period'] | null {
+function billingPeriod(
+  aPackage: PurchasesPackage
+): BillingProduct['period'] | null {
   if (
     aPackage.packageType === 'MONTHLY' ||
     aPackage.product.subscriptionPeriod === 'P1M'
@@ -102,7 +101,7 @@ class MockBillingAdapter implements BillingAdapter {
       `${MOCK_KEY_PREFIX}${this.userId}`,
       JSON.stringify(state)
     );
-    this.listeners.forEach(listener => listener(state));
+    this.listeners.forEach((listener) => listener(state));
     return state;
   }
 
@@ -162,23 +161,35 @@ class RevenueCatBillingAdapter implements BillingAdapter {
     if (!this.configured) return [];
     const offerings = await purchasesSdk().getOfferings();
     this.packages.clear();
-    return (offerings.current?.availablePackages || [])
-      .flatMap<BillingProduct>(aPackage => {
+    const expectedProductIds = new Set<string>(
+      Object.values(REVENUECAT_PRODUCT_IDS)
+    );
+    const products = (offerings.current?.availablePackages || [])
+      .filter((aPackage) => expectedProductIds.has(aPackage.product.identifier))
+      .flatMap<BillingProduct>((aPackage) => {
         const period = billingPeriod(aPackage);
         if (!period) return [];
         this.packages.set(aPackage.identifier, aPackage);
-        return [{
-          id: aPackage.identifier,
-          period,
-          title: aPackage.product.title,
-          localizedPrice: aPackage.product.priceString,
-        }];
+        return [
+          {
+            id: aPackage.identifier,
+            period,
+            title: aPackage.product.title,
+            localizedPrice: aPackage.product.priceString,
+          },
+        ];
       })
       .sort(
         (a, b) =>
-          (a.period === 'monthly' ? 0 : 1) -
-          (b.period === 'monthly' ? 0 : 1)
+          (a.period === 'monthly' ? 0 : 1) - (b.period === 'monthly' ? 0 : 1)
       );
+    if (products.length !== expectedProductIds.size) {
+      this.packages.clear();
+      throw new Error(
+        'The expected Pro subscription products are unavailable.'
+      );
+    }
+    return products;
   }
 
   private capture(info: CustomerInfo): BillingCustomerState {
