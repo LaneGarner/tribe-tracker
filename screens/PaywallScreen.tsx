@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -45,8 +45,7 @@ const FEATURE_COPY: Record<string, { title: string; subtitle: string }> = {
   },
   canViewAnalytics: {
     title: 'Unlock deeper insights',
-    subtitle:
-      'See advanced analytics and full history with Pro.',
+    subtitle: 'See advanced analytics and full history with Pro.',
   },
 };
 
@@ -59,15 +58,14 @@ export default function PaywallScreen() {
   const { refreshMembership } = useMembership();
   const [products, setProducts] = useState<BillingProduct[]>([]);
   const [storeMessage, setStoreMessage] = useState<string | null>(null);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [working, setWorking] = useState<string | null>(null);
   const billing = getBillingAdapter();
   const isDark = colorScheme === 'dark';
   const panelColor = isDark
     ? 'rgba(255,255,255,0.05)'
     : 'rgba(255,255,255,0.9)';
-  const annualPanelColor = isDark
-    ? 'rgba(59,130,246,0.14)'
-    : '#EEF4FF';
+  const annualPanelColor = isDark ? 'rgba(59,130,246,0.14)' : '#EEF4FF';
   const copy = route.params?.feature
     ? FEATURE_COPY[route.params.feature]
     : undefined;
@@ -83,29 +81,25 @@ export default function PaywallScreen() {
     }
   };
 
-  useEffect(() => {
-    let active = true;
+  const loadProducts = useCallback(async () => {
+    setLoadingProducts(true);
     setStoreMessage(null);
-    billing
-      .configure(user?.id ?? null)
-      .then(() => billing.getProducts())
-      .then(value => {
-        if (active) setProducts(value);
-      })
-      .catch(error => {
-        if (active) {
-          setProducts([]);
-          setStoreMessage(
-            error instanceof Error
-              ? error.message
-              : 'Store subscription options are temporarily unavailable.'
-          );
-        }
-      });
-    return () => {
-      active = false;
-    };
+    try {
+      await billing.configure(user?.id ?? null);
+      setProducts(await billing.getProducts());
+    } catch {
+      setProducts([]);
+      setStoreMessage(
+        'Store subscription options are temporarily unavailable. Please try again.'
+      );
+    } finally {
+      setLoadingProducts(false);
+    }
   }, [billing, user?.id]);
+
+  useEffect(() => {
+    void loadProducts();
+  }, [loadProducts]);
 
   const purchase = async (product: BillingProduct) => {
     setWorking(product.id);
@@ -118,9 +112,7 @@ export default function PaywallScreen() {
         verified
           ? 'Your Pro features are ready.'
           : 'Your purchase is complete. TribeTracker is finishing the secure account update now.',
-        [
-        { text: 'Continue', onPress: () => navigation.goBack() },
-        ]
+        [{ text: 'Continue', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
       if (error instanceof BillingPurchaseCancelledError) return;
@@ -165,10 +157,7 @@ export default function PaywallScreen() {
         locations={[0, 0.48, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-      >
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View
           style={[
             styles.logoTile,
@@ -182,10 +171,7 @@ export default function PaywallScreen() {
         >
           <Image
             source={require('../assets/images/TT-logo.png')}
-            style={[
-              styles.logo,
-              { tintColor: isDark ? '#FFFFFF' : '#000000' },
-            ]}
+            style={[styles.logo, { tintColor: isDark ? '#FFFFFF' : '#000000' }]}
             accessibilityIgnoresInvertColors
           />
         </View>
@@ -216,7 +202,10 @@ export default function PaywallScreen() {
               style={[
                 styles.benefitRow,
                 index < PRO_FEATURES.length - 1
-                  ? { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }
+                  ? {
+                      borderBottomColor: colors.border,
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                    }
                   : null,
               ]}
             >
@@ -240,7 +229,7 @@ export default function PaywallScreen() {
         </View>
 
         <View style={styles.planList}>
-          {products.map(product => {
+          {products.map((product) => {
             const isAnnual = product.period === 'annual';
             return (
               <TouchableOpacity
@@ -248,9 +237,7 @@ export default function PaywallScreen() {
                 style={[
                   styles.product,
                   {
-                    backgroundColor: isAnnual
-                      ? annualPanelColor
-                      : panelColor,
+                    backgroundColor: isAnnual ? annualPanelColor : panelColor,
                     borderColor: isAnnual ? colors.primary : colors.border,
                     borderWidth: isAnnual ? 1.5 : StyleSheet.hairlineWidth,
                   },
@@ -284,7 +271,12 @@ export default function PaywallScreen() {
                       </Text>
                     ) : null}
                   </View>
-                  <Text style={[styles.productPeriod, { color: colors.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.productPeriod,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
                     Billed {product.period}
                   </Text>
                 </View>
@@ -308,13 +300,42 @@ export default function PaywallScreen() {
         </View>
 
         {products.length === 0 ? (
-          <Text style={[styles.unavailable, { color: colors.textSecondary }]}>
-            {storeMessage ||
-              'Store subscription options are not configured in this build.'}
-          </Text>
+          <View style={styles.storeStatus}>
+            {loadingProducts ? (
+              <ActivityIndicator
+                color={colors.primary}
+                accessibilityLabel="Loading subscription options"
+              />
+            ) : (
+              <>
+                <Text
+                  style={[styles.unavailable, { color: colors.textSecondary }]}
+                >
+                  {storeMessage ||
+                    'Store subscription options are not configured in this build.'}
+                </Text>
+                {storeMessage ? (
+                  <TouchableOpacity
+                    onPress={loadProducts}
+                    style={[styles.retryButton, { borderColor: colors.border }]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Retry loading subscription options"
+                  >
+                    <Text style={[styles.retryText, { color: colors.primary }]}>
+                      Retry
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </>
+            )}
+          </View>
         ) : null}
 
-        <TouchableOpacity disabled={working !== null} onPress={restore} style={styles.restore}>
+        <TouchableOpacity
+          disabled={working !== null}
+          onPress={restore}
+          style={styles.restore}
+        >
           <Text style={[styles.restoreText, { color: colors.primary }]}>
             {working === 'restore' ? 'Restoring…' : 'Restore Purchases'}
           </Text>
@@ -339,15 +360,22 @@ export default function PaywallScreen() {
         </Text>
         <Text style={[styles.freeIncludes, { color: colors.textSecondary }]}>
           Free includes unlimited joining, check-ins, leaderboards, current
-          streaks, basic chat, basic badges, and one active self-created challenge.
+          streaks, basic chat, basic badges, and one active self-created
+          challenge.
         </Text>
         <View style={styles.legalLinks}>
           <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.terms)}>
-            <Text style={[styles.legalLink, { color: colors.primary }]}>Terms</Text>
+            <Text style={[styles.legalLink, { color: colors.primary }]}>
+              Terms
+            </Text>
           </TouchableOpacity>
-          <Text style={[styles.legalDivider, { color: colors.textTertiary }]}>·</Text>
+          <Text style={[styles.legalDivider, { color: colors.textTertiary }]}>
+            ·
+          </Text>
           <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.privacy)}>
-            <Text style={[styles.legalLink, { color: colors.primary }]}>Privacy</Text>
+            <Text style={[styles.legalLink, { color: colors.primary }]}>
+              Privacy
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -378,7 +406,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
   },
-  title: { fontSize: 34, fontWeight: '800', letterSpacing: -0.6, marginLeft: 10 },
+  title: {
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -0.6,
+    marginLeft: 10,
+  },
   subtitle: { fontSize: 15, lineHeight: 21, marginTop: 8, textAlign: 'center' },
   benefits: {
     alignSelf: 'stretch',
@@ -435,13 +468,32 @@ const styles = StyleSheet.create({
   productPeriod: { fontSize: 13, marginTop: 3 },
   priceGroup: { alignItems: 'center', flexDirection: 'row', gap: 5 },
   price: { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
+  storeStatus: { alignItems: 'center', gap: 10, paddingVertical: 8 },
   unavailable: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  retryButton: {
+    borderRadius: 12,
+    borderWidth: 1,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  retryText: { fontSize: 15, fontWeight: '700' },
   restore: { padding: 14 },
   restoreText: { fontSize: 15, fontWeight: '700' },
   continueFree: { paddingHorizontal: 14, paddingVertical: 10 },
   continueFreeText: { fontSize: 15, fontWeight: '700' },
-  finePrint: { fontSize: 12, lineHeight: 17, marginTop: 8, textAlign: 'center' },
-  freeIncludes: { fontSize: 12, lineHeight: 17, marginTop: 12, textAlign: 'center' },
+  finePrint: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  freeIncludes: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 12,
+    textAlign: 'center',
+  },
   legalLinks: { flexDirection: 'row', marginTop: 12 },
   legalLink: { fontSize: 13, fontWeight: '600', padding: 6 },
   legalDivider: { paddingVertical: 6 },

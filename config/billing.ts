@@ -22,3 +22,7 @@ export const REVENUECAT_API_KEY =
       '';
 
 export const REVENUECAT_ENTITLEMENT_ID = 'pro';
+export const REVENUECAT_PRODUCT_IDS = {
+  monthly: 'tribetracker_pro_monthly',
+  annual: 'tribetracker_pro_annual',
+} as const;

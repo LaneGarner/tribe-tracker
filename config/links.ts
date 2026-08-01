@@ -23,4 +23,5 @@ export const APP_LINKS = {
     extra.COMMUNITY_GUIDELINES_URL || `${WEB_BASE_URL}/community-guidelines`,
   accountDeletion:
     extra.ACCOUNT_DELETION_URL || `${WEB_BASE_URL}/delete-account`,
+  passwordReset: `${WEB_BASE_URL}/admin/reset-password`,
 } as const;

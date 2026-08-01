@@ -23,6 +23,7 @@ export default {
     },
     ios: {
       bundleIdentifier: 'com.lanegarner.tribetracker',
+      icon: './assets/app-icon-ios.png',
       supportsTablet: true,
       requireFullScreen: true,
       infoPlist: {
@@ -70,8 +71,10 @@ export default {
       [
         'expo-image-picker',
         {
-          cameraPermission: 'TribeTracker needs camera access so you can take a profile photo.',
-          photosPermission: 'TribeTracker needs photo library access so you can choose a profile photo.',
+          cameraPermission:
+            'TribeTracker needs camera access so you can take a profile photo.',
+          photosPermission:
+            'TribeTracker needs photo library access so you can choose a profile photo.',
           microphonePermission: false,
         },
       ],
