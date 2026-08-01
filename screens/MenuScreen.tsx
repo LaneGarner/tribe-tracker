@@ -68,6 +68,7 @@ export default function MenuScreen() {
   }
 
   const settingsItems: MenuItem[] = ([
+    { id: 'security', label: 'Account & Security', icon: 'key-outline', screen: 'ChangePassword' },
     { id: 'updates', label: 'Updates', icon: 'notifications-outline', screen: 'NotificationInbox' },
     { id: 'apps', label: 'Apps & Devices', icon: 'phone-portrait-outline', screen: 'AppsDevices', devOnly: true },
     { id: 'notifications', label: 'Notification Settings', icon: 'options-outline', screen: 'Notifications' },

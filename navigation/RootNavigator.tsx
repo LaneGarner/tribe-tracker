@@ -20,6 +20,7 @@ import TaskAnalyticsScreen from '../screens/TaskAnalyticsScreen';
 // Profile & Settings screens
 import ProfileScreen from '../screens/ProfileScreen';
 import PrivacyCenterScreen from '../screens/PrivacyCenterScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import NotificationInboxScreen from '../screens/NotificationInboxScreen';
 import PreferencesScreen from '../screens/PreferencesScreen';
@@ -206,6 +207,11 @@ export default function RootNavigator() {
             name="PrivacyCenter"
             component={PrivacyCenterScreen}
             options={{ title: 'Privacy Center' }}
+          />
+          <Stack.Screen
+            name="ChangePassword"
+            component={ChangePasswordScreen}
+            options={{ title: 'Account & Security' }}
           />
           <Stack.Screen
             name="Notifications"

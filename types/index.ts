@@ -258,6 +258,7 @@ export type RootStackParamList = {
   TaskAnalytics: { challengeId: string };
   Profile: { userId?: string } | undefined;
   PrivacyCenter: undefined;
+  ChangePassword: undefined;
   Notifications: undefined;
   NotificationInbox: undefined;
   Preferences: undefined;

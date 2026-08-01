@@ -32,6 +32,7 @@ interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
   getAccessToken: () => string | null;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -115,6 +116,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   }, []);
 
+  const updatePassword = useCallback(async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    return { error };
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut({ scope: 'local' });
     await clearUserData();
@@ -131,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     getAccessToken,
     resetPassword,
+    updatePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
