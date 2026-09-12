@@ -133,6 +133,7 @@ export default function OrganizationDetailScreen() {
         void showAlert('Invitation Created', 'The secure invitation is ready.');
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
       void showAlert('Unable to Invite', error instanceof Error ? error.message : 'Please try again.');
     }
   };
