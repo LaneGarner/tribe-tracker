@@ -58,7 +58,7 @@ function WebTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               accessibilityState={{ selected }}
               accessibilityLabel={route.name === 'Chat' && unread > 0
                 ? `${label}, ${unread} unread message${unread === 1 ? '' : 's'}`
-                : descriptor.options.tabBarAccessibilityLabel}
+                : descriptor.options.tabBarAccessibilityLabel ?? label}
               onPress={onPress}
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
               style={({ pressed }) => [
@@ -76,6 +76,7 @@ function WebTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               </View>
               <Text numberOfLines={1} style={[
                 isSidebar ? styles.sidebarLabel : styles.bottomLabel,
+                !isSidebar && width <= 360 && styles.compactBottomLabel,
                 { color: selected ? colors.text : colors.textSecondary },
                 selected && styles.selectedLabel,
               ]}>{label}</Text>
@@ -126,6 +127,7 @@ const styles = StyleSheet.create({
   iconWrap: { position: 'relative' },
   sidebarLabel: { fontSize: 15 },
   bottomLabel: { marginTop: 3, fontSize: 11 },
+  compactBottomLabel: { fontSize: 9 },
   selectedLabel: { fontWeight: '700' },
   badge: { position: 'absolute', top: -7, right: -12, minWidth: 17, height: 17, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EF4444' },
   badgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },

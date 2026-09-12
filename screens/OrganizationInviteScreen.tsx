@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -75,7 +76,8 @@ export default function OrganizationInviteScreen() {
   }
 
   return (
-    <View style={[styles.center, { backgroundColor: colors.background }]}>
+    <View style={[styles.center, { backgroundColor: colors.background }]}> 
+      <View style={styles.content}>
       <Ionicons name="people-outline" size={44} color={colors.primary} />
       <Text style={[styles.title, { color: colors.text }]}>
         Join {challenge?.name || team?.name || organization?.name || 'organization'}
@@ -100,15 +102,20 @@ export default function OrganizationInviteScreen() {
         disabled={!adultAttested || working}
         style={[styles.button, { backgroundColor: colors.primary, opacity: adultAttested ? 1 : 0.5 }]}
         onPress={accept}
+        accessibilityRole="button"
+        accessibilityLabel="Accept organization invitation"
+        accessibilityState={{ disabled: !adultAttested || working }}
       >
         <Text style={styles.buttonText}>{working ? 'Joining…' : 'Accept Invitation'}</Text>
       </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   center: { alignItems: 'center', flex: 1, justifyContent: 'center', padding: 28 },
+  content: { alignItems: 'center', width: '100%', ...Platform.select({ web: { maxWidth: 620 } }) },
   title: { fontSize: 25, fontWeight: '800', marginTop: 14, textAlign: 'center' },
   body: { fontSize: 15, lineHeight: 22, marginTop: 12, textAlign: 'center' },
   attestation: { alignItems: 'center', flexDirection: 'row', marginTop: 24 },
