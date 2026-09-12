@@ -27,6 +27,7 @@ import { RootStackParamList, TabParamList, Conversation } from '../types';
 import ConversationRow from '../components/chat/ConversationRow';
 import EmptyChat from '../components/chat/EmptyChat';
 import Skeleton from '../components/ui/Skeleton';
+import { showAlert } from '../platform/dialogs/alert';
 
 type ChatNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'Chat'>,
@@ -128,7 +129,7 @@ export default function ChatScreen() {
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() =>
-          Alert.alert('New Conversation', undefined, [
+          void showAlert('New Conversation', undefined, [
             { text: 'New Message', onPress: () => navigation.navigate('NewDm') },
             { text: 'New Group Chat', onPress: () => navigation.navigate('NewGroupChat') },
             { text: 'Cancel', style: 'cancel' },

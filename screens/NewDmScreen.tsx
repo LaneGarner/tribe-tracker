@@ -20,6 +20,7 @@ import { addConversation, selectDmConversations } from '../redux/slices/chatSlic
 import { API_URL, isBackendConfigured } from '../config/api';
 import { RootStackParamList } from '../types';
 import Avatar from '../components/Avatar';
+import { showAlert } from '../platform/dialogs/alert';
 
 type NewDmNavigationProp = NativeStackNavigationProp<RootStackParamList, 'NewDm'>;
 
@@ -114,13 +115,13 @@ export default function NewDmScreen() {
         });
       } else {
         const errorData = await response.json().catch(() => null);
-        Alert.alert(
+        void showAlert(
           'Could not start conversation',
           errorData?.error || 'Something went wrong. Please try again.',
         );
       }
     } catch (err) {
-      Alert.alert(
+      void showAlert(
         'Network error',
         'Could not reach the server. Check your connection and try again.',
       );

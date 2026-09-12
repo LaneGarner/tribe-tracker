@@ -21,6 +21,7 @@ import { addConversation } from '../redux/slices/chatSlice';
 import { API_URL, isBackendConfigured } from '../config/api';
 import { RootStackParamList } from '../types';
 import Avatar from '../components/Avatar';
+import { showAlert } from '../platform/dialogs/alert';
 
 type NewGroupChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'NewGroupChat'>;
 
@@ -74,13 +75,13 @@ export default function NewGroupChatScreen() {
         });
       } else {
         const errorData = await response.json().catch(() => null);
-        Alert.alert(
+        void showAlert(
           'Could not create group',
           errorData?.error || 'Something went wrong. Please try again.',
         );
       }
     } catch {
-      Alert.alert(
+      void showAlert(
         'Network error',
         'Could not reach the server. Check your connection and try again.',
       );

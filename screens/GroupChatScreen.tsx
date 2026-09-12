@@ -36,6 +36,7 @@ import MessageActionsOverlay from '../components/chat/MessageActionsOverlay';
 import { useContentReport } from '../hooks/useContentReport';
 import { isBackendConfigured } from '../config/api';
 import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage, computeReadReceipts, ReaderInfo } from '../utils/chatUtils';
+import { showAlert } from '../platform/dialogs/alert';
 
 type GroupChatRouteProp = RouteProp<RootStackParamList, 'GroupChat'>;
 type GroupChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'GroupChat'>;
@@ -251,7 +252,7 @@ export default function GroupChatScreen() {
           })
         }
         onBlock={message =>
-          Alert.alert(
+          void showAlert(
             'Block User',
             `Block ${message.senderName || 'this user'}? You will no longer be able to message each other.`,
             [

@@ -40,6 +40,7 @@ import { useContentReport } from '../hooks/useContentReport';
 import { useChatActions } from '../hooks/useChatActions';
 import { isBackendConfigured, API_URL } from '../config/api';
 import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage, computeReadReceipts, ReaderInfo } from '../utils/chatUtils';
+import { showAlert } from '../platform/dialogs/alert';
 
 type DirectMessageRouteProp = RouteProp<RootStackParamList, 'DirectMessage'>;
 type DirectMessageNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DirectMessage'>;
@@ -219,11 +220,11 @@ export default function DirectMessageScreen() {
           status: 'active',
         }));
       } else {
-        Alert.alert('Error', 'Something went wrong. Please try again.');
+        void showAlert('Error', 'Something went wrong. Please try again.');
       }
     } catch (err) {
       console.error('Accept DM request error:', err);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      void showAlert('Error', 'Something went wrong. Please try again.');
     }
   };
 
@@ -257,17 +258,17 @@ export default function DirectMessageScreen() {
         }
         navigation.goBack();
       } else {
-        Alert.alert('Error', 'Something went wrong. Please try again.');
+        void showAlert('Error', 'Something went wrong. Please try again.');
       }
     } catch (err) {
       console.error('Reject DM request error:', err);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      void showAlert('Error', 'Something went wrong. Please try again.');
     }
   };
 
   const handleBlockUser = () => {
     if (!otherMember) return;
-    Alert.alert(
+    void showAlert(
       'Block User',
       `Are you sure you want to block ${otherMember.userName || 'this user'}? They won't be able to send you messages.`,
       [
@@ -292,7 +293,7 @@ export default function DirectMessageScreen() {
   };
 
   const handleOptionsMenu = () => {
-    Alert.alert('Chat Options', undefined, [
+    void showAlert('Chat Options', undefined, [
       {
         text: 'Report User',
         onPress: () => {
