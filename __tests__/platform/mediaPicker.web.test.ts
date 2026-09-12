@@ -1,5 +1,6 @@
 import {
   MAX_WEB_IMAGE_BYTES,
+  scheduleFilePickerCancellationCheck,
   validateWebImageFile,
 } from '../../platform/mediaPicker/index.web';
 
@@ -20,5 +21,23 @@ describe('web media picker validation', () => {
       type: 'image/jpeg',
       size: MAX_WEB_IMAGE_BYTES + 1,
     })).toThrow('Choose an image smaller than 10 MB.');
+  });
+
+  it('settles cancellation after focus returns without a selected file', () => {
+    const cancel = jest.fn();
+    const schedule = jest.fn((callback: () => void) => callback());
+    scheduleFilePickerCancellationCheck(() => false, cancel, schedule);
+    expect(schedule).toHaveBeenCalledWith(expect.any(Function), 300);
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cancel when the chooser produced a file', () => {
+    const cancel = jest.fn();
+    scheduleFilePickerCancellationCheck(
+      () => true,
+      cancel,
+      callback => callback()
+    );
+    expect(cancel).not.toHaveBeenCalled();
   });
 });

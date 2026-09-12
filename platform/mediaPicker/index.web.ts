@@ -16,6 +16,16 @@ export function validateWebImageFile(file: Pick<File, 'size' | 'type'>): void {
   }
 }
 
+export function scheduleFilePickerCancellationCheck(
+  hasSelectedFile: () => boolean,
+  onCancel: () => void,
+  schedule: (callback: () => void, delay: number) => unknown = window.setTimeout.bind(window)
+): void {
+  schedule(() => {
+    if (!hasSelectedFile()) onCancel();
+  }, 300);
+}
+
 export async function pickImage(
   source: ImageSource,
   _options?: ImagePickerOptions
@@ -44,9 +54,10 @@ export async function pickImage(
     const onWindowFocus = () => {
       // Browsers do not consistently dispatch `cancel` for file inputs. Focus
       // returns after the chooser closes; allow its change event to run first.
-      window.setTimeout(() => {
-        if (!input.files?.length) finish(null);
-      }, 300);
+      scheduleFilePickerCancellationCheck(
+        () => Boolean(input.files?.length),
+        () => finish(null)
+      );
     };
 
     input.addEventListener('change', () => {
