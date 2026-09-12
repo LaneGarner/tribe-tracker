@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -136,7 +136,7 @@ export default function PublicChallengeCard({
         accessibilityRole="button"
         accessibilityLabel={a11yLabel}
       >
-        <View style={styles.imageContainer}>
+        <View style={[styles.imageContainer, Platform.OS === 'web' && styles.webContainer]}>
           <ExpoImage
             source={{ uri: challenge.backgroundImageUrl }}
             style={StyleSheet.absoluteFill}
@@ -168,7 +168,7 @@ export default function PublicChallengeCard({
         colors={colors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.container}
+        style={[styles.container, Platform.OS === 'web' && styles.webContainer]}
       >
         {cardContent}
       </LinearGradient>
@@ -181,6 +181,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     marginBottom: 12,
+  },
+  webContainer: {
+    width: '100%',
+    maxWidth: 620,
+    alignSelf: 'center',
   },
   imageContainer: {
     borderRadius: 16,

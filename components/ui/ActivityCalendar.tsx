@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
@@ -264,7 +264,7 @@ export default function ActivityCalendar({
   const inactiveBackground = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }, glassStyle]}>
+    <View style={[styles.container, Platform.OS === 'web' && styles.webContainer, { backgroundColor: colors.surface }, glassStyle]}>
       {/* Month header with navigation */}
       <View style={headerContainerStyle}>
         <View style={styles.headerRow}>
@@ -453,6 +453,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginHorizontal: 20,
+  },
+  webContainer: {
+    width: '100%',
+    maxWidth: 880,
+    alignSelf: 'center',
   },
   headerRow: {
     flexDirection: 'row',
