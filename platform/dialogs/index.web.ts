@@ -117,9 +117,11 @@ function present(options: DialogOptions): Promise<DialogResult> {
     });
     document.addEventListener('keydown', onKeyDown);
     document.body.appendChild(overlay);
-    const preferred =
-      actionsContainer.querySelector<HTMLButtonElement>('[data-action][style*="DC2626"]') ??
-      actionsContainer.querySelector<HTMLButtonElement>('button');
+    const preferred = cancelAction
+      ? actionsContainer.querySelector<HTMLButtonElement>(
+          `[data-action="${CSS.escape(cancelAction.key)}"]`
+        )
+      : actionsContainer.querySelector<HTMLButtonElement>('button');
     preferred?.focus();
   });
 }
