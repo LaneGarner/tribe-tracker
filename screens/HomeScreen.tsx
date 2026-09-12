@@ -63,6 +63,7 @@ import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCal
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { useCapabilityGate } from '../hooks/useCapabilityGate';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { shouldUseAccessibleReorderControls } from '../constants/reorderBehavior';
 import { progressLayoutForWidth } from '../constants/progressLayout';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
@@ -713,7 +714,7 @@ export default function HomeScreen() {
       >
         My Challenges
       </Text>
-      {isExpoGo || !DraggableFlatList ? (
+      {shouldUseAccessibleReorderControls(Platform.OS, isExpoGo, !!DraggableFlatList) ? (
         <ScrollView
           ref={pillsScrollRef}
           horizontal

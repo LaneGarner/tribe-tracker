@@ -48,6 +48,7 @@ import { TAB_BAR_HEIGHT } from '../constants/layout';
 import HeaderChatButton from '../components/ui/HeaderChatButton';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { progressLayoutForWidth } from '../constants/progressLayout';
+import { shouldUseAccessibleReorderControls } from '../constants/reorderBehavior';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
 
@@ -306,7 +307,7 @@ export default function LeaderboardScreen() {
           >
             My Rankings
           </Text>
-          {isExpoGo || !DraggableFlatList ? (
+          {shouldUseAccessibleReorderControls(Platform.OS, isExpoGo, !!DraggableFlatList) ? (
             // Expo Go: arrows inside chips for reordering
             <ScrollView
               ref={pillsScrollRef}

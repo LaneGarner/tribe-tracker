@@ -57,6 +57,7 @@ import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
 import ColorThemePicker from '../components/challenge/ColorThemePicker';
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { CARD_GRADIENTS, getGradientForIndex } from '../constants/gradients';
+import { shouldUseAccessibleReorderControls } from '../constants/reorderBehavior';
 import { pickImage, uploadChallengeBackground, deleteChallengeBackground } from '../utils/imageUpload';
 import { useCapabilityGate } from '../hooks/useCapabilityGate';
 import { useAIConsent } from '../context/AIConsentContext';
@@ -1518,7 +1519,7 @@ export default function DiscoverScreen() {
         <Text style={[styles.label, { color: colors.text }]}>
           Daily Habits <Text style={{ color: colors.error }}>*</Text>
         </Text>
-        {(isExpoGo || !NestableDraggableFlatList) ? (
+        {shouldUseAccessibleReorderControls(Platform.OS, isExpoGo, !!NestableDraggableFlatList) ? (
           habits.map((habit, index) => (
             <View key={habit.id} style={styles.habitRow}>
               {habits.length > 1 && (
@@ -1528,6 +1529,9 @@ export default function DiscoverScreen() {
                     hitSlop={14}
                     disabled={index === 0}
                     style={{ opacity: index === 0 ? 0.3 : 1 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move habit ${index + 1} up`}
+                    accessibilityState={{ disabled: index === 0 }}
                   >
                     <Ionicons name="chevron-up" size={18} color={colors.textSecondary} />
                   </TouchableOpacity>
@@ -1536,6 +1540,9 @@ export default function DiscoverScreen() {
                     hitSlop={14}
                     disabled={index === habits.length - 1}
                     style={{ opacity: index === habits.length - 1 ? 0.3 : 1 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move habit ${index + 1} down`}
+                    accessibilityState={{ disabled: index === habits.length - 1 }}
                   >
                     <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
                   </TouchableOpacity>
