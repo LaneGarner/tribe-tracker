@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Share,
   ActivityIndicator,
   RefreshControl,
   Platform,
@@ -38,6 +37,7 @@ import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
 import { useContentReport } from '../hooks/useContentReport';
 import { showAlert } from '../platform/dialogs/alert';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { shareContent } from '../platform/share';
 
 type ChallengeDetailRouteProp = RouteProp<RootStackParamList, 'ChallengeDetail'>;
 type ChallengeDetailNavigationProp = NativeStackNavigationProp<
@@ -123,9 +123,18 @@ export default function ChallengeDetailScreen() {
 
       const shareUrl = `https://tribe-tracker-backend.vercel.app/invite/${inviteCode}`;
       const message = `${shareUrl}\n\nInvite code: ${inviteCode}`;
-      await Share.share({ message });
+      const result = await shareContent({
+        title: `Join ${challenge.name} on TribeTracker`,
+        message,
+        url: shareUrl,
+      });
+      if (result === 'copied') {
+        await showAlert('Invite copied', 'The challenge invitation was copied to your clipboard.');
+      }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error sharing:', error);
+      await showAlert('Unable to Share', 'Could not share this challenge. Please try again.');
     }
   };
 
