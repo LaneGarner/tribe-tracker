@@ -11,9 +11,8 @@ import {
   Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useLinkTo } from '@react-navigation/native';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
-import { WEB_BASE_URL } from '../config/links';
 import { useAuth } from '../context/AuthContext';
 import {
   getUserNotifications,
@@ -21,8 +20,10 @@ import {
   markUserNotificationRead,
   UserNotification,
 } from '../services/userNotifications';
+import { resolveNotificationLink } from '../utils/notificationLinks';
 
 export default function NotificationInboxScreen() {
+  const linkTo = useLinkTo();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { getAccessToken } = useAuth();
@@ -70,10 +71,9 @@ export default function NotificationInboxScreen() {
       ));
     }
     if (item.linkPath) {
-      const url = item.linkPath.startsWith('http')
-        ? item.linkPath
-        : `${WEB_BASE_URL}${item.linkPath.startsWith('/') ? '' : '/'}${item.linkPath}`;
-      await Linking.openURL(url);
+      const destination = resolveNotificationLink(item.linkPath);
+      if (destination.kind === 'external') await Linking.openURL(destination.url);
+      else linkTo(destination.path);
     }
   }
 
