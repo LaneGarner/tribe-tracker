@@ -16,6 +16,7 @@ import { ChatMessage } from '../../types';
 import { ReaderInfo } from '../../utils/chatUtils';
 import QuotedReplyPreview from './QuotedReplyPreview';
 import ReactionPills from './ReactionPills';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -57,6 +58,7 @@ export default function MessageBubble({
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const wrapperRef = useRef<View | null>(null);
+  const reduceMotion = useReducedMotion();
 
   // System messages: no gestures, no actions
   if (message.type === 'system') {
@@ -78,11 +80,11 @@ export default function MessageBubble({
   React.useEffect(() => {
     if (highlight) {
       highlightOpacity.value = withSequence(
-        withTiming(1, { duration: 150 }),
-        withTiming(0, { duration: 900 })
+        withTiming(1, { duration: reduceMotion ? 0 : 150 }),
+        withTiming(0, { duration: reduceMotion ? 0 : 900 })
       );
     }
-  }, [highlight, highlightOpacity]);
+  }, [highlight, highlightOpacity, reduceMotion]);
 
   const triggerLongPress = useCallback(() => {
     if (isDeleted) return;
@@ -116,7 +118,7 @@ export default function MessageBubble({
       if (e.translationX > SWIPE_THRESHOLD) {
         runOnJS(triggerSwipeReply)();
       }
-      translateX.value = withTiming(0, { duration: 160 });
+      translateX.value = withTiming(0, { duration: reduceMotion ? 0 : 160 });
     });
 
   const composed = Gesture.Exclusive(longPress, pan);

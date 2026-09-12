@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { ChatMessage } from '../../types';
 import { triggerLightFeedback } from '../../platform/feedback';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export const PRESET_REACTIONS = ['👍', '👎', '❤️', '🎉', '🔥', '💪', '😂'];
 
@@ -61,19 +62,20 @@ export default function MessageActionsOverlay({
   const backdrop = useSharedValue(0);
   const sheetScale = useSharedValue(0.9);
   const firstActionRef = useRef<any>(null);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (target) {
       Keyboard.dismiss();
       triggerLightFeedback();
-      backdrop.value = withTiming(1, { duration: 160, easing: Easing.out(Easing.quad) });
-      sheetScale.value = withSpring(1, { damping: 18, stiffness: 240 });
+      backdrop.value = withTiming(1, { duration: reduceMotion ? 0 : 160, easing: Easing.out(Easing.quad) });
+      sheetScale.value = reduceMotion ? 1 : withSpring(1, { damping: 18, stiffness: 240 });
       requestAnimationFrame(() => firstActionRef.current?.focus?.());
     } else {
-      backdrop.value = withTiming(0, { duration: 140 });
+      backdrop.value = withTiming(0, { duration: reduceMotion ? 0 : 140 });
       sheetScale.value = 0.9;
     }
-  }, [target, backdrop, sheetScale]);
+  }, [target, backdrop, reduceMotion, sheetScale]);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdrop.value,

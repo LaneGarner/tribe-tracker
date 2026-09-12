@@ -65,6 +65,7 @@ import { useCapabilityGate } from '../hooks/useCapabilityGate';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { shouldUseAccessibleReorderControls } from '../constants/reorderBehavior';
 import { progressLayoutForWidth } from '../constants/progressLayout';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 const ALL_PILL_ID = '__all__';
@@ -85,6 +86,9 @@ export default function HomeScreen() {
   const { requireCapability } = useCapabilityGate();
   const { topTabContentOffset, width: viewportWidth } = useResponsiveLayout();
   const webContentWidth = progressLayoutForWidth(viewportWidth).contentMaxWidth;
+  const reduceMotion = useReducedMotion();
+  const reduceMotionRef = useRef(reduceMotion);
+  reduceMotionRef.current = reduceMotion;
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const checkins = useSelector((state: RootState) => state.checkins.data);
@@ -121,6 +125,18 @@ export default function HomeScreen() {
   const badgeTranslateX = useRef(new Animated.Value(0)).current;
   const BADGE_WIDTH = 70;
   const HIDDEN_OFFSET = BADGE_WIDTH + 10; // How far off-screen when hidden
+  const settleBadge = (toValue: number, callback?: () => void) => {
+    if (reduceMotionRef.current) {
+      badgeTranslateX.setValue(toValue);
+      callback?.();
+      return;
+    }
+    Animated.spring(badgeTranslateX, {
+      toValue,
+      useNativeDriver: true,
+      friction: 8,
+    }).start(callback);
+  };
 
   // Auto-select challenge when navigated with selectChallengeId param
   useEffect(() => {
@@ -159,34 +175,18 @@ export default function HomeScreen() {
           // If swiped right more than 30px, hide it
           if (gestureState.dx > 30) {
             setBadgeHidden(true);
-            Animated.spring(badgeTranslateX, {
-              toValue: HIDDEN_OFFSET,
-              useNativeDriver: true,
-              friction: 8,
-            }).start();
+            settleBadge(HIDDEN_OFFSET);
           } else {
             // Snap back
-            Animated.spring(badgeTranslateX, {
-              toValue: 0,
-              useNativeDriver: true,
-              friction: 8,
-            }).start();
+            settleBadge(0);
           }
         } else {
           // If swiped left more than 30px, show it
           if (gestureState.dx < -30) {
-            Animated.spring(badgeTranslateX, {
-              toValue: 0,
-              useNativeDriver: true,
-              friction: 8,
-            }).start(() => setBadgeHidden(false));
+            settleBadge(0, () => setBadgeHidden(false));
           } else {
             // Snap back to hidden
-            Animated.spring(badgeTranslateX, {
-              toValue: HIDDEN_OFFSET,
-              useNativeDriver: true,
-              friction: 8,
-            }).start();
+            settleBadge(HIDDEN_OFFSET);
           }
         }
       },
@@ -196,11 +196,7 @@ export default function HomeScreen() {
   // Handle tap on indicator to show badge
   const showBadge = useCallback(() => {
     setBadgeHidden(false);
-    Animated.spring(badgeTranslateX, {
-      toValue: 0,
-      useNativeDriver: true,
-      friction: 8,
-    }).start();
+    settleBadge(0);
   }, [badgeTranslateX]);
 
   // Interpolate opacity - badge fades out as it slides, indicator fades in
