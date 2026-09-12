@@ -73,6 +73,7 @@ import { useMembership } from '../context/MembershipContext';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { showAlert } from '../platform/dialogs/alert';
 import DateField from '../platform/dateTime/DateField';
+import { ResponsiveGrid } from '../components/layout';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -96,7 +97,7 @@ export default function DiscoverScreen() {
   const { refreshMembership } = useMembership();
   const { ensureAIConsent } = useAIConsent();
   const { reportContent } = useContentReport();
-  const { insets, topTabContentOffset } = useResponsiveLayout();
+  const { gutter, insets, topTabContentOffset } = useResponsiveLayout();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
@@ -784,8 +785,24 @@ export default function DiscoverScreen() {
 
   const renderGroupedChallenges = (list: Challenge[], startIndex: number) => {
     let flatIndex = startIndex;
-    return groupByCategory(list).map(({ category: cat, challenges: grouped }) => (
-      <View key={cat.key}>
+    return groupByCategory(list).map(({ category: cat, challenges: grouped }) => {
+      const cards = grouped.map((challenge) => {
+        const idx = flatIndex++;
+        return (
+          <PublicChallengeCard
+            key={challenge.id}
+            challenge={challenge}
+            gradientColors={getGradientForIndex(idx)}
+            onPress={() =>
+              navigation.navigate('ChallengeDetail', {
+                challengeId: challenge.id,
+              })
+            }
+          />
+        );
+      });
+
+      return <View key={cat.key}>
         <View
           style={styles.categorySubHeader}
           accessibilityRole="header"
@@ -803,23 +820,13 @@ export default function DiscoverScreen() {
             {cat.label}
           </Text>
         </View>
-        {grouped.map((challenge) => {
-          const idx = flatIndex++;
-          return (
-            <PublicChallengeCard
-              key={challenge.id}
-              challenge={challenge}
-              gradientColors={getGradientForIndex(idx)}
-              onPress={() =>
-                navigation.navigate('ChallengeDetail', {
-                  challengeId: challenge.id,
-                })
-              }
-            />
-          );
-        })}
+        {Platform.OS === 'web' ? (
+          <ResponsiveGrid compactColumns={1} mediumColumns={2} wideColumns={3} gap={16}>
+            {cards}
+          </ResponsiveGrid>
+        ) : cards}
       </View>
-    ));
+    });
   };
 
   const renderBrowseStickyHeader = () => (
@@ -1717,7 +1724,13 @@ export default function DiscoverScreen() {
         ]}
         edges={['top']}
       >
-        <View style={styles.createModeContainer}>
+        <View
+          style={[
+            styles.createModeContainer,
+            Platform.OS === 'web' && styles.webCreateModeContainer,
+            { paddingHorizontal: Platform.OS === 'web' ? gutter : 20 },
+          ]}
+        >
           {renderCreate()}
         </View>
       </SafeAreaView>
@@ -1737,7 +1750,11 @@ export default function DiscoverScreen() {
     >
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          Platform.OS === 'web' && styles.webScrollContent,
+          { paddingHorizontal: Platform.OS === 'web' ? gutter : 20 },
+        ]}
         keyboardShouldPersistTaps="handled"
         stickyHeaderIndices={mode === 'browse' ? [0] : undefined}
         refreshControl={
@@ -1766,12 +1783,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
     paddingBottom: TAB_BAR_HEIGHT + 32,
+  },
+  webScrollContent: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
   },
   createModeContainer: {
     flex: 1,
-    paddingHorizontal: 20,
+  },
+  webCreateModeContainer: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',

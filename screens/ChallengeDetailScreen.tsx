@@ -8,6 +8,7 @@ import {
   Share,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
@@ -36,6 +37,7 @@ import Leaderboard from '../components/challenge/Leaderboard';
 import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
 import { useContentReport } from '../hooks/useContentReport';
 import { showAlert } from '../platform/dialogs/alert';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 type ChallengeDetailRouteProp = RouteProp<RootStackParamList, 'ChallengeDetail'>;
 type ChallengeDetailNavigationProp = NativeStackNavigationProp<
@@ -52,6 +54,7 @@ export default function ChallengeDetailScreen() {
   const { user, session } = useAuth();
   const { reportContent } = useContentReport();
   const headerHeight = useHeaderHeight();
+  const { gutter } = useResponsiveLayout();
 
   const { challengeId } = route.params;
 
@@ -553,7 +556,12 @@ export default function ChallengeDetailScreen() {
       )}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, backgroundImage && { paddingTop: headerHeight }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          Platform.OS === 'web' && styles.webScrollContent,
+          { paddingHorizontal: Platform.OS === 'web' ? gutter : 20 },
+          backgroundImage && { paddingTop: headerHeight },
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -776,8 +784,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
     paddingBottom: 100,
+  },
+  webScrollContent: {
+    width: '100%',
+    maxWidth: 1040,
+    alignSelf: 'center',
   },
   challengeInfo: {
     marginBottom: 20,
