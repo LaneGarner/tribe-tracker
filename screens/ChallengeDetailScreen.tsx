@@ -366,6 +366,8 @@ export default function ChallengeDetailScreen() {
           <TouchableOpacity
             onPress={handleShare}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Share challenge"
           >
             <Ionicons name="share-outline" size={22} color={headerIconColor} />
           </TouchableOpacity>
@@ -381,6 +383,8 @@ export default function ChallengeDetailScreen() {
             <TouchableOpacity
               onPress={handleOptionsMenu}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Challenge options"
             >
               <Ionicons name="ellipsis-horizontal" size={22} color={headerIconColor} />
             </TouchableOpacity>

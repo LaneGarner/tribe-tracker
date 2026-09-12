@@ -1607,6 +1607,9 @@ export default function DiscoverScreen() {
                       disabled={isActive}
                       style={styles.dragHandle}
                       hitSlop={14}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Reorder habit ${index + 1}`}
+                      accessibilityHint="Drag to change this habit's position"
                     >
                       <Ionicons name="reorder-three" size={22} color={colors.textSecondary} />
                     </TouchableOpacity>

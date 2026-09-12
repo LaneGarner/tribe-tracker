@@ -277,6 +277,9 @@ export default function ActivityCalendar({
             ]}
             onPress={handlePreviousMonth}
             disabled={!canGoBack}
+            accessibilityRole="button"
+            accessibilityLabel="Previous month"
+            accessibilityState={{ disabled: !canGoBack }}
           >
             <Ionicons
               name="chevron-back"
@@ -300,6 +303,9 @@ export default function ActivityCalendar({
             ]}
             onPress={handleNextMonth}
             disabled={!canGoForward}
+            accessibilityRole="button"
+            accessibilityLabel="Next month"
+            accessibilityState={{ disabled: !canGoForward }}
           >
             <Ionicons
               name="chevron-forward"

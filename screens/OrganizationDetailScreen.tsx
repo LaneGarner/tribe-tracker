@@ -246,6 +246,9 @@ export default function OrganizationDetailScreen() {
               { backgroundColor: colors.primary, opacity: teamName.trim() ? 1 : 0.5 },
             ]}
             onPress={createTeam}
+            accessibilityRole="button"
+            accessibilityLabel="Create team"
+            accessibilityState={{ disabled: working || !teamName.trim() }}
           >
             <Ionicons name="add-circle-outline" size={18} color="#fff" />
             <Text style={styles.primaryButtonText}>Create team</Text>
