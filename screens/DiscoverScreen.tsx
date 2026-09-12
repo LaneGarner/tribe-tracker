@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -15,7 +14,6 @@ import {
   Keyboard,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import dayjs from 'dayjs';
 import { PublicChallengeListSkeleton } from '../components/challenge/PublicChallengeCardSkeleton';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -73,6 +71,8 @@ import {
 } from '../services/challenges';
 import { useMembership } from '../context/MembershipContext';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { showAlert } from '../platform/dialogs/alert';
+import DateField from '../platform/dateTime/DateField';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -315,23 +315,21 @@ export default function DiscoverScreen() {
     }
 
     buttons.push({ text: 'Cancel', style: 'cancel' });
-    Alert.alert('Background Image', undefined, buttons);
+    void showAlert('Background Image', undefined, buttons);
   };
 
   const isScheduleLocked = isEditMode && isActiveChallenge;
 
-  const handleStartDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+  const handleStartDateChange = (selectedDate: Date) => {
     if (Platform.OS === 'android') setShowStartPicker(false);
-    if (!selectedDate) return;
     const newStart = dayjs(selectedDate).format('YYYY-MM-DD');
     const duration = parseInt(durationDays) || 30;
     setStartDate(newStart);
     setEndDate(getChallengeEndDate(newStart, duration));
   };
 
-  const handleEndDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+  const handleEndDateChange = (selectedDate: Date) => {
     if (Platform.OS === 'android') setShowEndPicker(false);
-    if (!selectedDate) return;
     const newEnd = dayjs(selectedDate).format('YYYY-MM-DD');
     const newDuration = dayjs(newEnd).diff(dayjs(startDate), 'day') + 1;
     if (newDuration >= 1) {
@@ -357,7 +355,7 @@ export default function DiscoverScreen() {
     requireCapability('canGenerateChallenge', async () => {
       const prompt = aiPrompt.trim();
       if (!prompt) {
-        Alert.alert(
+        void showAlert(
           'Describe Your Goal',
           'Add a short goal before generating a draft.'
         );
@@ -366,7 +364,7 @@ export default function DiscoverScreen() {
       if (!(await ensureAIConsent('challenge_generation'))) return;
       const token = getAccessToken();
       if (!token) {
-        Alert.alert('Sign In Required', 'Please sign in and try again.');
+        void showAlert('Sign In Required', 'Please sign in and try again.');
         return;
       }
       setIsGeneratingDraft(true);
@@ -388,7 +386,7 @@ export default function DiscoverScreen() {
           setCategory(draft.category);
         }
         setHasGeneratedDraft(true);
-        Alert.alert(
+        void showAlert(
           'Draft Ready',
           'Review and edit every field before creating your challenge.'
         );
@@ -397,7 +395,7 @@ export default function DiscoverScreen() {
           error instanceof AIChallengeDraftError
             ? error.message
             : 'Unable to create a challenge draft right now.';
-        Alert.alert(
+        void showAlert(
           error instanceof AIChallengeDraftError &&
             error.code === 'unavailable'
             ? 'Draft Unavailable'
@@ -434,7 +432,7 @@ export default function DiscoverScreen() {
     // Confirm before creating if start date is today (challenge becomes immediately active)
     const startsToday = !isEditMode && startDate === getToday();
     if (startsToday) {
-      Alert.alert(
+      void showAlert(
         'Start Immediately?',
         'This challenge will begin today and the duration cannot be changed once active. Continue?',
         [
@@ -462,7 +460,7 @@ export default function DiscoverScreen() {
           setIsUploadingBackground(true);
           backgroundImageUrl = await uploadChallengeBackground(existingChallenge.id, backgroundImageUri);
         } catch {
-          Alert.alert('Upload Failed', 'Could not upload background image. Your other changes were saved.');
+          void showAlert('Upload Failed', 'Could not upload background image. Your other changes were saved.');
           backgroundImageUrl = existingChallenge.backgroundImageUrl;
         } finally {
           setIsUploadingBackground(false);
@@ -510,7 +508,7 @@ export default function DiscoverScreen() {
       dispatch(updateChallenge(updatedChallenge));
       setIsCreating(false);
 
-      Alert.alert('Success', 'Challenge updated successfully!', [
+      void showAlert('Success', 'Challenge updated successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
       return;
@@ -529,7 +527,7 @@ export default function DiscoverScreen() {
         console.log('Background upload succeeded:', backgroundImageUrl);
       } catch (err) {
         console.log('Background upload failed:', err);
-        Alert.alert('Upload Failed', 'Could not upload background image. The challenge was created without it.');
+        void showAlert('Upload Failed', 'Could not upload background image. The challenge was created without it.');
       } finally {
         setIsUploadingBackground(false);
       }
@@ -575,7 +573,7 @@ export default function DiscoverScreen() {
       const token = getAccessToken();
       if (!token) {
         setIsCreating(false);
-        Alert.alert(
+        void showAlert(
           'Sign In Required',
           'Sign in again before creating this challenge.'
         );
@@ -595,7 +593,7 @@ export default function DiscoverScreen() {
           error.code === 'free_active_challenge_limit'
         ) {
           await refreshMembership();
-          Alert.alert(
+          void showAlert(
             'One Active Challenge on Free',
             'You can still join unlimited invited and organization challenges. Complete your active challenge or upgrade to create another.',
             [
@@ -611,7 +609,7 @@ export default function DiscoverScreen() {
           );
           return;
         }
-        Alert.alert(
+        void showAlert(
           'Challenge Not Created',
           error instanceof Error
             ? error.message
@@ -664,7 +662,7 @@ export default function DiscoverScreen() {
       dispatch(updateChallenge({ ...createdChallenge, participantCount: 1 }));
     };
 
-    Alert.alert(
+    void showAlert(
       'Challenge Created!',
       'Would you like to join this challenge?',
       [
@@ -677,7 +675,7 @@ export default function DiscoverScreen() {
           text: 'Join Challenge',
           onPress: () => {
             joinChallenge();
-            Alert.alert('Joined!', `You've joined "${createdChallenge.name}"`, [
+            void showAlert('Joined!', `You've joined "${createdChallenge.name}"`, [
               { text: 'OK', onPress: resetForm },
             ]);
           },
@@ -688,7 +686,7 @@ export default function DiscoverScreen() {
 
   const handleJoinByCode = async () => {
     if (!inviteCode.trim()) {
-      Alert.alert('Error', 'Please enter an invite code');
+      void showAlert('Error', 'Please enter an invite code');
       return;
     }
 
@@ -724,7 +722,7 @@ export default function DiscoverScreen() {
 
     if (!challenge) {
       setIsJoining(false);
-      Alert.alert('Error', 'Invalid invite code. Please check and try again.');
+      void showAlert('Error', 'Invalid invite code. Please check and try again.');
       return;
     }
 
@@ -779,7 +777,7 @@ export default function DiscoverScreen() {
     }
 
     setIsJoining(false);
-    Alert.alert('Success', `Joined "${challenge.name}"!`, [
+    void showAlert('Success', `Joined "${challenge.name}"!`, [
       { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Home', params: { selectChallengeId: challenge.id } }) },
     ]);
   };
@@ -1224,6 +1222,17 @@ export default function DiscoverScreen() {
         </Text>
 
         <Text style={[styles.label, { color: colors.text }]}>Start Date</Text>
+        {Platform.OS === 'web' ? (
+          <View style={[styles.dateRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <DateField
+              value={dayjs(startDate).toDate()}
+              minimumDate={new Date()}
+              disabled={isScheduleLocked}
+              accessibilityLabel={`Start date: ${formatDate(startDate)}`}
+              onChange={handleStartDateChange}
+            />
+          </View>
+        ) : (
         <TouchableOpacity
           style={[
             styles.dateRow,
@@ -1248,6 +1257,7 @@ export default function DiscoverScreen() {
             color={isScheduleLocked ? colors.textTertiary : colors.textSecondary}
           />
         </TouchableOpacity>
+        )}
 
         <View style={[styles.toggleRow, { marginTop: 8 }]}>
           <View style={{ flex: 1, paddingRight: 12 }}>
@@ -1302,6 +1312,17 @@ export default function DiscoverScreen() {
         )}
 
         <Text style={[styles.label, { color: colors.text }]}>End Date</Text>
+        {Platform.OS === 'web' ? (
+          <View style={[styles.dateRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <DateField
+              value={dayjs(endDate).toDate()}
+              minimumDate={dayjs(startDate).add(1, 'day').toDate()}
+              disabled={isScheduleLocked}
+              accessibilityLabel={`End date: ${formatDate(endDate)}`}
+              onChange={handleEndDateChange}
+            />
+          </View>
+        ) : (
         <TouchableOpacity
           style={[
             styles.dateRow,
@@ -1326,6 +1347,7 @@ export default function DiscoverScreen() {
             color={isScheduleLocked ? colors.textTertiary : colors.textSecondary}
           />
         </TouchableOpacity>
+        )}
         {!isScheduleLocked && (
           <Text style={[styles.helperText, { color: colors.textTertiary }]}>
             Calculated from start + duration
@@ -1348,23 +1370,18 @@ export default function DiscoverScreen() {
                     <Text style={[styles.pickerDoneText, { color: colors.primary }]}>Done</Text>
                   </TouchableOpacity>
                 </View>
-                <DateTimePicker
+                <DateField
                   value={dayjs(startDate).toDate()}
-                  mode="date"
-                  display="spinner"
                   minimumDate={new Date()}
                   onChange={handleStartDateChange}
-                  themeVariant={colorScheme}
                 />
               </View>
             </View>
           </Modal>
         )}
         {showStartPicker && Platform.OS === 'android' && (
-          <DateTimePicker
+          <DateField
             value={dayjs(startDate).toDate()}
-            mode="date"
-            display="default"
             minimumDate={new Date()}
             onChange={handleStartDateChange}
           />
@@ -1379,23 +1396,18 @@ export default function DiscoverScreen() {
                     <Text style={[styles.pickerDoneText, { color: colors.primary }]}>Done</Text>
                   </TouchableOpacity>
                 </View>
-                <DateTimePicker
+                <DateField
                   value={dayjs(endDate).toDate()}
-                  mode="date"
-                  display="spinner"
                   minimumDate={dayjs(startDate).add(1, 'day').toDate()}
                   onChange={handleEndDateChange}
-                  themeVariant={colorScheme}
                 />
               </View>
             </View>
           </Modal>
         )}
         {showEndPicker && Platform.OS === 'android' && (
-          <DateTimePicker
+          <DateField
             value={dayjs(endDate).toDate()}
-            mode="date"
-            display="default"
             minimumDate={dayjs(startDate).add(1, 'day').toDate()}
             onChange={handleEndDateChange}
           />

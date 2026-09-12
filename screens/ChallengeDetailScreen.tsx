@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Share,
-  Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
@@ -36,6 +35,7 @@ import {
 import Leaderboard from '../components/challenge/Leaderboard';
 import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
 import { useContentReport } from '../hooks/useContentReport';
+import { showAlert } from '../platform/dialogs/alert';
 
 type ChallengeDetailRouteProp = RouteProp<RootStackParamList, 'ChallengeDetail'>;
 type ChallengeDetailNavigationProp = NativeStackNavigationProp<
@@ -128,7 +128,7 @@ export default function ChallengeDetailScreen() {
 
   const handleLeaveChallenge = () => {
     if (!userParticipation) return;
-    Alert.alert(
+    void showAlert(
       'Leave Challenge',
       `Are you sure you want to leave "${challenge?.name}"? Your progress will be lost.`,
       [
@@ -162,7 +162,7 @@ export default function ChallengeDetailScreen() {
         options.push({
           text: 'End Challenge',
           onPress: () => {
-            Alert.alert(
+            void showAlert(
               'End Challenge',
               'This will end the challenge today and mark it completed. Participants can no longer check in. This cannot be undone.',
               [
@@ -194,7 +194,7 @@ export default function ChallengeDetailScreen() {
             ? `This challenge has ${participantCount} participant${participantCount !== 1 ? 's' : ''}. Are you sure you want to delete it?`
             : 'Are you sure you want to delete this challenge?';
 
-          Alert.alert(
+          void showAlert(
             'Delete Challenge',
             warningMessage,
             [
@@ -218,7 +218,7 @@ export default function ChallengeDetailScreen() {
         options.push({
           text: 'Reveal Identity',
           onPress: () => {
-            Alert.alert(
+            void showAlert(
               'Reveal Identity',
               'Other participants will see your real name and photo going forward. Previous messages will keep your pseudonym.',
               [
@@ -260,7 +260,7 @@ export default function ChallengeDetailScreen() {
         options.push({
           text: 'Go Anonymous',
           onPress: () => {
-            Alert.alert(
+            void showAlert(
               'Go Anonymous',
               'Your identity will be hidden behind a pseudonym. Previous messages and check-ins will still show your name.',
               [
@@ -322,7 +322,7 @@ export default function ChallengeDetailScreen() {
 
     options.push({ text: 'Cancel', style: 'cancel' });
 
-    Alert.alert('Challenge Options', undefined, options);
+    void showAlert('Challenge Options', undefined, options);
   };
 
   // Set up header with chat, share, analytics, and creator menu buttons
@@ -494,7 +494,7 @@ export default function ChallengeDetailScreen() {
     const joinMessage = joinAnonymously
       ? `You've joined "${challenge.name}" as "${pseudonym}"`
       : `You've joined "${challenge.name}"`;
-    Alert.alert('Joined!', joinMessage, [
+    void showAlert('Joined!', joinMessage, [
       { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Home', params: { selectChallengeId: challenge.id } }) },
     ]);
   };
@@ -502,7 +502,7 @@ export default function ChallengeDetailScreen() {
   const handleJoin = async () => {
     if (isJoined || isJoining) return;
 
-    Alert.alert(
+    void showAlert(
       'Join Challenge',
       'Would you like to join anonymously? Your identity will be hidden behind a pseudonym.',
       [
@@ -704,7 +704,7 @@ export default function ChallengeDetailScreen() {
             currentUserId={user?.id}
             onParticipantPress={participant => {
               if (participant.isAnonymous && participant.userId !== user?.id) {
-                Alert.alert(participant.userName, 'This participant is anonymous.');
+                void showAlert(participant.userName, 'This participant is anonymous.');
                 return;
               }
               navigation.navigate('ViewMember', { userId: participant.userId });
