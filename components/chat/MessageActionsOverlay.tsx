@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -60,6 +60,7 @@ export default function MessageActionsOverlay({
 
   const backdrop = useSharedValue(0);
   const sheetScale = useSharedValue(0.9);
+  const firstActionRef = useRef<any>(null);
 
   useEffect(() => {
     if (target) {
@@ -67,6 +68,7 @@ export default function MessageActionsOverlay({
       triggerLightFeedback();
       backdrop.value = withTiming(1, { duration: 160, easing: Easing.out(Easing.quad) });
       sheetScale.value = withSpring(1, { damping: 18, stiffness: 240 });
+      requestAnimationFrame(() => firstActionRef.current?.focus?.());
     } else {
       backdrop.value = withTiming(0, { duration: 140 });
       sheetScale.value = 0.9;
@@ -103,7 +105,13 @@ export default function MessageActionsOverlay({
 
   return (
     <Modal transparent visible={!!target} onRequestClose={onClose} animationType="none">
-      <Pressable style={styles.root} onPress={onClose} accessibilityLabel="Dismiss">
+      <Pressable
+        style={styles.root}
+        onPress={onClose}
+        accessibilityLabel="Dismiss message actions"
+        accessibilityRole="button"
+        onAccessibilityEscape={onClose}
+      >
         <Animated.View style={[StyleSheet.absoluteFill, styles.dim, backdropStyle]} />
         <Animated.View
           pointerEvents="box-none"
@@ -113,9 +121,10 @@ export default function MessageActionsOverlay({
             { top: anchorTop, alignItems: isOwn ? 'flex-end' : 'flex-start' },
           ]}
         >
-          <View style={[styles.emojiRow, { backgroundColor: colors.surface }]}>
+          <View style={[styles.emojiRow, { backgroundColor: colors.surface }]}> 
             {PRESET_REACTIONS.map(emoji => (
               <TouchableOpacity
+                ref={emoji === PRESET_REACTIONS[0] ? firstActionRef : undefined}
                 key={emoji}
                 onPress={() => {
                   onReact(message, emoji);
@@ -131,7 +140,13 @@ export default function MessageActionsOverlay({
             ))}
           </View>
 
-          <View style={[styles.actionList, { backgroundColor: colors.surface }]}>
+          <View
+            style={[styles.actionList, { backgroundColor: colors.surface }]}
+            accessibilityRole="menu"
+            accessibilityLabel="Message actions"
+            accessibilityViewIsModal
+            onStartShouldSetResponder={() => true}
+          >
             <ActionRow
               icon="arrow-undo-outline"
               label="Reply"

@@ -1,4 +1,4 @@
-import React, { useContext, useState, useCallback, useEffect } from 'react';
+import React, { useContext, useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -76,6 +76,8 @@ export default function BadgesScreen() {
   const [activeTab, setActiveTab] = useState<TabType | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showLevelInfo, setShowLevelInfo] = useState(false);
+  const badgeCloseRef = useRef<any>(null);
+  const levelCloseRef = useRef<any>(null);
 
   // Set initial tab based on earned badges (once loaded)
   useEffect(() => {
@@ -88,6 +90,12 @@ export default function BadgesScreen() {
     definition: BadgeDefinition;
     userBadge?: UserBadge;
   } | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const target = selectedBadge ? badgeCloseRef.current : showLevelInfo ? levelCloseRef.current : null;
+    if (target) requestAnimationFrame(() => target?.focus?.());
+  }, [selectedBadge, showLevelInfo]);
 
   // Fetch badges on mount if not already loaded
   useEffect(() => {
@@ -318,6 +326,11 @@ export default function BadgesScreen() {
         >
           <View
             style={[styles.modalContent, { backgroundColor: colors.surface }]}
+            role="dialog"
+            accessibilityLabel={selectedBadge ? `${selectedBadge.definition.name} badge details` : 'Badge details'}
+            accessibilityViewIsModal
+            onAccessibilityEscape={closeModal}
+            onStartShouldSetResponder={() => true}
           >
             {selectedBadge && (
               <>
@@ -390,6 +403,7 @@ export default function BadgesScreen() {
                     </TouchableOpacity>
                   )}
                 <TouchableOpacity
+                  ref={badgeCloseRef}
                   style={[
                     styles.closeButton,
                     {
@@ -402,6 +416,8 @@ export default function BadgesScreen() {
                     },
                   ]}
                   onPress={closeModal}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close badge details"
                 >
                   <Text
                     style={[
@@ -435,6 +451,10 @@ export default function BadgesScreen() {
           <View
             style={[styles.modalContent, { backgroundColor: colors.surface }]}
             onStartShouldSetResponder={() => true}
+            role="dialog"
+            accessibilityLabel="Level system information"
+            accessibilityViewIsModal
+            onAccessibilityEscape={() => setShowLevelInfo(false)}
           >
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               Level System
@@ -475,8 +495,11 @@ export default function BadgesScreen() {
             </View>
 
             <TouchableOpacity
+              ref={levelCloseRef}
               style={[styles.closeButton, { backgroundColor: colors.primary }]}
               onPress={() => setShowLevelInfo(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Close level system information"
             >
               <Text style={styles.closeButtonText}>Got it</Text>
             </TouchableOpacity>
