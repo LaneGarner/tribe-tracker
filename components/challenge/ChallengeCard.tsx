@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from 'react';
-import { Platform, View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +17,7 @@ import {
 } from '../../utils/dateUtils';
 import { calculateActiveStreak } from '../../utils/streakUtils';
 import { getGradientForChallenge } from '../../constants/gradients';
-import { insetWebSurfaceWidth } from '../../constants/webSurfaceLayout';
+import { WEB_SURFACE_WIDTH } from '../../constants/webSurfaceLayout';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -36,7 +36,6 @@ export default function ChallengeCard({
   participation,
   allParticipants,
 }: ChallengeCardProps) {
-  const { width: viewportWidth } = useWindowDimensions();
   const [bgImageFailed, setBgImageFailed] = useState(false);
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -200,7 +199,7 @@ export default function ChallengeCard({
 
   if (showBgImage) {
     return (
-      <View style={[styles.container, Platform.OS === 'web' && [styles.webContainer, { width: insetWebSurfaceWidth(viewportWidth, 880) }]]}>
+      <View style={[styles.container, Platform.OS === 'web' && styles.webContainer]}>
         <ExpoImage
           source={{ uri: challenge.backgroundImageUrl }}
           style={StyleSheet.absoluteFill}
@@ -225,7 +224,7 @@ export default function ChallengeCard({
       colors={getGradientForChallenge(challenge)}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={[styles.container, styles.scrim, Platform.OS === 'web' && [styles.webContainer, { width: insetWebSurfaceWidth(viewportWidth, 880) }]]}
+      style={[styles.container, styles.scrim, Platform.OS === 'web' && styles.webContainer]}
     >
       {cardContent}
     </LinearGradient>
@@ -240,9 +239,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   webContainer: {
+    width: WEB_SURFACE_WIDTH as any,
     maxWidth: 880,
     alignSelf: 'center',
-    marginHorizontal: 0,
+    marginHorizontal: 'auto' as any,
   },
   scrim: {
     padding: 20,
