@@ -6,8 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
-  Share,
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
@@ -34,6 +32,7 @@ import HexBadge from '../components/badges/HexBadge';
 import Avatar from '../components/Avatar';
 import { useAvatarPicker } from '../hooks/useAvatarPicker';
 import { isBackendConfigured as isApiConfigured, API_URL } from '../config/api';
+import { shareContent } from '../platform/share';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 type ProfileNavigationProp = NativeStackNavigationProp<
@@ -240,9 +239,17 @@ export default function ProfileScreen() {
       const label = challenge.isPublic ? '' : 'private ';
       const inviteCodeLine = challenge.inviteCode ? `\n\nInvite code: ${challenge.inviteCode}` : '';
       const message = `Join my ${label}challenge "${challenge.name}" on TribeTracker!\n${shareUrl}${inviteCodeLine}`;
-      await Share.share({ message });
-    } catch {
-      // User cancelled share
+      const result = await shareContent({
+        title: `Join ${challenge.name} on TribeTracker`,
+        message,
+        url: shareUrl,
+      });
+      if (result === 'copied') {
+        await showAlert('Invite copied', 'The challenge invitation was copied to your clipboard.');
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      await showAlert('Unable to Share', 'Could not share this challenge. Please try again.');
     }
   };
 

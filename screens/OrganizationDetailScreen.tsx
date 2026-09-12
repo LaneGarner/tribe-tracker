@@ -1,10 +1,8 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import {
-  Alert,
   RefreshControl,
   ScrollView,
   Platform,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -32,6 +30,7 @@ import {
   OrganizationReport,
   OrganizationTeam,
 } from '../types/organization';
+import { shareContent } from '../platform/share';
 
 export default function OrganizationDetailScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'OrganizationDetail'>>();
@@ -121,8 +120,18 @@ export default function OrganizationDetailScreen() {
         organizationId,
         teamId,
       });
-      if (invitation.joinUrl) await Share.share({ message: invitation.joinUrl });
-      else void showAlert('Invitation Created', 'The secure invitation is ready.');
+      if (invitation.joinUrl) {
+        const result = await shareContent({
+          title: `Join ${organizationName} on TribeTracker`,
+          message: invitation.joinUrl,
+          url: invitation.joinUrl,
+        });
+        if (result === 'copied') {
+          await showAlert('Invitation copied', 'The secure invitation link was copied to your clipboard.');
+        }
+      } else {
+        void showAlert('Invitation Created', 'The secure invitation is ready.');
+      }
     } catch (error) {
       void showAlert('Unable to Invite', error instanceof Error ? error.message : 'Please try again.');
     }
