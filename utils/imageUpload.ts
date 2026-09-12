@@ -1,50 +1,19 @@
-import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
-
-export async function pickImage(
-  source: 'camera' | 'library',
-  options?: { aspect?: [number, number]; quality?: number }
-): Promise<string | null> {
-  const permissionResult =
-    source === 'camera'
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-  if (!permissionResult.granted) {
-    return null;
-  }
-
-  const launchFn =
-    source === 'camera'
-      ? ImagePicker.launchCameraAsync
-      : ImagePicker.launchImageLibraryAsync;
-
-  const result = await launchFn({
-    mediaTypes: ['images'],
-    allowsEditing: true,
-    aspect: options?.aspect ?? [1, 1],
-    quality: options?.quality ?? 0.7,
-  });
-
-  if (result.canceled || !result.assets?.[0]?.uri) {
-    return null;
-  }
-
-  return result.assets[0].uri;
-}
+export { pickImage } from '../platform/mediaPicker';
 
 export async function uploadAvatar(
   userId: string,
   localUri: string
 ): Promise<string> {
   const response = await fetch(localUri);
-  const arrayBuffer = await response.arrayBuffer();
+  const blob = await response.blob();
+  const arrayBuffer = await blob.arrayBuffer();
   const filePath = `${userId}/avatar.jpg`;
 
   const { error } = await supabase.storage
     .from('avatars')
     .upload(filePath, arrayBuffer, {
-      contentType: 'image/jpeg',
+      contentType: blob.type || 'image/jpeg',
       upsert: true,
     });
 
@@ -67,13 +36,14 @@ export async function uploadChallengeBackground(
   localUri: string
 ): Promise<string> {
   const response = await fetch(localUri);
-  const arrayBuffer = await response.arrayBuffer();
+  const blob = await response.blob();
+  const arrayBuffer = await blob.arrayBuffer();
   const filePath = `${challengeId}/background.jpg`;
 
   const { error } = await supabase.storage
     .from('challenge-backgrounds')
     .upload(filePath, arrayBuffer, {
-      contentType: 'image/jpeg',
+      contentType: blob.type || 'image/jpeg',
       upsert: true,
     });
 
