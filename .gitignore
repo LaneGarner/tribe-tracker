@@ -52,3 +52,6 @@ supabase/.temp/
 # Generated review artifacts and local scratch files
 /output/
 /tmp/
+.playwright-dist/
+playwright-report/
+test-results/
