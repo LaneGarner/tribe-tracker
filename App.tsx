@@ -6,7 +6,8 @@ import {
 } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts, Kanit_700Bold } from '@expo-google-fonts/kanit';
+import { useFonts } from 'expo-font';
+import { Kanit_700Bold } from '@expo-google-fonts/kanit/700Bold';
 import React, { useContext, useEffect, useState, useRef } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
