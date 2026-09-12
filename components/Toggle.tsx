@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef } from 'react';
 import { StyleSheet, Pressable, Animated } from 'react-native';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 interface ToggleProps {
   value: boolean;
@@ -26,15 +27,20 @@ export default function Toggle({
   const colors = getColors(colorScheme);
 
   const animation = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      animation.setValue(value ? 1 : 0);
+      return;
+    }
     Animated.spring(animation, {
       toValue: value ? 1 : 0,
       useNativeDriver: false,
       friction: 8,
       tension: 50,
     }).start();
-  }, [value, animation]);
+  }, [animation, reduceMotion, value]);
 
   const activeColor = variant === 'warning' ? colors.warning : colors.primary;
 
