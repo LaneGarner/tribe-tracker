@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -155,7 +156,11 @@ export default function NewDmScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[
+      styles.container,
+      Platform.OS === 'web' && styles.webContainer,
+      { backgroundColor: colors.background },
+    ]}>
       <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
         <Ionicons name="search" size={18} color={colors.textTertiary} />
         <TextInput
@@ -208,6 +213,11 @@ export default function NewDmScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webContainer: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   searchContainer: {
     flexDirection: 'row',

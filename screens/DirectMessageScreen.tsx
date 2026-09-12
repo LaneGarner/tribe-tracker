@@ -361,7 +361,11 @@ export default function DirectMessageScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[
+        styles.container,
+        Platform.OS === 'web' && styles.webContainer,
+        { backgroundColor: colors.background },
+      ]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
@@ -463,6 +467,11 @@ export default function DirectMessageScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webContainer: {
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
   },
   headerButton: {
     width: 36,

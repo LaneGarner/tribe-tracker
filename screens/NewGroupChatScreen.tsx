@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -194,7 +195,11 @@ export default function NewGroupChatScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[
+      styles.container,
+      Platform.OS === 'web' && styles.webContainer,
+      { backgroundColor: colors.background },
+    ]}>
       {/* Group name input */}
       <View style={[styles.nameContainer, { backgroundColor: colors.surface }]}>
         <TextInput
@@ -287,6 +292,11 @@ export default function NewGroupChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webContainer: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   nameContainer: {
     marginHorizontal: 20,

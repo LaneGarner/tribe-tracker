@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -95,7 +96,7 @@ export default function ChatScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.skeletonList}>
+        <View style={[styles.skeletonList, Platform.OS === 'web' && styles.webContent]}>
           {[1, 2, 3, 4].map(i => (
             <View key={i} style={[styles.skeletonRow, { backgroundColor: colors.surface }]}>
               <Skeleton width={48} height={48} borderRadius={24} />
@@ -118,6 +119,7 @@ export default function ChatScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={[
           styles.listContent,
+          Platform.OS === 'web' && styles.webContent,
           conversations.length === 0 && styles.emptyList,
         ]}
         ListEmptyComponent={<EmptyChat type="chat" />}
@@ -169,6 +171,11 @@ const styles = StyleSheet.create({
   },
   skeletonContent: {
     flex: 1,
+  },
+  webContent: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
   },
   fab: {
     position: 'absolute',
