@@ -17,3 +17,10 @@ export interface ActionSheetOptions extends DialogOptions {
 }
 
 export type DialogResult = string | null;
+
+export interface PromptOptions {
+  title: string;
+  message?: string;
+  defaultValue?: string;
+  keyboardType?: 'default' | 'email-address';
+}

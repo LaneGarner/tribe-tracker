@@ -3,6 +3,7 @@ import type {
   ActionSheetOptions,
   DialogOptions,
   DialogResult,
+  PromptOptions,
 } from './types';
 
 function present(options: DialogOptions): Promise<DialogResult> {
@@ -29,4 +30,17 @@ export function showActionSheet(
   options: ActionSheetOptions
 ): Promise<DialogResult> {
   return present(options);
+}
+
+export function showPrompt(options: PromptOptions): Promise<string | null> {
+  return new Promise(resolve => {
+    Alert.prompt(
+      options.title,
+      options.message,
+      value => resolve(value || null),
+      'plain-text',
+      options.defaultValue,
+      options.keyboardType
+    );
+  });
 }

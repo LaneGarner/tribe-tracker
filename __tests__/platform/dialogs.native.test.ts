@@ -1,5 +1,5 @@
 import { Alert } from 'react-native';
-import { showActionSheet, showDialog } from '../../platform/dialogs/index.native';
+import { showActionSheet, showDialog, showPrompt } from '../../platform/dialogs/index.native';
 
 describe('native dialog adapter', () => {
   beforeEach(() => jest.restoreAllMocks());
@@ -44,5 +44,13 @@ describe('native dialog adapter', () => {
     );
 
     await expect(showDialog({ title: 'Dismiss me' })).resolves.toBeNull();
+  });
+
+  it('returns native prompt input', async () => {
+    jest.spyOn(Alert, 'prompt').mockImplementation(
+      (_title, _message, callback) => typeof callback === 'function' && callback('person@example.com')
+    );
+
+    await expect(showPrompt({ title: 'Email' })).resolves.toBe('person@example.com');
   });
 });

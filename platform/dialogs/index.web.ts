@@ -3,6 +3,7 @@ import type {
   DialogAction,
   DialogOptions,
   DialogResult,
+  PromptOptions,
 } from './types';
 
 const overlayStyle = [
@@ -134,4 +135,14 @@ export function showActionSheet(
   options: ActionSheetOptions
 ): Promise<DialogResult> {
   return present(options);
+}
+
+export function showPrompt(options: PromptOptions): Promise<string | null> {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  return Promise.resolve(
+    window.prompt(
+      options.message ? `${options.title}\n\n${options.message}` : options.title,
+      options.defaultValue ?? ''
+    )
+  );
 }
