@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { deleteAccount } from '../services/account';
+import { showAlert } from '../platform/dialogs/alert';
 
 export default function ChangePasswordScreen() {
   const { colorScheme } = useContext(ThemeContext);
@@ -34,28 +35,28 @@ export default function ChangePasswordScreen() {
 
   async function submit() {
     if (password.length < 8) {
-      Alert.alert('Password too short', 'Use at least 8 characters.');
+      void showAlert('Password too short', 'Use at least 8 characters.');
       return;
     }
     if (password !== confirmation) {
-      Alert.alert('Passwords do not match', 'Enter the same password in both fields.');
+      void showAlert('Passwords do not match', 'Enter the same password in both fields.');
       return;
     }
     setSubmitting(true);
     const { error } = await updatePassword(password);
     setSubmitting(false);
     if (error) {
-      Alert.alert('Password not updated', error.message);
+      void showAlert('Password not updated', error.message);
       return;
     }
     setPassword('');
     setConfirmation('');
     completePasswordRecovery();
-    Alert.alert('Password updated', 'Use your new password the next time you sign in.');
+    void showAlert('Password updated', 'Use your new password the next time you sign in.');
   }
 
   function confirmDeletion() {
-    Alert.alert(
+    void showAlert(
       'Delete Account?',
       'This permanently deletes your TribeTracker account and personal data. Deleting the account does not cancel an Apple or Google subscription.',
       [
@@ -63,7 +64,7 @@ export default function ChangePasswordScreen() {
         {
           text: 'Continue',
           style: 'destructive',
-          onPress: () => Alert.alert(
+          onPress: () => void showAlert(
             'Confirm Permanent Deletion',
             'Delete your account and personal data now?',
             [
@@ -74,14 +75,14 @@ export default function ChangePasswordScreen() {
                 onPress: async () => {
                   const token = getAccessToken();
                   if (!token) {
-                    Alert.alert('Unable to Delete', 'Please sign in again and retry.');
+                    void showAlert('Unable to Delete', 'Please sign in again and retry.');
                     return;
                   }
                   try {
                     await deleteAccount(token);
                     await signOut();
                   } catch (error) {
-                    Alert.alert('Deletion Failed', error instanceof Error ? error.message : 'Account deletion is temporarily unavailable.');
+                    void showAlert('Deletion Failed', error instanceof Error ? error.message : 'Account deletion is temporarily unavailable.');
                   }
                 },
               },

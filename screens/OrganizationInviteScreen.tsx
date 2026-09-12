@@ -10,6 +10,7 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -41,7 +42,7 @@ export default function OrganizationInviteScreen() {
         setChallenge(value.challenge);
       })
       .catch(error =>
-        Alert.alert('Invalid Invitation', error instanceof Error ? error.message : 'This invitation cannot be used.')
+        void showAlert('Invalid Invitation', error instanceof Error ? error.message : 'This invitation cannot be used.')
       )
       .finally(() => setWorking(false));
   }, [getAccessToken, token]);
@@ -52,7 +53,7 @@ export default function OrganizationInviteScreen() {
     setWorking(true);
     try {
       await acceptOrganizationInvite(accessToken, token);
-      Alert.alert('Welcome', `You joined ${organization?.name || 'the organization'}.`, [
+      void showAlert('Welcome', `You joined ${organization?.name || 'the organization'}.`, [
         {
           text: challenge ? 'Continue to challenge' : 'Continue',
           onPress: () => challenge?.inviteCode
@@ -63,7 +64,7 @@ export default function OrganizationInviteScreen() {
         },
       ]);
     } catch (error) {
-      Alert.alert('Unable to Join', error instanceof Error ? error.message : 'Please try again.');
+      void showAlert('Unable to Join', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setWorking(false);
     }

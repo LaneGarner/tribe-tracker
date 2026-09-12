@@ -17,6 +17,7 @@ import { ThemeContext, ThemePreference, getColors } from '../theme/ThemeContext'
 import { useAuth } from '../context/AuthContext';
 import { clearAllAppData, clearChatData } from '../utils/storage';
 import { RootStackParamList } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import { RootState, AppDispatch } from '../redux/store';
 import { loadChatFromStorage } from '../redux/slices/chatSlice';
 import SegmentedControl from '../components/SegmentedControl';
@@ -85,7 +86,7 @@ export default function MenuScreen() {
   ];
 
   const handleClearChatData = () => {
-    Alert.alert(
+    void showAlert(
       'Clear Chat Data',
       'This will permanently delete all your chat history, conversations, and messages. This cannot be undone.',
       [
@@ -97,7 +98,7 @@ export default function MenuScreen() {
             const token = getAccessToken();
             await clearChatData(token);
             dispatch(loadChatFromStorage());
-            Alert.alert('Done', 'Chat data has been cleared');
+            void showAlert('Done', 'Chat data has been cleared');
           },
         },
       ]
@@ -105,7 +106,7 @@ export default function MenuScreen() {
   };
 
   const handleClearData = () => {
-    Alert.alert(
+    void showAlert(
       'Clear All Data',
       'This will delete all your local data. This action cannot be undone.',
       [
@@ -115,7 +116,7 @@ export default function MenuScreen() {
           style: 'destructive',
           onPress: async () => {
             await clearAllAppData();
-            Alert.alert('Done', 'All data has been cleared');
+            void showAlert('Done', 'All data has been cleared');
           },
         },
       ]
@@ -123,7 +124,7 @@ export default function MenuScreen() {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    void showAlert(
       'Delete Account?',
       'This permanently deletes your TribeTracker account. Personal history cannot be restored. If you have an Apple or Google subscription, deleting the account does not automatically cancel billing.',
       [
@@ -132,7 +133,7 @@ export default function MenuScreen() {
           text: 'Continue',
           style: 'destructive',
           onPress: () => {
-            Alert.alert(
+            void showAlert(
               'Confirm Permanent Deletion',
               'Delete your account and personal data now?',
               [
@@ -143,14 +144,14 @@ export default function MenuScreen() {
                   onPress: async () => {
                     const token = getAccessToken();
                     if (!token) {
-                      Alert.alert('Unable to Delete', 'Please sign in again and retry.');
+                      void showAlert('Unable to Delete', 'Please sign in again and retry.');
                       return;
                     }
                     try {
                       await deleteAccount(token);
                       await signOut();
                     } catch (error) {
-                      Alert.alert(
+                      void showAlert(
                         'Deletion Failed',
                         error instanceof Error
                           ? error.message

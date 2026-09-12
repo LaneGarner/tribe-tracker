@@ -17,6 +17,7 @@ import Toggle from '../components/Toggle';
 import Avatar from '../components/Avatar';
 import { useAIConsent } from '../context/AIConsentContext';
 import { AIConsentPurpose } from '../services/aiConsent';
+import { showAlert } from '../platform/dialogs/alert';
 
 const AI_PURPOSES: Array<{
   purpose: AIConsentPurpose;
@@ -174,7 +175,7 @@ export default function PrivacyCenterScreen() {
                     ? grantAIConsent(item.purpose)
                     : revokeAIConsent(item.purpose);
                   action.catch(error =>
-                    Alert.alert(
+                    void showAlert(
                       'Unable to Update',
                       error instanceof Error ? error.message : 'Please try again.'
                     )
@@ -242,14 +243,16 @@ export default function PrivacyCenterScreen() {
                 <TouchableOpacity
                   style={[styles.unblockButton, { borderColor: colors.border }]}
                   onPress={() => {
-                    Alert.alert(
+                    void showAlert(
                       'Unblock User',
                       `Unblock ${blocked.blockedName || 'this user'}? They will be able to send you messages again.`,
                       [
                         { text: 'Cancel', style: 'cancel' },
                         {
                           text: 'Unblock',
-                          onPress: () => dispatch(removeBlockedUser(blocked.id)),
+                          onPress: () => {
+                            dispatch(removeBlockedUser(blocked.id));
+                          },
                         },
                       ]
                     );

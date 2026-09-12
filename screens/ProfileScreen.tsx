@@ -25,6 +25,7 @@ import { deleteChallenge, loadChallengesFromStorage, fetchChallengesFromServer }
 import { isBackendConfigured } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import { calculateActiveStreak } from '../utils/streakUtils';
 import { loadBadgesFromStorage, fetchBadgesFromServer } from '../redux/slices/badgesSlice';
 import { addConversation } from '../redux/slices/chatSlice';
@@ -193,11 +194,11 @@ export default function ProfileScreen() {
       age: editForm.age ? parseInt(editForm.age, 10) : undefined,
     }));
     setIsEditing(false);
-    Alert.alert('Success', 'Profile updated');
+    void showAlert('Success', 'Profile updated');
   };
 
   const handleLeaveChallenge = (participationId: string, challengeName: string) => {
-    Alert.alert(
+    void showAlert(
       'Leave Challenge',
       `Are you sure you want to leave "${challengeName}"? Your progress will be lost.`,
       [
@@ -214,7 +215,7 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteChallenge = (challengeId: string, challengeName: string) => {
-    Alert.alert(
+    void showAlert(
       'Delete Challenge',
       `Are you sure you want to delete "${challengeName}"? This will remove it for all participants.`,
       [

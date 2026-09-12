@@ -24,6 +24,7 @@ import { updateProfile } from '../redux/slices/profileSlice';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { RootState } from '../redux/store';
 import { RootStackParamList, ChallengeParticipant } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import {
   fetchChallengeMatches,
   MatchChallengeResult,
@@ -152,7 +153,7 @@ export default function OnboardingWizardScreen() {
       navigation.goBack();
       return;
     }
-    Alert.alert(
+    void showAlert(
       'Skip setup?',
       "You can browse challenges anytime from the Discover tab. We won't show this again.",
       [

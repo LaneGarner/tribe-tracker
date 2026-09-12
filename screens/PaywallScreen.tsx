@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootStackParamList } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import { BillingProduct } from '../services/billing/types';
 import {
   BillingPurchaseCancelledError,
@@ -107,7 +108,7 @@ export default function PaywallScreen() {
       await billing.purchase(product.id);
       const verified = await verifyPurchase();
       await refreshMembership();
-      Alert.alert(
+      void showAlert(
         verified ? 'Pro Active' : 'Purchase Successful',
         verified
           ? 'Your Pro features are ready.'
@@ -116,7 +117,7 @@ export default function PaywallScreen() {
       );
     } catch (error) {
       if (error instanceof BillingPurchaseCancelledError) return;
-      Alert.alert(
+      void showAlert(
         'Purchase Unavailable',
         error instanceof Error ? error.message : 'Please try again.'
       );
@@ -131,7 +132,7 @@ export default function PaywallScreen() {
       const state = await billing.restore();
       const verified = state.proActive ? await verifyPurchase() : false;
       await refreshMembership();
-      Alert.alert(
+      void showAlert(
         state.proActive ? 'Purchases Restored' : 'Nothing to Restore',
         state.proActive
           ? verified
@@ -140,7 +141,7 @@ export default function PaywallScreen() {
           : 'No active Pro subscription was found for this store account.'
       );
     } catch {
-      Alert.alert('Restore Failed', 'Unable to restore purchases right now.');
+      void showAlert('Restore Failed', 'Unable to restore purchases right now.');
     } finally {
       setWorking(null);
     }

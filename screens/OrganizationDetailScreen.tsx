@@ -13,6 +13,7 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -100,7 +101,7 @@ export default function OrganizationDetailScreen() {
         setReport(null);
       }
     } catch (error) {
-      Alert.alert('Unable to Load', error instanceof Error ? error.message : 'Please try again.');
+      void showAlert('Unable to Load', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setLoading(false);
     }
@@ -120,9 +121,9 @@ export default function OrganizationDetailScreen() {
         teamId,
       });
       if (invitation.joinUrl) await Share.share({ message: invitation.joinUrl });
-      else Alert.alert('Invitation Created', 'The secure invitation is ready.');
+      else void showAlert('Invitation Created', 'The secure invitation is ready.');
     } catch (error) {
-      Alert.alert('Unable to Invite', error instanceof Error ? error.message : 'Please try again.');
+      void showAlert('Unable to Invite', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
@@ -135,9 +136,9 @@ export default function OrganizationDetailScreen() {
       await createOrganizationTeam(token, organizationId, trimmedName);
       setTeamName('');
       await load();
-      Alert.alert('Team Created', `${trimmedName} is ready.`);
+      void showAlert('Team Created', `${trimmedName} is ready.`);
     } catch (error) {
-      Alert.alert(
+      void showAlert(
         'Unable to Create Team',
         error instanceof Error ? error.message : 'Please try again.'
       );
@@ -162,7 +163,7 @@ export default function OrganizationDetailScreen() {
       });
       await load();
     } catch (error) {
-      Alert.alert(
+      void showAlert(
         'Unable to Update Team',
         error instanceof Error ? error.message : 'Please try again.'
       );
@@ -172,7 +173,7 @@ export default function OrganizationDetailScreen() {
   };
 
   const removeMember = (member: OrganizationMember) => {
-    Alert.alert(
+    void showAlert(
       'Remove Member?',
       selectedTeam
         ? `Remove ${member.name} from ${selectedTeam.name}?`
@@ -194,7 +195,7 @@ export default function OrganizationDetailScreen() {
             );
             await load();
           } catch (error) {
-            Alert.alert('Unable to Remove', error instanceof Error ? error.message : 'Please try again.');
+            void showAlert('Unable to Remove', error instanceof Error ? error.message : 'Please try again.');
           }
         },
       },
