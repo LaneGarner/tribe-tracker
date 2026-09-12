@@ -9,6 +9,7 @@ import HomeScreen from '../screens/HomeScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import MenuScreen from '../screens/MenuScreen';
+import ChatScreen from '../screens/ChatScreen';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { TabParamList } from '../types';
 import { webTabPlacementForWidth } from './webNavigationLayout';
@@ -103,6 +104,7 @@ export default function TabNavigator() {
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
       <Tab.Screen name="Discover" component={DiscoverScreen} options={{ title: 'Discover' }} />
       <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: 'Leaderboards' }} />
+      <Tab.Screen name="Chat" component={ChatScreen} options={{ title: 'Chat' }} />
       <Tab.Screen name="Menu" component={MenuScreen} options={{ title: 'Menu' }} />
     </Tab.Navigator>
   );
