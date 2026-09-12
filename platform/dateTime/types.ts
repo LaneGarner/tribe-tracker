@@ -1,6 +1,7 @@
 export interface DateTimeFieldProps {
   value: Date;
   onChange: (value: Date) => void;
+  onDismiss?: () => void;
   minimumDate?: Date;
   maximumDate?: Date;
   disabled?: boolean;

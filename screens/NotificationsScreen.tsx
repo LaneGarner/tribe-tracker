@@ -503,6 +503,7 @@ export default function NotificationsScreen() {
             applyTimeSelection(showTimePicker === 'reminder' ? 'dailyReminderTime' : 'streakProtectionTime', date);
             setShowTimePicker(null);
           }}
+          onDismiss={() => setShowTimePicker(null)}
           minuteInterval={5}
         />
       )}

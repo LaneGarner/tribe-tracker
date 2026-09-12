@@ -1,10 +1,12 @@
 import React from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimeFieldProps } from './types';
+import { applyNativePickerEvent } from './nativeEvents';
 
 export default function TimeField({
   value,
   onChange,
+  onDismiss,
   disabled,
   accessibilityLabel,
   testID,
@@ -21,7 +23,7 @@ export default function TimeField({
       display={display}
       minuteInterval={minuteInterval}
       onChange={(event, selectedDate) => {
-        if (event.type !== 'dismissed' && selectedDate) onChange(selectedDate);
+        applyNativePickerEvent(event.type, selectedDate, onChange, onDismiss);
       }}
     />
   );
