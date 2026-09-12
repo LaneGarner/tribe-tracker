@@ -50,21 +50,11 @@ import {
 import { configureNotificationHandler } from './utils/notifications';
 import useNotificationScheduler from './hooks/useNotificationScheduler';
 import { registerAndSavePushToken } from './utils/pushToken';
-import { WEB_BASE_URL } from './config/links';
 import { lockPortraitOrientation } from './utils/screenOrientation';
+import { linking } from './navigation/linking';
+import { parsePendingDeepLink } from './utils/deepLinks';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
-
-const linking = {
-  prefixes: [Linking.createURL('/'), WEB_BASE_URL],
-  config: {
-    screens: {
-      CreateChallenge: 'invite/:inviteCode',
-      ChallengeDetail: 'challenge/:challengeId',
-      OrganizationInvite: 'organization-invite/:token',
-    },
-  },
-};
 
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
@@ -149,19 +139,13 @@ function AppContent() {
   useEffect(() => {
     const storePendingDeepLink = (url: string) => {
       if (user) return;
-      const organizationInviteMatch = url.match(/organization-invite\/([A-Za-z0-9_-]+)/);
-      if (organizationInviteMatch) {
-        setPendingOrganizationInviteToken(organizationInviteMatch[1]);
-        return;
-      }
-      const inviteMatch = url.match(/invite\/([A-Za-z0-9]+)/);
-      if (inviteMatch) {
-        setPendingInviteCode(inviteMatch[1]);
-        return;
-      }
-      const challengeMatch = url.match(/challenge\/([A-Za-z0-9-]+)/);
-      if (challengeMatch) {
-        setPendingChallengeId(challengeMatch[1]);
+      const pendingLink = parsePendingDeepLink(url);
+      if (pendingLink?.type === 'organizationInvite') {
+        setPendingOrganizationInviteToken(pendingLink.token);
+      } else if (pendingLink?.type === 'challengeInvite') {
+        setPendingInviteCode(pendingLink.inviteCode);
+      } else if (pendingLink?.type === 'challenge') {
+        setPendingChallengeId(pendingLink.challengeId);
       }
     };
 

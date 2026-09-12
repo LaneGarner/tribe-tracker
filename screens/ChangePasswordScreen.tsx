@@ -19,7 +19,12 @@ import { deleteAccount } from '../services/account';
 export default function ChangePasswordScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const { updatePassword, getAccessToken, signOut } = useAuth();
+  const {
+    updatePassword,
+    getAccessToken,
+    signOut,
+    completePasswordRecovery,
+  } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [visible, setVisible] = useState(false);
@@ -45,6 +50,7 @@ export default function ChangePasswordScreen() {
     }
     setPassword('');
     setConfirmation('');
+    completePasswordRecovery();
     Alert.alert('Password updated', 'Use your new password the next time you sign in.');
   }
 

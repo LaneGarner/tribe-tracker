@@ -65,7 +65,7 @@ const ProCoachingScreen = withCapabilityGate(
 export default function RootNavigator() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
-  const { user } = useAuth();
+  const { user, isPasswordRecovery } = useAuth();
   const profileData = useSelector((state: RootState) => state.profile.data);
   const profileLoading = useSelector(
     (state: RootState) => state.profile.loading
@@ -151,7 +151,13 @@ export default function RootNavigator() {
       ) : (
         // Logged in - show main app
         <>
-          {needsOnboarding ? (
+          {isPasswordRecovery ? (
+            <Stack.Screen
+              name="ChangePassword"
+              component={ChangePasswordScreen}
+              options={{ title: 'Reset Password' }}
+            />
+          ) : needsOnboarding ? (
             <Stack.Screen
               name="OnboardingWizard"
               component={OnboardingWizardScreen}
@@ -208,11 +214,13 @@ export default function RootNavigator() {
             component={PrivacyCenterScreen}
             options={{ title: 'Privacy Center' }}
           />
-          <Stack.Screen
-            name="ChangePassword"
-            component={ChangePasswordScreen}
-            options={{ title: 'Account & Security' }}
-          />
+          {!isPasswordRecovery ? (
+            <Stack.Screen
+              name="ChangePassword"
+              component={ChangePasswordScreen}
+              options={{ title: 'Account & Security' }}
+            />
+          ) : null}
           <Stack.Screen
             name="Notifications"
             component={NotificationsScreen}
