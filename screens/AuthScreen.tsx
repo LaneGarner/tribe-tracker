@@ -159,6 +159,7 @@ export default function AuthScreen() {
                 },
               ]}
               placeholder="Email"
+              accessibilityLabel="Email address"
               placeholderTextColor={colors.textTertiary}
               value={email}
               onChangeText={setEmail}
@@ -179,6 +180,7 @@ export default function AuthScreen() {
                   },
                 ]}
                 placeholder="Password"
+                accessibilityLabel="Password"
                 placeholderTextColor={colors.textTertiary}
                 value={password}
                 onChangeText={setPassword}
@@ -213,6 +215,7 @@ export default function AuthScreen() {
                 },
               ]}
               placeholder="Full Name"
+              accessibilityLabel="Full name"
               placeholderTextColor={colors.textTertiary}
               value={fullName}
               onChangeText={setFullName}
@@ -230,6 +233,7 @@ export default function AuthScreen() {
                 },
               ]}
               placeholder="Email"
+              accessibilityLabel="Email address"
               placeholderTextColor={colors.textTertiary}
               value={email}
               onChangeText={setEmail}
@@ -250,6 +254,7 @@ export default function AuthScreen() {
                   },
                 ]}
                 placeholder="Password"
+                accessibilityLabel="Password"
                 placeholderTextColor={colors.textTertiary}
                 value={password}
                 onChangeText={setPassword}
@@ -288,11 +293,11 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
             <View style={styles.legalLinks}>
-              <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.terms)}>
+              <TouchableOpacity accessibilityRole="link" accessibilityLabel="Open Terms" onPress={() => openExternalLink(APP_LINKS.terms)}>
                 <Text style={[styles.legalLink, { color: colors.primary }]}>Terms</Text>
               </TouchableOpacity>
               <Text style={{ color: colors.textTertiary }}>·</Text>
-              <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.privacy)}>
+              <TouchableOpacity accessibilityRole="link" accessibilityLabel="Open Privacy Policy" onPress={() => openExternalLink(APP_LINKS.privacy)}>
                 <Text style={[styles.legalLink, { color: colors.primary }]}>Privacy Policy</Text>
               </TouchableOpacity>
             </View>

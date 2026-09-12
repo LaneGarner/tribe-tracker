@@ -243,7 +243,13 @@ export default function HexBadge({
 
   if (onPress) {
     return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`${badge.name} badge, ${locked ? 'locked' : earned ? 'earned' : 'not earned'}`}
+        accessibilityHint="Opens badge details"
+      >
         {content}
       </TouchableOpacity>
     );

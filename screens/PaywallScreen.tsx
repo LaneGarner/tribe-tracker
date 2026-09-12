@@ -365,7 +365,7 @@ export default function PaywallScreen() {
           challenge.
         </Text>
         <View style={styles.legalLinks}>
-          <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.terms)}>
+          <TouchableOpacity accessibilityRole="link" accessibilityLabel="Open Terms" onPress={() => openExternalLink(APP_LINKS.terms)}>
             <Text style={[styles.legalLink, { color: colors.primary }]}>
               Terms
             </Text>
@@ -373,7 +373,7 @@ export default function PaywallScreen() {
           <Text style={[styles.legalDivider, { color: colors.textTertiary }]}>
             ·
           </Text>
-          <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.privacy)}>
+          <TouchableOpacity accessibilityRole="link" accessibilityLabel="Open Privacy Policy" onPress={() => openExternalLink(APP_LINKS.privacy)}>
             <Text style={[styles.legalLink, { color: colors.primary }]}>
               Privacy
             </Text>

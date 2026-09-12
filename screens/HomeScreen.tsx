@@ -1193,7 +1193,13 @@ export default function HomeScreen() {
             style={[styles.badgeIndicator, { opacity: indicatorOpacity }]}
             pointerEvents="auto"
           >
-            <TouchableOpacity onPress={showBadge} activeOpacity={0.8} hitSlop={{ top: 32, bottom: 32, left: 32, right: 32 }}>
+            <TouchableOpacity
+              onPress={showBadge}
+              activeOpacity={0.8}
+              hitSlop={{ top: 32, bottom: 32, left: 32, right: 32 }}
+              accessibilityRole="button"
+              accessibilityLabel="Show today's points"
+            >
               <LinearGradient
                 colors={['#F97316', '#EC4899']}
                 start={{ x: 0, y: 0 }}
@@ -1216,6 +1222,7 @@ export default function HomeScreen() {
             ]}
             {...badgePanResponder.panHandlers}
             accessibilityLabel={`Today's points ${todayPoints.completed} of ${todayPoints.total}`}
+            accessibilityRole="summary"
           >
             <LinearGradient
               colors={['#F97316', '#EC4899']}

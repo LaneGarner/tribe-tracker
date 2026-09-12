@@ -414,7 +414,7 @@ export default function ChallengeDetailScreen() {
           <Text style={[styles.notFoundText, { color: colors.text }]}>
             Challenge not found
           </Text>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()}>
             <Text style={[styles.backLink, { color: colors.primary }]}>
               Go Back
             </Text>

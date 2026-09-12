@@ -957,7 +957,11 @@ export default function DiscoverScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => isEditMode ? navigation.goBack() : setMode('browse')}>
+        <TouchableOpacity
+          onPress={() => isEditMode ? navigation.goBack() : setMode('browse')}
+          accessibilityRole="button"
+          accessibilityLabel={isEditMode ? 'Go back' : 'Back to discover'}
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: colors.text }]}>
@@ -998,6 +1002,7 @@ export default function DiscoverScreen() {
               value={aiPrompt}
               onChangeText={setAiPrompt}
               placeholder="e.g., Help me build a consistent morning walking habit"
+              accessibilityLabel="Describe the challenge you want to generate"
               placeholderTextColor={colors.textTertiary}
               multiline
               numberOfLines={2}
@@ -1076,6 +1081,7 @@ export default function DiscoverScreen() {
             if (errors.name) setErrors(e => ({ ...e, name: undefined }));
           }}
           placeholder="e.g., 30-Day Fitness Challenge"
+          accessibilityLabel="Challenge name"
           placeholderTextColor={colors.textTertiary}
           autoCapitalize="words"
         />
@@ -1099,6 +1105,7 @@ export default function DiscoverScreen() {
           value={description}
           onChangeText={setDescription}
           placeholder="What's this challenge about?"
+          accessibilityLabel="Challenge description"
           placeholderTextColor={colors.textTertiary}
           multiline
           numberOfLines={3}
@@ -1309,6 +1316,7 @@ export default function DiscoverScreen() {
           value={durationDays}
           onChangeText={handleDurationChange}
           placeholder="30"
+          accessibilityLabel="Challenge duration in days"
           placeholderTextColor={colors.textTertiary}
           keyboardType="number-pad"
           editable={!isScheduleLocked}
@@ -1506,6 +1514,7 @@ export default function DiscoverScreen() {
               value={gapDays}
               onChangeText={setGapDays}
               placeholder="0"
+              accessibilityLabel="Rest period between cycles in days"
               placeholderTextColor={colors.textTertiary}
               keyboardType="number-pad"
               editable={!isScheduleLocked}
@@ -1568,6 +1577,7 @@ export default function DiscoverScreen() {
                   setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 300);
                 }}
                 placeholder={`Habit ${index + 1}`}
+                accessibilityLabel={`Habit ${index + 1}`}
                 placeholderTextColor={colors.textTertiary}
                 autoCapitalize="words"
               />
@@ -1612,7 +1622,8 @@ export default function DiscoverScreen() {
                         borderColor: errors.habits ? colors.error : colors.border,
                       },
                     ]}
-                    value={habit.text}
+                      value={habit.text}
+                      accessibilityLabel={`Habit ${index + 1}`}
                     onChangeText={(text: string) => {
                       updateHabit(habit.id, text);
                       if (errors.habits) setErrors(e => ({ ...e, habits: undefined }));
@@ -1699,6 +1710,7 @@ export default function DiscoverScreen() {
           value={inviteCode}
           onChangeText={setInviteCode}
           placeholder="XXXXXX"
+          accessibilityLabel="Challenge invite code"
           placeholderTextColor={colors.textTertiary}
           autoCapitalize="characters"
           maxLength={6}
