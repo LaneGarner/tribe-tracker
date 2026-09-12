@@ -21,6 +21,7 @@ import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { ChatMessage } from '../../types';
 import { triggerLightFeedback } from '../../platform/feedback';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useWebModalFocus } from '../../hooks/useWebModalFocus';
 
 export const PRESET_REACTIONS = ['👍', '👎', '❤️', '🎉', '🔥', '💪', '😂'];
 
@@ -62,7 +63,9 @@ export default function MessageActionsOverlay({
   const backdrop = useSharedValue(0);
   const sheetScale = useSharedValue(0.9);
   const firstActionRef = useRef<any>(null);
+  const menuRef = useRef<any>(null);
   const reduceMotion = useReducedMotion();
+  useWebModalFocus(!!target, menuRef, firstActionRef, onClose);
 
   useEffect(() => {
     if (target) {
@@ -70,7 +73,6 @@ export default function MessageActionsOverlay({
       triggerLightFeedback();
       backdrop.value = withTiming(1, { duration: reduceMotion ? 0 : 160, easing: Easing.out(Easing.quad) });
       sheetScale.value = reduceMotion ? 1 : withSpring(1, { damping: 18, stiffness: 240 });
-      requestAnimationFrame(() => firstActionRef.current?.focus?.());
     } else {
       backdrop.value = withTiming(0, { duration: reduceMotion ? 0 : 140 });
       sheetScale.value = 0.9;
@@ -107,13 +109,14 @@ export default function MessageActionsOverlay({
 
   return (
     <Modal transparent visible={!!target} onRequestClose={onClose} animationType="none">
-      <Pressable
-        style={styles.root}
-        onPress={onClose}
-        accessibilityLabel="Dismiss message actions"
-        accessibilityRole="button"
-        onAccessibilityEscape={onClose}
-      >
+      <View style={styles.root}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityLabel="Dismiss message actions"
+          accessibilityRole="button"
+          onAccessibilityEscape={onClose}
+        />
         <Animated.View style={[StyleSheet.absoluteFill, styles.dim, backdropStyle]} />
         <Animated.View
           pointerEvents="box-none"
@@ -143,6 +146,7 @@ export default function MessageActionsOverlay({
           </View>
 
           <View
+            ref={menuRef}
             style={[styles.actionList, { backgroundColor: colors.surface }]}
             accessibilityRole="menu"
             accessibilityLabel="Message actions"
@@ -220,7 +224,7 @@ export default function MessageActionsOverlay({
             )}
           </View>
         </Animated.View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
