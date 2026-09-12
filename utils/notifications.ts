@@ -1,11 +1,12 @@
 import * as Notifications from 'expo-notifications';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, Linking, Alert } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import { NotificationSettings, Challenge, HabitCheckin, ChallengeParticipant } from '../types';
 import { getToday, subtractDays } from './dateUtils';
 import { store } from '../redux/store';
 import dayjs from 'dayjs';
+import { showDialog } from '../platform/dialogs';
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -298,14 +299,17 @@ export async function evaluateAndScheduleNotifications(
 // --- Pre-permission explanation ---
 
 export function showPermissionExplanation(onProceed: () => void): void {
-  Alert.alert(
-    'Enable Notifications',
-    'TribeTracker can remind you to log your daily habits, protect your streaks, and let you know when challenges are starting or ending. You can customize exactly which notifications you receive.',
-    [
-      { text: 'Not Now', style: 'cancel' },
-      { text: 'Enable', onPress: onProceed },
-    ]
-  );
+  void showDialog({
+    title: 'Enable Notifications',
+    message:
+      'TribeTracker can remind you to log your daily habits, protect your streaks, and let you know when challenges are starting or ending. You can customize exactly which notifications you receive.',
+    actions: [
+      { key: 'cancel', label: 'Not Now', role: 'cancel' },
+      { key: 'enable', label: 'Enable' },
+    ],
+  }).then(result => {
+    if (result === 'enable') onProceed();
+  });
 }
 
 // --- Permission Prompt Tracking ---

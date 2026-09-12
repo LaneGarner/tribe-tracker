@@ -9,15 +9,50 @@ jest.mock('expo-constants', () => ({
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { showDialog } from '../../platform/dialogs';
 import {
   configureNotificationHandler,
   getPermissionStatus,
   requestPermission,
+  showPermissionExplanation,
 } from '../../utils/notifications';
+
+jest.mock('../../platform/dialogs', () => ({
+  showDialog: jest.fn(),
+}));
 
 describe('native notification startup contracts', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (showDialog as jest.Mock).mockResolvedValue(null);
+  });
+
+  it('runs notification permission continuation only when Enable is selected', async () => {
+    const onProceed = jest.fn();
+    (showDialog as jest.Mock).mockResolvedValueOnce('enable');
+
+    showPermissionExplanation(onProceed);
+    await Promise.resolve();
+
+    expect(showDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Enable Notifications',
+        actions: [
+          { key: 'cancel', label: 'Not Now', role: 'cancel' },
+          { key: 'enable', label: 'Enable' },
+        ],
+      })
+    );
+    expect(onProceed).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not continue notification permission when dismissed', async () => {
+    const onProceed = jest.fn();
+
+    showPermissionExplanation(onProceed);
+    await Promise.resolve();
+
+    expect(onProceed).not.toHaveBeenCalled();
   });
 
   it('reuses granted permission without prompting again', async () => {
