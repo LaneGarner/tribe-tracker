@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Modal,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
@@ -23,6 +24,8 @@ import { useAuth } from '../context/AuthContext';
 import { isBackendConfigured } from '../config/api';
 import { BadgeDefinition, UserBadge } from '../types';
 import { RootStackParamList } from '../types';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { progressLayoutForWidth } from '../constants/progressLayout';
 import BadgeGrid from '../components/badges/BadgeGrid';
 import BadgeGridSkeleton from '../components/badges/BadgeGridSkeleton';
 import LevelBadge, { LEVEL_COLORS } from '../components/badges/LevelBadge';
@@ -54,6 +57,8 @@ function getTierForDefinition(def: BadgeDefinition): BadgeTier {
 }
 
 export default function BadgesScreen() {
+  const { width: viewportWidth } = useResponsiveLayout();
+  const webLayout = progressLayoutForWidth(viewportWidth);
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dispatch = useDispatch<AppDispatch>();
@@ -142,7 +147,10 @@ export default function BadgesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          Platform.OS === 'web' && { width: '100%', maxWidth: webLayout.contentMaxWidth, alignSelf: 'center' },
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -274,6 +282,7 @@ export default function BadgesScreen() {
                     earned={earned}
                     onBadgePress={handleBadgePress}
                     lockProBadges={!hasExpandedBadges}
+                    numColumns={Platform.OS === 'web' ? webLayout.badgeColumns : 3}
                   />
                 </View>
               );

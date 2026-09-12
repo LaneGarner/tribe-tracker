@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions,
+  Platform,
 } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,8 @@ import { useAuth } from '../context/AuthContext';
 import { RootState } from '../redux/store';
 import { RootStackParamList } from '../types';
 import SegmentedControl from '../components/SegmentedControl';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { progressLayoutForWidth } from '../constants/progressLayout';
 import {
   formatDate,
   getCurrentChallengeDay,
@@ -26,8 +28,6 @@ import {
 
 type TaskAnalyticsRouteProp = RouteProp<RootStackParamList, 'TaskAnalytics'>;
 
-const { width } = Dimensions.get('window');
-
 const MIN_BAR_WIDTH = 16;
 const CHART_GAP = 2;
 const AXIS_LABEL_WIDTH = 60;
@@ -35,6 +35,8 @@ const AXIS_LABEL_WIDTH = 60;
 type StatsScope = 'mine' | 'all';
 
 export default function TaskAnalyticsScreen() {
+  const { width: viewportWidth } = useResponsiveLayout();
+  const webLayout = progressLayoutForWidth(viewportWidth);
   const route = useRoute<TaskAnalyticsRouteProp>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -205,7 +207,10 @@ export default function TaskAnalyticsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          Platform.OS === 'web' && { width: '100%', maxWidth: webLayout.contentMaxWidth, alignSelf: 'center' },
+        ]}
       >
         {/* Challenge info */}
         <Text style={[styles.challengeName, { color: colors.text }]}>
@@ -233,7 +238,7 @@ export default function TaskAnalyticsScreen() {
 
         {/* Overview stats */}
         <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.statCard, Platform.OS === 'web' && { width: webLayout.statCardWidth }, { backgroundColor: colors.surface }]}>
             <Text
               style={[styles.statValue, { color: colors.primary }]}
               adjustsFontSizeToFit
@@ -246,7 +251,7 @@ export default function TaskAnalyticsScreen() {
               Habit Rate
             </Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.statCard, Platform.OS === 'web' && { width: webLayout.statCardWidth }, { backgroundColor: colors.surface }]}>
             <Text
               style={[styles.statValue, { color: colors.success }]}
               adjustsFontSizeToFit
@@ -259,7 +264,7 @@ export default function TaskAnalyticsScreen() {
               Active Days
             </Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.statCard, Platform.OS === 'web' && { width: webLayout.statCardWidth }, { backgroundColor: colors.surface }]}>
             <Text
               style={[styles.statValue, { color: colors.warning }]}
               adjustsFontSizeToFit
@@ -272,7 +277,7 @@ export default function TaskAnalyticsScreen() {
               Perfect Days
             </Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.statCard, Platform.OS === 'web' && { width: webLayout.statCardWidth }, { backgroundColor: colors.surface }]}>
             <Text
               style={[styles.statValue, { color: colors.text }]}
               adjustsFontSizeToFit
@@ -285,7 +290,7 @@ export default function TaskAnalyticsScreen() {
               Points Earned
             </Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.statCard, Platform.OS === 'web' && { width: webLayout.statCardWidth }, { backgroundColor: colors.surface }]}>
             <Text
               style={[styles.statValue, { color: colors.text }]}
               adjustsFontSizeToFit
@@ -300,7 +305,7 @@ export default function TaskAnalyticsScreen() {
               {scope === 'mine' ? 'Current Streak' : 'Participants'}
             </Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.statCard, Platform.OS === 'web' && { width: webLayout.statCardWidth }, { backgroundColor: colors.surface }]}>
             <Text
               style={[styles.statValue, { color: colors.text }]}
               adjustsFontSizeToFit

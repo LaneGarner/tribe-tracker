@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,8 @@ import { API_URL } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { RootState } from '../redux/store';
 import { RootStackParamList } from '../types';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { progressLayoutForWidth } from '../constants/progressLayout';
 import {
   CoachInsightsCacheEntry,
   clearCoachInsights,
@@ -73,6 +76,8 @@ async function fetchCoaching(token: string): Promise<CoachingApiResponse> {
 }
 
 export default function CoachingScreen() {
+  const { width: viewportWidth } = useResponsiveLayout();
+  const webContentWidth = progressLayoutForWidth(viewportWidth).contentMaxWidth;
   const navigation = useNavigation<CoachingNav>();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -267,6 +272,7 @@ export default function CoachingScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: TAB_BAR_HEIGHT + 24 },
+          Platform.OS === 'web' && { width: '100%', maxWidth: webContentWidth, alignSelf: 'center' },
         ]}
         refreshControl={
           <RefreshControl

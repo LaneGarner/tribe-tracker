@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -46,6 +47,7 @@ import SwipeableView, { SwipeableViewRef } from '../components/ui/SwipeableView'
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import HeaderChatButton from '../components/ui/HeaderChatButton';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { progressLayoutForWidth } from '../constants/progressLayout';
 
 const CHALLENGE_ORDER_KEY = 'tribe_leaderboard_challenge_order';
 
@@ -64,7 +66,8 @@ export default function LeaderboardScreen() {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
-  const { insets, topTabContentOffset } = useResponsiveLayout();
+  const { insets, topTabContentOffset, width: viewportWidth } = useResponsiveLayout();
+  const webContentWidth = progressLayoutForWidth(viewportWidth).contentMaxWidth;
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const participants = useSelector((state: RootState) => state.participants.data);
@@ -378,7 +381,10 @@ export default function LeaderboardScreen() {
       )}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          Platform.OS === 'web' && { width: '100%', maxWidth: webContentWidth, alignSelf: 'center' },
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }

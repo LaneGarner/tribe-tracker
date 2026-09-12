@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Animated,
   PanResponder,
+  Platform,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -62,6 +63,7 @@ import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCal
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { useCapabilityGate } from '../hooks/useCapabilityGate';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { progressLayoutForWidth } from '../constants/progressLayout';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 const ALL_PILL_ID = '__all__';
@@ -80,7 +82,8 @@ export default function HomeScreen() {
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
   const { requireCapability } = useCapabilityGate();
-  const { topTabContentOffset } = useResponsiveLayout();
+  const { topTabContentOffset, width: viewportWidth } = useResponsiveLayout();
+  const webContentWidth = progressLayoutForWidth(viewportWidth).contentMaxWidth;
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const checkins = useSelector((state: RootState) => state.checkins.data);
@@ -846,7 +849,10 @@ export default function HomeScreen() {
       <Animated.ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          Platform.OS === 'web' && { width: '100%', maxWidth: webContentWidth, alignSelf: 'center' },
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
