@@ -53,5 +53,6 @@ supabase/.temp/
 /output/
 /tmp/
 .playwright-dist/
+.ci-dist/
 playwright-report/
 test-results/

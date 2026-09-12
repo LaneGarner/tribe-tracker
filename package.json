@@ -10,6 +10,11 @@
     "web:export:e2e": "cross-env EXPO_PUBLIC_SUPABASE_URL=https://example.invalid EXPO_PUBLIC_SUPABASE_ANON_KEY=e2e-anon-key expo export --clear --platform web --output-dir .playwright-dist",
     "web:serve:e2e": "serve -s .playwright-dist -l 4173",
     "test:e2e": "npm run web:export:e2e && playwright test",
+    "typecheck": "tsc --noEmit --pretty false",
+    "test:ci": "jest --runInBand",
+    "export:ci:web": "expo export --platform web --output-dir .ci-dist/web",
+    "export:ci:ios": "expo export --platform ios --output-dir .ci-dist/ios",
+    "export:ci:android": "expo export --platform android --output-dir .ci-dist/android",
     "test": "jest",
     "test:watch": "jest --watch"
   },
