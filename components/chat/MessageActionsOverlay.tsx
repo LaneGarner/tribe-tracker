@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Dimensions,
   Keyboard,
-  Vibration,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -18,9 +17,9 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { ChatMessage } from '../../types';
+import { triggerLightFeedback } from '../../platform/feedback';
 
 export const PRESET_REACTIONS = ['👍', '👎', '❤️', '🎉', '🔥', '💪', '😂'];
 
@@ -65,11 +64,7 @@ export default function MessageActionsOverlay({
   useEffect(() => {
     if (target) {
       Keyboard.dismiss();
-      try {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      } catch {
-        Vibration.vibrate(10);
-      }
+      triggerLightFeedback();
       backdrop.value = withTiming(1, { duration: 160, easing: Easing.out(Easing.quad) });
       sheetScale.value = withSpring(1, { damping: 18, stiffness: 240 });
     } else {
