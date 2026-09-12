@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 const supabaseUrl =
   (Constants.expoConfig?.extra?.SUPABASE_URL as string | undefined) ||
@@ -20,7 +21,9 @@ export const supabase: SupabaseClient = createClient(
       storage: AsyncStorage,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
+      // Native deep links remain app-managed. Browsers let Supabase consume
+      // email/OAuth callback parameters from the current URL.
+      detectSessionInUrl: Platform.OS === 'web',
     },
   }
 );

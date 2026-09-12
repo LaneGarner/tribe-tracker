@@ -10,7 +10,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { setSyncAuth } from '../redux/syncMiddleware';
 import { isBackendConfigured } from '../config/api';
 import { clearUserData } from '../utils/storage';
-import { APP_LINKS } from '../config/links';
+import { passwordResetRedirectUrl } from '../config/links';
 
 interface AuthState {
   user: User | null;
@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: APP_LINKS.passwordReset,
+      redirectTo: passwordResetRedirectUrl(),
     });
     return { error };
   }, []);
