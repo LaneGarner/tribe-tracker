@@ -5,11 +5,10 @@ import {
   createNavigationContainerRef,
 } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Kanit_700Bold } from '@expo-google-fonts/kanit';
 import React, { useContext, useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider, useDispatch } from 'react-redux';
 import RootNavigator from './navigation/RootNavigator';
@@ -52,6 +51,7 @@ import { configureNotificationHandler } from './utils/notifications';
 import useNotificationScheduler from './hooks/useNotificationScheduler';
 import { registerAndSavePushToken } from './utils/pushToken';
 import { WEB_BASE_URL } from './config/links';
+import { lockPortraitOrientation } from './utils/screenOrientation';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -75,7 +75,9 @@ function AppContent() {
 
   // Configure notification handler on mount
   useEffect(() => {
-    configureNotificationHandler();
+    if (Platform.OS !== 'web') {
+      configureNotificationHandler();
+    }
   }, []);
 
   // Schedule notifications based on state
@@ -111,7 +113,9 @@ function AppContent() {
       dispatch(fetchBadgesFromServer(token));
 
       // Register push token after login (only if permission already granted)
-      registerAndSavePushToken();
+      if (Platform.OS !== 'web') {
+        registerAndSavePushToken();
+      }
     }
   }, [user, session, dispatch]);
 
@@ -172,12 +176,7 @@ function AppContent() {
 
   // Lock orientation to portrait
   useEffect(() => {
-    const lockOrientation = async () => {
-      await ScreenOrientation.lockAsync(
-        ScreenOrientation.OrientationLock.PORTRAIT_UP
-      );
-    };
-    lockOrientation();
+    lockPortraitOrientation();
   }, []);
 
   // Show loading while checking auth (only if backend is configured)
