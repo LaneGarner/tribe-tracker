@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import { showActionSheet, showDialog, showPrompt } from '../../platform/dialogs/index.native';
+import { showAlert } from '../../platform/dialogs/alert';
 
 describe('native dialog adapter', () => {
   beforeEach(() => jest.restoreAllMocks());
@@ -52,5 +53,19 @@ describe('native dialog adapter', () => {
     );
 
     await expect(showPrompt({ title: 'Email' })).resolves.toBe('person@example.com');
+  });
+
+  it('runs only the callback selected through the shared alert adapter', async () => {
+    const cancel = jest.fn();
+    const remove = jest.fn();
+    jest.spyOn(Alert, 'alert').mockImplementation(
+      (_title, _message, buttons) => buttons?.[1]?.onPress?.()
+    );
+    await showAlert('Remove?', undefined, [
+      { text: 'Cancel', style: 'cancel', onPress: cancel },
+      { text: 'Remove', style: 'destructive', onPress: remove },
+    ]);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(cancel).not.toHaveBeenCalled();
   });
 });
