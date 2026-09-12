@@ -8,6 +8,8 @@ export default function TimeField({
   disabled,
   accessibilityLabel,
   testID,
+  display,
+  minuteInterval,
 }: DateTimeFieldProps) {
   return (
     <DateTimePicker
@@ -16,6 +18,8 @@ export default function TimeField({
       disabled={disabled}
       accessibilityLabel={accessibilityLabel}
       testID={testID}
+      display={display}
+      minuteInterval={minuteInterval}
       onChange={(event, selectedDate) => {
         if (event.type !== 'dismissed' && selectedDate) onChange(selectedDate);
       }}

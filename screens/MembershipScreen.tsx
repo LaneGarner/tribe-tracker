@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -39,7 +40,7 @@ export default function MembershipScreen() {
   return (
     <ScrollView
       style={{ backgroundColor: colors.background }}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, Platform.OS === 'web' && styles.webContent]}
       refreshControl={
         <RefreshControl
           refreshing={isLoading}
@@ -106,8 +107,7 @@ export default function MembershipScreen() {
       {!isPro ? (
         <>
           <Text style={[styles.storeNote, { color: colors.textSecondary }]}>
-            Subscription options and localized prices are provided by the App
-            Store or Google Play.
+            Subscription options and localized prices are provided by {Platform.OS === 'web' ? 'RevenueCat web billing' : 'the App Store or Google Play'}.
           </Text>
           <TouchableOpacity
             style={[styles.primaryButton, { backgroundColor: colors.primary }]}
@@ -139,6 +139,7 @@ export default function MembershipScreen() {
 
 const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
+  webContent: { width: '100%', maxWidth: 760, alignSelf: 'center' },
   statusCard: { alignItems: 'center', borderRadius: 18, padding: 24 },
   eyebrow: {
     fontSize: 11,

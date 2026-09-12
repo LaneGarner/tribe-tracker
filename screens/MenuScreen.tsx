@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  Platform,
   TouchableOpacity,
   Alert,
 } from 'react-native';
@@ -404,6 +405,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    ...Platform.select({ web: { width: '100%', maxWidth: 760, alignSelf: 'center' } }),
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: TAB_BAR_HEIGHT + 16,

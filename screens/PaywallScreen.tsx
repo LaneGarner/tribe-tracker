@@ -158,7 +158,7 @@ export default function PaywallScreen() {
         locations={[0, 0.48, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, Platform.OS === 'web' && styles.webContent]}>
         <View
           style={[
             styles.logoTile,
@@ -332,7 +332,7 @@ export default function PaywallScreen() {
           </View>
         ) : null}
 
-        <TouchableOpacity
+        {Platform.OS !== 'web' ? <TouchableOpacity
           disabled={working !== null}
           onPress={restore}
           style={styles.restore}
@@ -340,7 +340,7 @@ export default function PaywallScreen() {
           <Text style={[styles.restoreText, { color: colors.primary }]}>
             {working === 'restore' ? 'Restoring…' : 'Restore Purchases'}
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> : null}
         <TouchableOpacity
           disabled={working !== null}
           onPress={() => navigation.goBack()}
@@ -354,7 +354,7 @@ export default function PaywallScreen() {
         <Text style={[styles.finePrint, { color: colors.textTertiary }]}>
           Your selected monthly or annual subscription automatically renews at
           the localized store price unless canceled. Payment is charged to your{' '}
-          {Platform.OS === 'ios' ? 'App Store' : 'Google Play'} account when you
+          {Platform.OS === 'web' ? 'web billing' : Platform.OS === 'ios' ? 'App Store' : 'Google Play'} account when you
           confirm. Manage or cancel anytime from Membership or your store
           account. Sponsored Pro is assigned by an organization and does not
           require an individual purchase.
@@ -392,6 +392,7 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 48,
   },
+  webContent: { width: '100%', maxWidth: 920, alignSelf: 'center' },
   logoTile: {
     alignItems: 'center',
     borderRadius: 24,

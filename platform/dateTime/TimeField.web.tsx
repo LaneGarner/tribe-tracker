@@ -20,6 +20,7 @@ export default function TimeField({
   disabled,
   accessibilityLabel,
   testID,
+  minuteInterval,
 }: DateTimeFieldProps) {
   return (
     <input
@@ -28,6 +29,7 @@ export default function TimeField({
       disabled={disabled}
       aria-label={accessibilityLabel}
       data-testid={testID}
+      step={minuteInterval ? minuteInterval * 60 : undefined}
       style={inputStyle}
       onChange={event => {
         const next = timeWithValue(value, event.currentTarget.value);

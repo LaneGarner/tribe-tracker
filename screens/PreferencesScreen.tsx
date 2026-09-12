@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  Platform,
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,6 +85,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    ...Platform.select({ web: { width: '100%', maxWidth: 760, alignSelf: 'center' } }),
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 24,

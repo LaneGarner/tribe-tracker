@@ -3,6 +3,7 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
+  Platform,
   Share,
   StyleSheet,
   Text,
@@ -411,7 +412,7 @@ export default function OrganizationDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, paddingBottom: 40 },
+  content: { ...Platform.select({ web: { width: '100%', maxWidth: 1040, alignSelf: 'center' } }), padding: 20, paddingBottom: 40 },
   primaryButton: { alignItems: 'center', borderRadius: 12, flexDirection: 'row', justifyContent: 'center', padding: 14 },
   primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '700', marginLeft: 8 },
   heading: { fontSize: 18, fontWeight: '700', marginBottom: 10, marginTop: 24 },

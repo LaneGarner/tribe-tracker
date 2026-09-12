@@ -351,6 +351,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
+    ...Platform.select({ web: { width: '100%', maxWidth: 520, alignSelf: 'center' } }),
     paddingHorizontal: 24,
     alignItems: 'center',
   },

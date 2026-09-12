@@ -776,6 +776,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    ...Platform.select({ web: { width: '100%', maxWidth: 920, alignSelf: 'center' } }),
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 24,

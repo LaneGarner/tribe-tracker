@@ -6,4 +6,6 @@ export interface DateTimeFieldProps {
   disabled?: boolean;
   accessibilityLabel?: string;
   testID?: string;
+  display?: 'default' | 'spinner' | 'compact' | 'inline';
+  minuteInterval?: 1 | 2 | 3 | 4 | 5 | 6 | 10 | 12 | 15 | 20 | 30;
 }

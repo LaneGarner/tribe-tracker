@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -83,7 +84,7 @@ export default function OrganizationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20 },
+  content: { ...Platform.select({ web: { width: '100%', maxWidth: 920, alignSelf: 'center' } }), padding: 20 },
   message: { fontSize: 15, lineHeight: 22, textAlign: 'center' },
   card: { alignItems: 'center', borderRadius: 14, flexDirection: 'row', marginBottom: 12, padding: 16 },
   cardText: { flex: 1, marginLeft: 12 },
