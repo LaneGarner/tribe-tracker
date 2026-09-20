@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Animated,
   PanResponder,
+  Platform,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -62,6 +63,9 @@ import ActivityCalendar, { CHALLENGE_COLORS } from '../components/ui/ActivityCal
 import { TAB_BAR_HEIGHT } from '../constants/layout';
 import { useCapabilityGate } from '../hooks/useCapabilityGate';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { shouldUseAccessibleReorderControls } from '../constants/reorderBehavior';
+import { progressLayoutForWidth } from '../constants/progressLayout';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 const CHALLENGE_ORDER_KEY = 'tribe_home_challenge_order';
 const ALL_PILL_ID = '__all__';
@@ -80,7 +84,11 @@ export default function HomeScreen() {
   const colors = getColors(colorScheme);
   const { user, session } = useAuth();
   const { requireCapability } = useCapabilityGate();
-  const { topTabContentOffset } = useResponsiveLayout();
+  const { topTabContentOffset, width: viewportWidth } = useResponsiveLayout();
+  const webContentWidth = progressLayoutForWidth(viewportWidth).contentMaxWidth;
+  const reduceMotion = useReducedMotion();
+  const reduceMotionRef = useRef(reduceMotion);
+  reduceMotionRef.current = reduceMotion;
 
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const checkins = useSelector((state: RootState) => state.checkins.data);
@@ -117,6 +125,18 @@ export default function HomeScreen() {
   const badgeTranslateX = useRef(new Animated.Value(0)).current;
   const BADGE_WIDTH = 70;
   const HIDDEN_OFFSET = BADGE_WIDTH + 10; // How far off-screen when hidden
+  const settleBadge = (toValue: number, callback?: () => void) => {
+    if (reduceMotionRef.current) {
+      badgeTranslateX.setValue(toValue);
+      callback?.();
+      return;
+    }
+    Animated.spring(badgeTranslateX, {
+      toValue,
+      useNativeDriver: true,
+      friction: 8,
+    }).start(callback);
+  };
 
   // Auto-select challenge when navigated with selectChallengeId param
   useEffect(() => {
@@ -155,34 +175,18 @@ export default function HomeScreen() {
           // If swiped right more than 30px, hide it
           if (gestureState.dx > 30) {
             setBadgeHidden(true);
-            Animated.spring(badgeTranslateX, {
-              toValue: HIDDEN_OFFSET,
-              useNativeDriver: true,
-              friction: 8,
-            }).start();
+            settleBadge(HIDDEN_OFFSET);
           } else {
             // Snap back
-            Animated.spring(badgeTranslateX, {
-              toValue: 0,
-              useNativeDriver: true,
-              friction: 8,
-            }).start();
+            settleBadge(0);
           }
         } else {
           // If swiped left more than 30px, show it
           if (gestureState.dx < -30) {
-            Animated.spring(badgeTranslateX, {
-              toValue: 0,
-              useNativeDriver: true,
-              friction: 8,
-            }).start(() => setBadgeHidden(false));
+            settleBadge(0, () => setBadgeHidden(false));
           } else {
             // Snap back to hidden
-            Animated.spring(badgeTranslateX, {
-              toValue: HIDDEN_OFFSET,
-              useNativeDriver: true,
-              friction: 8,
-            }).start();
+            settleBadge(HIDDEN_OFFSET);
           }
         }
       },
@@ -192,11 +196,7 @@ export default function HomeScreen() {
   // Handle tap on indicator to show badge
   const showBadge = useCallback(() => {
     setBadgeHidden(false);
-    Animated.spring(badgeTranslateX, {
-      toValue: 0,
-      useNativeDriver: true,
-      friction: 8,
-    }).start();
+    settleBadge(0);
   }, [badgeTranslateX]);
 
   // Interpolate opacity - badge fades out as it slides, indicator fades in
@@ -710,7 +710,7 @@ export default function HomeScreen() {
       >
         My Challenges
       </Text>
-      {isExpoGo || !DraggableFlatList ? (
+      {shouldUseAccessibleReorderControls(Platform.OS, isExpoGo, !!DraggableFlatList) ? (
         <ScrollView
           ref={pillsScrollRef}
           horizontal
@@ -846,7 +846,10 @@ export default function HomeScreen() {
       <Animated.ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          Platform.OS === 'web' && { width: '100%', maxWidth: webContentWidth, alignSelf: 'center' },
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -1186,7 +1189,13 @@ export default function HomeScreen() {
             style={[styles.badgeIndicator, { opacity: indicatorOpacity }]}
             pointerEvents="auto"
           >
-            <TouchableOpacity onPress={showBadge} activeOpacity={0.8} hitSlop={{ top: 32, bottom: 32, left: 32, right: 32 }}>
+            <TouchableOpacity
+              onPress={showBadge}
+              activeOpacity={0.8}
+              hitSlop={{ top: 32, bottom: 32, left: 32, right: 32 }}
+              accessibilityRole="button"
+              accessibilityLabel="Show today's points"
+            >
               <LinearGradient
                 colors={['#F97316', '#EC4899']}
                 start={{ x: 0, y: 0 }}
@@ -1209,6 +1218,7 @@ export default function HomeScreen() {
             ]}
             {...badgePanResponder.panHandlers}
             accessibilityLabel={`Today's points ${todayPoints.completed} of ${todayPoints.total}`}
+            accessibilityRole="summary"
           >
             <LinearGradient
               colors={['#F97316', '#EC4899']}

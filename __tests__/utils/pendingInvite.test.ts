@@ -3,6 +3,8 @@ import {
   consumePendingInviteCode,
   setPendingChallengeId,
   consumePendingChallengeId,
+  setPendingOrganizationInviteToken,
+  consumePendingOrganizationInviteToken,
 } from '../../utils/pendingInvite';
 
 describe('pendingInvite', () => {
@@ -11,6 +13,25 @@ describe('pendingInvite', () => {
   beforeEach(() => {
     consumePendingInviteCode();
     consumePendingChallengeId();
+    consumePendingOrganizationInviteToken();
+  });
+
+  describe('organization invitation tokens', () => {
+    it('are single-use and isolated from challenge invitations', () => {
+      setPendingOrganizationInviteToken('org_token-123');
+      setPendingInviteCode('CHALLENGE123');
+
+      expect(consumePendingOrganizationInviteToken()).toBe('org_token-123');
+      expect(consumePendingOrganizationInviteToken()).toBeNull();
+      expect(consumePendingInviteCode()).toBe('CHALLENGE123');
+    });
+
+    it('keeps the newest token when a second deep link arrives', () => {
+      setPendingOrganizationInviteToken('first');
+      setPendingOrganizationInviteToken('second');
+
+      expect(consumePendingOrganizationInviteToken()).toBe('second');
+    });
   });
 
   describe('setPendingInviteCode / consumePendingInviteCode', () => {

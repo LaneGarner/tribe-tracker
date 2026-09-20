@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ import {
 } from '../../utils/dateUtils';
 import { calculateActiveStreak } from '../../utils/streakUtils';
 import { getGradientForChallenge } from '../../constants/gradients';
+import { WEB_SURFACE_WIDTH } from '../../constants/webSurfaceLayout';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -198,7 +199,7 @@ export default function ChallengeCard({
 
   if (showBgImage) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, Platform.OS === 'web' && styles.webContainer]}>
         <ExpoImage
           source={{ uri: challenge.backgroundImageUrl }}
           style={StyleSheet.absoluteFill}
@@ -223,7 +224,7 @@ export default function ChallengeCard({
       colors={getGradientForChallenge(challenge)}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={[styles.container, styles.scrim]}
+      style={[styles.container, styles.scrim, Platform.OS === 'web' && styles.webContainer]}
     >
       {cardContent}
     </LinearGradient>
@@ -236,6 +237,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 16,
     overflow: 'hidden',
+  },
+  webContainer: {
+    width: WEB_SURFACE_WIDTH as any,
+    maxWidth: 880,
+    alignSelf: 'center',
+    marginHorizontal: 'auto' as any,
   },
   scrim: {
     padding: 20,

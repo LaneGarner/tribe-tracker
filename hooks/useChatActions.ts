@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../redux/store';
@@ -12,6 +11,7 @@ import {
 import { ChatMessage } from '../types';
 import { ActionsTarget } from '../components/chat/MessageActionsOverlay';
 import { ReplyContext, EditContext } from '../components/chat/ChatInput';
+import { showAlert } from '../platform/dialogs/alert';
 
 export interface UseChatActionsOptions {
   conversationId: string;
@@ -58,7 +58,7 @@ export function useChatActions({ conversationId, currentUserId, flashMessage }: 
 
   const handleDelete = useCallback((message: ChatMessage) => {
     if (!currentUserId || message.senderId !== currentUserId) return;
-    Alert.alert(
+    void showAlert(
       'Delete message?',
       'This message will be removed for everyone in the conversation.',
       [

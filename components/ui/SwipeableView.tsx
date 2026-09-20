@@ -5,6 +5,7 @@ import {
   PanGestureHandlerGestureEvent,
   State,
 } from 'react-native-gesture-handler';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface SwipeableViewProps {
   children: React.ReactNode;
@@ -34,10 +35,15 @@ const SwipeableView = forwardRef<SwipeableViewRef, SwipeableViewProps>(({
   canSwipeRight = true,
 }, ref) => {
   const translateX = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReducedMotion();
 
   const animateRight = useCallback(() => {
     if (onSwipeRight) {
       onSwipeRight();
+      if (reduceMotion) {
+        translateX.setValue(0);
+        return;
+      }
       translateX.setValue(-SLIDE_DISTANCE);
       Animated.spring(translateX, {
         toValue: 0,
@@ -46,11 +52,15 @@ const SwipeableView = forwardRef<SwipeableViewRef, SwipeableViewProps>(({
         damping: 22,
       }).start();
     }
-  }, [onSwipeRight, translateX]);
+  }, [onSwipeRight, reduceMotion, translateX]);
 
   const animateLeft = useCallback(() => {
     if (onSwipeLeft) {
       onSwipeLeft();
+      if (reduceMotion) {
+        translateX.setValue(0);
+        return;
+      }
       translateX.setValue(SLIDE_DISTANCE);
       Animated.spring(translateX, {
         toValue: 0,
@@ -59,7 +69,7 @@ const SwipeableView = forwardRef<SwipeableViewRef, SwipeableViewProps>(({
         damping: 22,
       }).start();
     }
-  }, [onSwipeLeft, translateX]);
+  }, [onSwipeLeft, reduceMotion, translateX]);
 
   useImperativeHandle(ref, () => ({
     animateLeft,
@@ -102,6 +112,10 @@ const SwipeableView = forwardRef<SwipeableViewRef, SwipeableViewProps>(({
           animateLeft();
         } else {
           // Snap back
+          if (reduceMotion) {
+            translateX.setValue(0);
+            return;
+          }
           Animated.spring(translateX, {
             toValue: 0,
             useNativeDriver: true,
@@ -111,7 +125,7 @@ const SwipeableView = forwardRef<SwipeableViewRef, SwipeableViewProps>(({
         }
       }
     },
-    [animateLeft, animateRight, canSwipeLeft, canSwipeRight, onSwipeLeft, onSwipeRight, translateX]
+    [animateLeft, animateRight, canSwipeLeft, canSwipeRight, onSwipeLeft, onSwipeRight, reduceMotion, translateX]
   );
 
   const opacity = translateX.interpolate({

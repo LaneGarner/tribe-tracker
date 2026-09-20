@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
@@ -17,6 +18,7 @@ import Toggle from '../components/Toggle';
 import Avatar from '../components/Avatar';
 import { useAIConsent } from '../context/AIConsentContext';
 import { AIConsentPurpose } from '../services/aiConsent';
+import { showAlert } from '../platform/dialogs/alert';
 
 const AI_PURPOSES: Array<{
   purpose: AIConsentPurpose;
@@ -174,7 +176,7 @@ export default function PrivacyCenterScreen() {
                     ? grantAIConsent(item.purpose)
                     : revokeAIConsent(item.purpose);
                   action.catch(error =>
-                    Alert.alert(
+                    void showAlert(
                       'Unable to Update',
                       error instanceof Error ? error.message : 'Please try again.'
                     )
@@ -242,14 +244,16 @@ export default function PrivacyCenterScreen() {
                 <TouchableOpacity
                   style={[styles.unblockButton, { borderColor: colors.border }]}
                   onPress={() => {
-                    Alert.alert(
+                    void showAlert(
                       'Unblock User',
                       `Unblock ${blocked.blockedName || 'this user'}? They will be able to send you messages again.`,
                       [
                         { text: 'Cancel', style: 'cancel' },
                         {
                           text: 'Unblock',
-                          onPress: () => dispatch(removeBlockedUser(blocked.id)),
+                          onPress: () => {
+                            dispatch(removeBlockedUser(blocked.id));
+                          },
                         },
                       ]
                     );
@@ -281,6 +285,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    ...Platform.select({ web: { width: '100%', maxWidth: 760, alignSelf: 'center' } }),
     paddingHorizontal: 20,
     paddingBottom: 24,
   },

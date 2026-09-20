@@ -6,7 +6,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { Alert } from 'react-native';
 import { useAuth } from './AuthContext';
 import { useMembership } from './MembershipContext';
 import {
@@ -14,6 +13,8 @@ import {
   fetchAIConsents,
   updateAIConsent,
 } from '../services/aiConsent';
+import { showDialog } from '../platform/dialogs';
+import { showAlert } from '../platform/dialogs/alert';
 
 const CONSENT_VERSION = 'ai-wellness-v1';
 
@@ -97,31 +98,25 @@ export function AIConsentProvider({ children }: { children: React.ReactNode }) {
   const ensureAIConsent = useCallback(
     async (purpose: AIConsentPurpose) => {
       if (hasAIConsent(purpose)) return true;
-      return new Promise<boolean>(resolve => {
-        Alert.alert(
-          'Allow AI-assisted guidance?',
-          'TribeTracker will send the goals, challenge details, check-ins, and streak information needed for this feature to a third-party AI provider. Chat messages are not included. This is general wellness support, not medical treatment.',
-          [
-            { text: 'Not Now', style: 'cancel', onPress: () => resolve(false) },
-            {
-              text: 'Allow',
-              onPress: async () => {
-                try {
-                  await grantAIConsent(purpose);
-                  resolve(true);
-                } catch (error) {
-                  Alert.alert(
-                    'Unable to Save Consent',
-                    error instanceof Error ? error.message : 'Please try again.'
-                  );
-                  resolve(false);
-                }
-              },
-            },
-          ],
-          { cancelable: true, onDismiss: () => resolve(false) }
-        );
+      const result = await showDialog({
+        title: 'Allow AI-assisted guidance?',
+        message: 'TribeTracker will send the goals, challenge details, check-ins, and streak information needed for this feature to a third-party AI provider. Chat messages are not included. This is general wellness support, not medical treatment.',
+        actions: [
+          { key: 'cancel', label: 'Not Now', role: 'cancel' },
+          { key: 'allow', label: 'Allow' },
+        ],
       });
+      if (result !== 'allow') return false;
+      try {
+        await grantAIConsent(purpose);
+        return true;
+      } catch (error) {
+        await showAlert(
+          'Unable to Save Consent',
+          error instanceof Error ? error.message : 'Please try again.'
+        );
+        return false;
+      }
     },
     [grantAIConsent, hasAIConsent]
   );

@@ -7,9 +7,11 @@ import {
   StyleSheet,
   Text,
   View,
+  Platform,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useLinkTo } from '@react-navigation/native';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -18,8 +20,10 @@ import {
   markUserNotificationRead,
   UserNotification,
 } from '../services/userNotifications';
+import { resolveNotificationLink } from '../utils/notificationLinks';
 
 export default function NotificationInboxScreen() {
+  const linkTo = useLinkTo();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const { getAccessToken } = useAuth();
@@ -66,6 +70,11 @@ export default function NotificationInboxScreen() {
         value.id === item.id ? { ...value, readAt: new Date().toISOString() } : value
       ));
     }
+    if (item.linkPath) {
+      const destination = resolveNotificationLink(item.linkPath);
+      if (destination.kind === 'external') await Linking.openURL(destination.url);
+      else linkTo(destination.path);
+    }
   }
 
   if (loading) {
@@ -75,7 +84,10 @@ export default function NotificationInboxScreen() {
   return (
     <FlatList
       style={{ backgroundColor: colors.background }}
-      contentContainerStyle={items.length ? styles.list : styles.emptyContainer}
+      contentContainerStyle={[
+        items.length ? styles.list : styles.emptyContainer,
+        Platform.OS === 'web' && styles.webContent,
+      ]}
       data={items}
       keyExtractor={item => item.id}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} />}
@@ -114,4 +126,5 @@ const styles = StyleSheet.create({
   emptyBody: { maxWidth: 320, marginTop: 7, textAlign: 'center', lineHeight: 20 },
   loadMore: { minHeight: 48, alignItems: 'center', justifyContent: 'center', marginTop: 6, borderWidth: 1, borderRadius: 12 },
   error: { marginBottom: 10, textAlign: 'center' },
+  webContent: { width: '100%', maxWidth: 760, alignSelf: 'center' },
 });

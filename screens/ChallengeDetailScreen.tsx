@@ -5,10 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Share,
-  Alert,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
@@ -36,6 +35,9 @@ import {
 import Leaderboard from '../components/challenge/Leaderboard';
 import { makeSelectConversationByChallengeId } from '../redux/slices/chatSlice';
 import { useContentReport } from '../hooks/useContentReport';
+import { showAlert } from '../platform/dialogs/alert';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { shareContent } from '../platform/share';
 
 type ChallengeDetailRouteProp = RouteProp<RootStackParamList, 'ChallengeDetail'>;
 type ChallengeDetailNavigationProp = NativeStackNavigationProp<
@@ -52,6 +54,7 @@ export default function ChallengeDetailScreen() {
   const { user, session } = useAuth();
   const { reportContent } = useContentReport();
   const headerHeight = useHeaderHeight();
+  const { gutter } = useResponsiveLayout();
 
   const { challengeId } = route.params;
 
@@ -120,15 +123,24 @@ export default function ChallengeDetailScreen() {
 
       const shareUrl = `https://tribe-tracker-backend.vercel.app/invite/${inviteCode}`;
       const message = `${shareUrl}\n\nInvite code: ${inviteCode}`;
-      await Share.share({ message });
+      const result = await shareContent({
+        title: `Join ${challenge.name} on TribeTracker`,
+        message,
+        url: shareUrl,
+      });
+      if (result === 'copied') {
+        await showAlert('Invite copied', 'The challenge invitation was copied to your clipboard.');
+      }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error sharing:', error);
+      await showAlert('Unable to Share', 'Could not share this challenge. Please try again.');
     }
   };
 
   const handleLeaveChallenge = () => {
     if (!userParticipation) return;
-    Alert.alert(
+    void showAlert(
       'Leave Challenge',
       `Are you sure you want to leave "${challenge?.name}"? Your progress will be lost.`,
       [
@@ -162,7 +174,7 @@ export default function ChallengeDetailScreen() {
         options.push({
           text: 'End Challenge',
           onPress: () => {
-            Alert.alert(
+            void showAlert(
               'End Challenge',
               'This will end the challenge today and mark it completed. Participants can no longer check in. This cannot be undone.',
               [
@@ -194,7 +206,7 @@ export default function ChallengeDetailScreen() {
             ? `This challenge has ${participantCount} participant${participantCount !== 1 ? 's' : ''}. Are you sure you want to delete it?`
             : 'Are you sure you want to delete this challenge?';
 
-          Alert.alert(
+          void showAlert(
             'Delete Challenge',
             warningMessage,
             [
@@ -218,7 +230,7 @@ export default function ChallengeDetailScreen() {
         options.push({
           text: 'Reveal Identity',
           onPress: () => {
-            Alert.alert(
+            void showAlert(
               'Reveal Identity',
               'Other participants will see your real name and photo going forward. Previous messages will keep your pseudonym.',
               [
@@ -260,7 +272,7 @@ export default function ChallengeDetailScreen() {
         options.push({
           text: 'Go Anonymous',
           onPress: () => {
-            Alert.alert(
+            void showAlert(
               'Go Anonymous',
               'Your identity will be hidden behind a pseudonym. Previous messages and check-ins will still show your name.',
               [
@@ -322,7 +334,7 @@ export default function ChallengeDetailScreen() {
 
     options.push({ text: 'Cancel', style: 'cancel' });
 
-    Alert.alert('Challenge Options', undefined, options);
+    void showAlert('Challenge Options', undefined, options);
   };
 
   // Set up header with chat, share, analytics, and creator menu buttons
@@ -354,6 +366,8 @@ export default function ChallengeDetailScreen() {
           <TouchableOpacity
             onPress={handleShare}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Share challenge"
           >
             <Ionicons name="share-outline" size={22} color={headerIconColor} />
           </TouchableOpacity>
@@ -369,6 +383,8 @@ export default function ChallengeDetailScreen() {
             <TouchableOpacity
               onPress={handleOptionsMenu}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Challenge options"
             >
               <Ionicons name="ellipsis-horizontal" size={22} color={headerIconColor} />
             </TouchableOpacity>
@@ -402,7 +418,7 @@ export default function ChallengeDetailScreen() {
           <Text style={[styles.notFoundText, { color: colors.text }]}>
             Challenge not found
           </Text>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()}>
             <Text style={[styles.backLink, { color: colors.primary }]}>
               Go Back
             </Text>
@@ -494,7 +510,7 @@ export default function ChallengeDetailScreen() {
     const joinMessage = joinAnonymously
       ? `You've joined "${challenge.name}" as "${pseudonym}"`
       : `You've joined "${challenge.name}"`;
-    Alert.alert('Joined!', joinMessage, [
+    void showAlert('Joined!', joinMessage, [
       { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Home', params: { selectChallengeId: challenge.id } }) },
     ]);
   };
@@ -502,7 +518,7 @@ export default function ChallengeDetailScreen() {
   const handleJoin = async () => {
     if (isJoined || isJoining) return;
 
-    Alert.alert(
+    void showAlert(
       'Join Challenge',
       'Would you like to join anonymously? Your identity will be hidden behind a pseudonym.',
       [
@@ -553,7 +569,12 @@ export default function ChallengeDetailScreen() {
       )}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, backgroundImage && { paddingTop: headerHeight }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          Platform.OS === 'web' && styles.webScrollContent,
+          { paddingHorizontal: Platform.OS === 'web' ? gutter : 20 },
+          backgroundImage && { paddingTop: headerHeight },
+        ]}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -704,7 +725,7 @@ export default function ChallengeDetailScreen() {
             currentUserId={user?.id}
             onParticipantPress={participant => {
               if (participant.isAnonymous && participant.userId !== user?.id) {
-                Alert.alert(participant.userName, 'This participant is anonymous.');
+                void showAlert(participant.userName, 'This participant is anonymous.');
                 return;
               }
               navigation.navigate('ViewMember', { userId: participant.userId });
@@ -776,8 +797,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
     paddingBottom: 100,
+  },
+  webScrollContent: {
+    width: '100%',
+    maxWidth: 1040,
+    alignSelf: 'center',
   },
   challengeInfo: {
     marginBottom: 20,

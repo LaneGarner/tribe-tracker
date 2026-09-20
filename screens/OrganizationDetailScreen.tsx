@@ -1,9 +1,8 @@
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 import {
-  Alert,
   RefreshControl,
   ScrollView,
-  Share,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -30,6 +30,7 @@ import {
   OrganizationReport,
   OrganizationTeam,
 } from '../types/organization';
+import { shareContent } from '../platform/share';
 
 export default function OrganizationDetailScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'OrganizationDetail'>>();
@@ -100,7 +101,7 @@ export default function OrganizationDetailScreen() {
         setReport(null);
       }
     } catch (error) {
-      Alert.alert('Unable to Load', error instanceof Error ? error.message : 'Please try again.');
+      void showAlert('Unable to Load', error instanceof Error ? error.message : 'Please try again.');
     } finally {
       setLoading(false);
     }
@@ -119,10 +120,21 @@ export default function OrganizationDetailScreen() {
         organizationId,
         teamId,
       });
-      if (invitation.joinUrl) await Share.share({ message: invitation.joinUrl });
-      else Alert.alert('Invitation Created', 'The secure invitation is ready.');
+      if (invitation.joinUrl) {
+        const result = await shareContent({
+          title: `Join ${organizationName} on TribeTracker`,
+          message: invitation.joinUrl,
+          url: invitation.joinUrl,
+        });
+        if (result === 'copied') {
+          await showAlert('Invitation copied', 'The secure invitation link was copied to your clipboard.');
+        }
+      } else {
+        void showAlert('Invitation Created', 'The secure invitation is ready.');
+      }
     } catch (error) {
-      Alert.alert('Unable to Invite', error instanceof Error ? error.message : 'Please try again.');
+      if (error instanceof Error && error.name === 'AbortError') return;
+      void showAlert('Unable to Invite', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
@@ -135,9 +147,9 @@ export default function OrganizationDetailScreen() {
       await createOrganizationTeam(token, organizationId, trimmedName);
       setTeamName('');
       await load();
-      Alert.alert('Team Created', `${trimmedName} is ready.`);
+      void showAlert('Team Created', `${trimmedName} is ready.`);
     } catch (error) {
-      Alert.alert(
+      void showAlert(
         'Unable to Create Team',
         error instanceof Error ? error.message : 'Please try again.'
       );
@@ -162,7 +174,7 @@ export default function OrganizationDetailScreen() {
       });
       await load();
     } catch (error) {
-      Alert.alert(
+      void showAlert(
         'Unable to Update Team',
         error instanceof Error ? error.message : 'Please try again.'
       );
@@ -172,7 +184,7 @@ export default function OrganizationDetailScreen() {
   };
 
   const removeMember = (member: OrganizationMember) => {
-    Alert.alert(
+    void showAlert(
       'Remove Member?',
       selectedTeam
         ? `Remove ${member.name} from ${selectedTeam.name}?`
@@ -194,7 +206,7 @@ export default function OrganizationDetailScreen() {
             );
             await load();
           } catch (error) {
-            Alert.alert('Unable to Remove', error instanceof Error ? error.message : 'Please try again.');
+            void showAlert('Unable to Remove', error instanceof Error ? error.message : 'Please try again.');
           }
         },
       },
@@ -235,6 +247,9 @@ export default function OrganizationDetailScreen() {
               { backgroundColor: colors.primary, opacity: teamName.trim() ? 1 : 0.5 },
             ]}
             onPress={createTeam}
+            accessibilityRole="button"
+            accessibilityLabel="Create team"
+            accessibilityState={{ disabled: working || !teamName.trim() }}
           >
             <Ionicons name="add-circle-outline" size={18} color="#fff" />
             <Text style={styles.primaryButtonText}>Create team</Text>
@@ -410,7 +425,7 @@ export default function OrganizationDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, paddingBottom: 40 },
+  content: { ...Platform.select({ web: { width: '100%', maxWidth: 1040, alignSelf: 'center' } }), padding: 20, paddingBottom: 40 },
   primaryButton: { alignItems: 'center', borderRadius: 12, flexDirection: 'row', justifyContent: 'center', padding: 14 },
   primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '700', marginLeft: 8 },
   heading: { fontSize: 18, fontWeight: '700', marginBottom: 10, marginTop: 24 },

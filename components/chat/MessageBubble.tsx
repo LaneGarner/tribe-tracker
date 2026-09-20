@@ -1,5 +1,5 @@
 import React, { useContext, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -16,6 +16,7 @@ import { ChatMessage } from '../../types';
 import { ReaderInfo } from '../../utils/chatUtils';
 import QuotedReplyPreview from './QuotedReplyPreview';
 import ReactionPills from './ReactionPills';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -57,6 +58,7 @@ export default function MessageBubble({
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const wrapperRef = useRef<View | null>(null);
+  const reduceMotion = useReducedMotion();
 
   // System messages: no gestures, no actions
   if (message.type === 'system') {
@@ -78,11 +80,11 @@ export default function MessageBubble({
   React.useEffect(() => {
     if (highlight) {
       highlightOpacity.value = withSequence(
-        withTiming(1, { duration: 150 }),
-        withTiming(0, { duration: 900 })
+        withTiming(1, { duration: reduceMotion ? 0 : 150 }),
+        withTiming(0, { duration: reduceMotion ? 0 : 900 })
       );
     }
-  }, [highlight, highlightOpacity]);
+  }, [highlight, highlightOpacity, reduceMotion]);
 
   const triggerLongPress = useCallback(() => {
     if (isDeleted) return;
@@ -116,7 +118,7 @@ export default function MessageBubble({
       if (e.translationX > SWIPE_THRESHOLD) {
         runOnJS(triggerSwipeReply)();
       }
-      translateX.value = withTiming(0, { duration: 160 });
+      translateX.value = withTiming(0, { duration: reduceMotion ? 0 : 160 });
     });
 
   const composed = Gesture.Exclusive(longPress, pan);
@@ -193,6 +195,32 @@ export default function MessageBubble({
             isOwn={isOwn}
             onToggle={handleToggle}
           />
+        )}
+        {Platform.OS === 'web' && !isDeleted && (
+          <View style={[styles.webActions, isOwn && styles.webActionsOwn]}>
+            {onSwipeReply ? (
+              <TouchableOpacity
+                onPress={triggerSwipeReply}
+                style={[styles.webActionButton, { borderColor: colors.border }]}
+                accessibilityRole="button"
+                accessibilityLabel={`Reply to ${message.senderName || 'message'}`}
+              >
+                <Ionicons name="arrow-undo-outline" size={15} color={colors.textSecondary} />
+                <Text style={[styles.webActionText, { color: colors.textSecondary }]}>Reply</Text>
+              </TouchableOpacity>
+            ) : null}
+            {onLongPress ? (
+              <TouchableOpacity
+                onPress={triggerLongPress}
+                style={[styles.webActionButton, { borderColor: colors.border }]}
+                accessibilityRole="button"
+                accessibilityLabel="Message actions"
+              >
+                <Ionicons name="ellipsis-horizontal" size={16} color={colors.textSecondary} />
+                <Text style={[styles.webActionText, { color: colors.textSecondary }]}>Actions</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         )}
         {showTimestamp && <View style={styles.metaRow}>
           <Text style={[styles.time, { color: colors.textTertiary }]}>
@@ -351,5 +379,26 @@ const styles = StyleSheet.create({
   },
   highlight: {
     borderRadius: 18,
+  },
+  webActions: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 4,
+  },
+  webActionsOwn: {
+    justifyContent: 'flex-end',
+  },
+  webActionButton: {
+    minHeight: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  webActionText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

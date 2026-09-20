@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Dimensions,
   Keyboard,
-  Vibration,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -18,9 +17,11 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { ChatMessage } from '../../types';
+import { triggerLightFeedback } from '../../platform/feedback';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useWebModalFocus } from '../../hooks/useWebModalFocus';
 
 export const PRESET_REACTIONS = ['👍', '👎', '❤️', '🎉', '🔥', '💪', '😂'];
 
@@ -61,22 +62,22 @@ export default function MessageActionsOverlay({
 
   const backdrop = useSharedValue(0);
   const sheetScale = useSharedValue(0.9);
+  const firstActionRef = useRef<any>(null);
+  const menuRef = useRef<any>(null);
+  const reduceMotion = useReducedMotion();
+  useWebModalFocus(!!target, menuRef, firstActionRef, onClose);
 
   useEffect(() => {
     if (target) {
       Keyboard.dismiss();
-      try {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      } catch {
-        Vibration.vibrate(10);
-      }
-      backdrop.value = withTiming(1, { duration: 160, easing: Easing.out(Easing.quad) });
-      sheetScale.value = withSpring(1, { damping: 18, stiffness: 240 });
+      triggerLightFeedback();
+      backdrop.value = withTiming(1, { duration: reduceMotion ? 0 : 160, easing: Easing.out(Easing.quad) });
+      sheetScale.value = reduceMotion ? 1 : withSpring(1, { damping: 18, stiffness: 240 });
     } else {
-      backdrop.value = withTiming(0, { duration: 140 });
+      backdrop.value = withTiming(0, { duration: reduceMotion ? 0 : 140 });
       sheetScale.value = 0.9;
     }
-  }, [target, backdrop, sheetScale]);
+  }, [target, backdrop, reduceMotion, sheetScale]);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdrop.value,
@@ -108,7 +109,14 @@ export default function MessageActionsOverlay({
 
   return (
     <Modal transparent visible={!!target} onRequestClose={onClose} animationType="none">
-      <Pressable style={styles.root} onPress={onClose} accessibilityLabel="Dismiss">
+      <View style={styles.root}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityLabel="Dismiss message actions"
+          accessibilityRole="button"
+          onAccessibilityEscape={onClose}
+        />
         <Animated.View style={[StyleSheet.absoluteFill, styles.dim, backdropStyle]} />
         <Animated.View
           pointerEvents="box-none"
@@ -118,9 +126,10 @@ export default function MessageActionsOverlay({
             { top: anchorTop, alignItems: isOwn ? 'flex-end' : 'flex-start' },
           ]}
         >
-          <View style={[styles.emojiRow, { backgroundColor: colors.surface }]}>
+          <View style={[styles.emojiRow, { backgroundColor: colors.surface }]}> 
             {PRESET_REACTIONS.map(emoji => (
               <TouchableOpacity
+                ref={emoji === PRESET_REACTIONS[0] ? firstActionRef : undefined}
                 key={emoji}
                 onPress={() => {
                   onReact(message, emoji);
@@ -136,7 +145,14 @@ export default function MessageActionsOverlay({
             ))}
           </View>
 
-          <View style={[styles.actionList, { backgroundColor: colors.surface }]}>
+          <View
+            ref={menuRef}
+            style={[styles.actionList, { backgroundColor: colors.surface }]}
+            accessibilityRole="menu"
+            accessibilityLabel="Message actions"
+            accessibilityViewIsModal
+            onStartShouldSetResponder={() => true}
+          >
             <ActionRow
               icon="arrow-undo-outline"
               label="Reply"
@@ -208,7 +224,7 @@ export default function MessageActionsOverlay({
             )}
           </View>
         </Animated.View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }

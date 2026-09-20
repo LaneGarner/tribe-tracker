@@ -24,6 +24,7 @@ import { updateProfile } from '../redux/slices/profileSlice';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { RootState } from '../redux/store';
 import { RootStackParamList, ChallengeParticipant } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import {
   fetchChallengeMatches,
   MatchChallengeResult,
@@ -152,7 +153,7 @@ export default function OnboardingWizardScreen() {
       navigation.goBack();
       return;
     }
-    Alert.alert(
+    void showAlert(
       'Skip setup?',
       "You can browse challenges anytime from the Discover tab. We won't show this again.",
       [
@@ -1008,7 +1009,7 @@ const styles = StyleSheet.create({
   stepDots: { flexDirection: 'row', gap: 6 },
   stepDot: { width: 24, height: 4, borderRadius: 2 },
   closeButton: { padding: 4 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { ...Platform.select({ web: { width: '100%', maxWidth: 920, alignSelf: 'center' } }), padding: 20, paddingBottom: 40 },
   title: { fontSize: 26, fontWeight: '700', marginBottom: 6 },
   subtitle: { fontSize: 15, lineHeight: 20, marginBottom: 8 },
   sectionLabel: {

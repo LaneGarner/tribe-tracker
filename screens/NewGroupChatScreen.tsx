@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,6 +22,7 @@ import { addConversation } from '../redux/slices/chatSlice';
 import { API_URL, isBackendConfigured } from '../config/api';
 import { RootStackParamList } from '../types';
 import Avatar from '../components/Avatar';
+import { showAlert } from '../platform/dialogs/alert';
 
 type NewGroupChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'NewGroupChat'>;
 
@@ -74,13 +76,13 @@ export default function NewGroupChatScreen() {
         });
       } else {
         const errorData = await response.json().catch(() => null);
-        Alert.alert(
+        void showAlert(
           'Could not create group',
           errorData?.error || 'Something went wrong. Please try again.',
         );
       }
     } catch {
-      Alert.alert(
+      void showAlert(
         'Network error',
         'Could not reach the server. Check your connection and try again.',
       );
@@ -193,7 +195,11 @@ export default function NewGroupChatScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[
+      styles.container,
+      Platform.OS === 'web' && styles.webContainer,
+      { backgroundColor: colors.background },
+    ]}>
       {/* Group name input */}
       <View style={[styles.nameContainer, { backgroundColor: colors.surface }]}>
         <TextInput
@@ -286,6 +292,11 @@ export default function NewGroupChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webContainer: {
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
   },
   nameContainer: {
     marginHorizontal: 20,

@@ -55,6 +55,7 @@ export default function ChallengeChip({
           hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
           accessibilityLabel="Move challenge left"
           accessibilityRole="button"
+          accessibilityState={{ disabled: isFirst }}
         >
           <ChevronLeft
             size={16}
@@ -69,8 +70,9 @@ export default function ChallengeChip({
         disabled={disabled}
         style={showArrows ? styles.textContainer : undefined}
         hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-        accessibilityRole="button"
-        accessibilityState={{ selected: isSelected }}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isSelected }}
+          accessibilityLabel={name}
       >
         <Text
           style={[
@@ -89,6 +91,7 @@ export default function ChallengeChip({
           hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
           accessibilityLabel="Move challenge right"
           accessibilityRole="button"
+          accessibilityState={{ disabled: isLast }}
         >
           <ChevronRight
             size={16}

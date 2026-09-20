@@ -9,7 +9,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import TimeField from '../platform/dateTime/TimeField';
 import { useSelector, useDispatch } from 'react-redux';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
@@ -79,6 +79,7 @@ export default function NotificationsScreen() {
   const [savingUpdatePreferences, setSavingUpdatePreferences] = useState(false);
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     getPermissionStatus().then(status => {
       setPermissionDenied(status === 'denied');
     });
@@ -125,6 +126,7 @@ export default function NotificationsScreen() {
   );
 
   const handleMasterToggle = async () => {
+    if (Platform.OS === 'web') return;
     if (!settings.pushEnabled) {
       // Enabling -- check permission first
       const status = await getPermissionStatus();
@@ -151,23 +153,6 @@ export default function NotificationsScreen() {
       await cancelAllNotifications();
       updateSettings({ pushEnabled: false });
     }
-  };
-
-  const handleTimeChange = (field: 'dailyReminderTime' | 'streakProtectionTime') => {
-    return (_event: DateTimePickerEvent, selectedDate?: Date) => {
-      if (Platform.OS === 'android') {
-        setShowTimePicker(null);
-        if (_event.type === 'dismissed' || !selectedDate) return;
-      }
-
-      if (!selectedDate) return;
-
-      if (Platform.OS === 'android') {
-        applyTimeSelection(field, selectedDate);
-      } else {
-        setTempPickerDate(selectedDate);
-      }
-    };
   };
 
   const applyTimeSelection = (
@@ -224,7 +209,10 @@ export default function NotificationsScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          Platform.OS === 'web' && styles.webContent,
+        ]}
       >
         {/* Permission Denied Banner */}
         {permissionDenied && (
@@ -262,6 +250,17 @@ export default function NotificationsScreen() {
           </View>
         </View>
 
+        {Platform.OS === 'web' ? (
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="phone-portrait-outline" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Device reminders</Text>
+            </View>
+            <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+              Habit reminders and push alerts are managed in the TribeTracker iOS or Android app. Your in-app Updates inbox remains available here on the web.
+            </Text>
+          </View>
+        ) : (<>
         {/* Push Notifications Card */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
           <View style={styles.sectionHeader}>
@@ -450,6 +449,8 @@ export default function NotificationsScreen() {
           </View>
         </View>
 
+        </>)}
+
       </ScrollView>
 
       {/* iOS Time Picker Modal */}
@@ -482,13 +483,10 @@ export default function NotificationsScreen() {
                   </Text>
                 </Pressable>
               </View>
-              <DateTimePicker
+              <TimeField
                 value={tempPickerDate}
-                mode="time"
                 display="spinner"
-                onChange={(_e, date) => {
-                  if (date) setTempPickerDate(date);
-                }}
+                onChange={setTempPickerDate}
                 minuteInterval={5}
               />
             </View>
@@ -498,13 +496,14 @@ export default function NotificationsScreen() {
 
       {/* Android Time Picker (renders inline) */}
       {Platform.OS === 'android' && showTimePicker !== null && (
-        <DateTimePicker
+        <TimeField
           value={tempPickerDate}
-          mode="time"
           display="default"
-          onChange={handleTimeChange(
-            showTimePicker === 'reminder' ? 'dailyReminderTime' : 'streakProtectionTime'
-          )}
+          onChange={date => {
+            applyTimeSelection(showTimePicker === 'reminder' ? 'dailyReminderTime' : 'streakProtectionTime', date);
+            setShowTimePicker(null);
+          }}
+          onDismiss={() => setShowTimePicker(null)}
           minuteInterval={5}
         />
       )}
@@ -524,6 +523,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 24,
   },
+  webContent: { width: '100%', maxWidth: 760, alignSelf: 'center' },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -5,11 +5,11 @@ import {
   createNavigationContainerRef,
 } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
-import { useFonts, Kanit_700Bold } from '@expo-google-fonts/kanit';
+import { useFonts } from 'expo-font';
+import { Kanit_700Bold } from '@expo-google-fonts/kanit/700Bold';
 import React, { useContext, useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider, useDispatch } from 'react-redux';
 import RootNavigator from './navigation/RootNavigator';
@@ -51,20 +51,11 @@ import {
 import { configureNotificationHandler } from './utils/notifications';
 import useNotificationScheduler from './hooks/useNotificationScheduler';
 import { registerAndSavePushToken } from './utils/pushToken';
-import { WEB_BASE_URL } from './config/links';
+import { lockPortraitOrientation } from './utils/screenOrientation';
+import { linking } from './navigation/linking';
+import { parsePendingDeepLink } from './utils/deepLinks';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
-
-const linking = {
-  prefixes: [Linking.createURL('/'), WEB_BASE_URL],
-  config: {
-    screens: {
-      CreateChallenge: 'invite/:inviteCode',
-      ChallengeDetail: 'challenge/:challengeId',
-      OrganizationInvite: 'organization-invite/:token',
-    },
-  },
-};
 
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
@@ -75,7 +66,9 @@ function AppContent() {
 
   // Configure notification handler on mount
   useEffect(() => {
-    configureNotificationHandler();
+    if (Platform.OS !== 'web') {
+      configureNotificationHandler();
+    }
   }, []);
 
   // Schedule notifications based on state
@@ -111,7 +104,9 @@ function AppContent() {
       dispatch(fetchBadgesFromServer(token));
 
       // Register push token after login (only if permission already granted)
-      registerAndSavePushToken();
+      if (Platform.OS !== 'web') {
+        registerAndSavePushToken();
+      }
     }
   }, [user, session, dispatch]);
 
@@ -145,19 +140,13 @@ function AppContent() {
   useEffect(() => {
     const storePendingDeepLink = (url: string) => {
       if (user) return;
-      const organizationInviteMatch = url.match(/organization-invite\/([A-Za-z0-9_-]+)/);
-      if (organizationInviteMatch) {
-        setPendingOrganizationInviteToken(organizationInviteMatch[1]);
-        return;
-      }
-      const inviteMatch = url.match(/invite\/([A-Za-z0-9]+)/);
-      if (inviteMatch) {
-        setPendingInviteCode(inviteMatch[1]);
-        return;
-      }
-      const challengeMatch = url.match(/challenge\/([A-Za-z0-9-]+)/);
-      if (challengeMatch) {
-        setPendingChallengeId(challengeMatch[1]);
+      const pendingLink = parsePendingDeepLink(url);
+      if (pendingLink?.type === 'organizationInvite') {
+        setPendingOrganizationInviteToken(pendingLink.token);
+      } else if (pendingLink?.type === 'challengeInvite') {
+        setPendingInviteCode(pendingLink.inviteCode);
+      } else if (pendingLink?.type === 'challenge') {
+        setPendingChallengeId(pendingLink.challengeId);
       }
     };
 
@@ -172,12 +161,7 @@ function AppContent() {
 
   // Lock orientation to portrait
   useEffect(() => {
-    const lockOrientation = async () => {
-      await ScreenOrientation.lockAsync(
-        ScreenOrientation.OrientationLock.PORTRAIT_UP
-      );
-    };
-    lockOrientation();
+    lockPortraitOrientation();
   }, []);
 
   // Show loading while checking auth (only if backend is configured)

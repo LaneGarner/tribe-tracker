@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useRef } from 'react';
 import { StyleSheet, Pressable, View, Text, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 interface SegmentOption<T extends string> {
   value: T;
@@ -27,15 +28,20 @@ export default function SegmentedControl<T extends string>({
 
   const selectedIndex = options.findIndex((o) => o.value === value);
   const slideAnim = useRef(new Animated.Value(selectedIndex)).current;
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      slideAnim.setValue(selectedIndex);
+      return;
+    }
     Animated.spring(slideAnim, {
       toValue: selectedIndex,
       useNativeDriver: false,
       friction: 10,
       tension: 60,
     }).start();
-  }, [selectedIndex, slideAnim]);
+  }, [reduceMotion, selectedIndex, slideAnim]);
 
   return (
     <View

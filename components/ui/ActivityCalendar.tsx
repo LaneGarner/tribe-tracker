@@ -1,10 +1,11 @@
 import React, { useContext, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { Platform, View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { Challenge, HabitCheckin } from '../../types';
 import { getToday } from '../../utils/dateUtils';
+import { WEB_SURFACE_WIDTH } from '../../constants/webSurfaceLayout';
 
 // Predefined color palette for challenges
 const CHALLENGE_COLORS = [
@@ -264,7 +265,7 @@ export default function ActivityCalendar({
   const inactiveBackground = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }, glassStyle]}>
+    <View style={[styles.container, Platform.OS === 'web' && styles.webContainer, { backgroundColor: colors.surface }, glassStyle]}>
       {/* Month header with navigation */}
       <View style={headerContainerStyle}>
         <View style={styles.headerRow}>
@@ -276,6 +277,9 @@ export default function ActivityCalendar({
             ]}
             onPress={handlePreviousMonth}
             disabled={!canGoBack}
+            accessibilityRole="button"
+            accessibilityLabel="Previous month"
+            accessibilityState={{ disabled: !canGoBack }}
           >
             <Ionicons
               name="chevron-back"
@@ -299,6 +303,9 @@ export default function ActivityCalendar({
             ]}
             onPress={handleNextMonth}
             disabled={!canGoForward}
+            accessibilityRole="button"
+            accessibilityLabel="Next month"
+            accessibilityState={{ disabled: !canGoForward }}
           >
             <Ionicons
               name="chevron-forward"
@@ -453,6 +460,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginHorizontal: 20,
+  },
+  webContainer: {
+    width: WEB_SURFACE_WIDTH as any,
+    maxWidth: 880,
+    alignSelf: 'center',
+    marginHorizontal: 'auto' as any,
   },
   headerRow: {
     flexDirection: 'row',

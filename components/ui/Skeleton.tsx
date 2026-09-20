@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useContext } from 'react';
 import { Animated, ViewStyle } from 'react-native';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 type DimensionValue = number | `${number}%` | 'auto';
 
@@ -20,8 +21,13 @@ export default function Skeleton({
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
   const animatedValue = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reduceMotion) {
+      animatedValue.setValue(0.5);
+      return;
+    }
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(animatedValue, {
@@ -38,7 +44,7 @@ export default function Skeleton({
     );
     animation.start();
     return () => animation.stop();
-  }, [animatedValue]);
+  }, [animatedValue, reduceMotion]);
 
   const opacity = animatedValue.interpolate({
     inputRange: [0, 1],

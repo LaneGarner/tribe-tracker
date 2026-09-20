@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootStackParamList } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import { BillingProduct } from '../services/billing/types';
 import {
   BillingPurchaseCancelledError,
@@ -107,7 +108,7 @@ export default function PaywallScreen() {
       await billing.purchase(product.id);
       const verified = await verifyPurchase();
       await refreshMembership();
-      Alert.alert(
+      void showAlert(
         verified ? 'Pro Active' : 'Purchase Successful',
         verified
           ? 'Your Pro features are ready.'
@@ -116,7 +117,7 @@ export default function PaywallScreen() {
       );
     } catch (error) {
       if (error instanceof BillingPurchaseCancelledError) return;
-      Alert.alert(
+      void showAlert(
         'Purchase Unavailable',
         error instanceof Error ? error.message : 'Please try again.'
       );
@@ -131,7 +132,7 @@ export default function PaywallScreen() {
       const state = await billing.restore();
       const verified = state.proActive ? await verifyPurchase() : false;
       await refreshMembership();
-      Alert.alert(
+      void showAlert(
         state.proActive ? 'Purchases Restored' : 'Nothing to Restore',
         state.proActive
           ? verified
@@ -140,7 +141,7 @@ export default function PaywallScreen() {
           : 'No active Pro subscription was found for this store account.'
       );
     } catch {
-      Alert.alert('Restore Failed', 'Unable to restore purchases right now.');
+      void showAlert('Restore Failed', 'Unable to restore purchases right now.');
     } finally {
       setWorking(null);
     }
@@ -157,7 +158,7 @@ export default function PaywallScreen() {
         locations={[0, 0.48, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, Platform.OS === 'web' && styles.webContent]}>
         <View
           style={[
             styles.logoTile,
@@ -331,7 +332,7 @@ export default function PaywallScreen() {
           </View>
         ) : null}
 
-        <TouchableOpacity
+        {Platform.OS !== 'web' ? <TouchableOpacity
           disabled={working !== null}
           onPress={restore}
           style={styles.restore}
@@ -339,7 +340,7 @@ export default function PaywallScreen() {
           <Text style={[styles.restoreText, { color: colors.primary }]}>
             {working === 'restore' ? 'Restoring…' : 'Restore Purchases'}
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> : null}
         <TouchableOpacity
           disabled={working !== null}
           onPress={() => navigation.goBack()}
@@ -353,7 +354,7 @@ export default function PaywallScreen() {
         <Text style={[styles.finePrint, { color: colors.textTertiary }]}>
           Your selected monthly or annual subscription automatically renews at
           the localized store price unless canceled. Payment is charged to your{' '}
-          {Platform.OS === 'ios' ? 'App Store' : 'Google Play'} account when you
+          {Platform.OS === 'web' ? 'web billing' : Platform.OS === 'ios' ? 'App Store' : 'Google Play'} account when you
           confirm. Manage or cancel anytime from Membership or your store
           account. Sponsored Pro is assigned by an organization and does not
           require an individual purchase.
@@ -364,7 +365,7 @@ export default function PaywallScreen() {
           challenge.
         </Text>
         <View style={styles.legalLinks}>
-          <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.terms)}>
+          <TouchableOpacity accessibilityRole="link" accessibilityLabel="Open Terms" onPress={() => openExternalLink(APP_LINKS.terms)}>
             <Text style={[styles.legalLink, { color: colors.primary }]}>
               Terms
             </Text>
@@ -372,7 +373,7 @@ export default function PaywallScreen() {
           <Text style={[styles.legalDivider, { color: colors.textTertiary }]}>
             ·
           </Text>
-          <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.privacy)}>
+          <TouchableOpacity accessibilityRole="link" accessibilityLabel="Open Privacy Policy" onPress={() => openExternalLink(APP_LINKS.privacy)}>
             <Text style={[styles.legalLink, { color: colors.primary }]}>
               Privacy
             </Text>
@@ -391,6 +392,7 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 48,
   },
+  webContent: { width: '100%', maxWidth: 920, alignSelf: 'center' },
   logoTile: {
     alignItems: 'center',
     borderRadius: 24,
@@ -453,9 +455,10 @@ const styles = StyleSheet.create({
     minHeight: 86,
     paddingHorizontal: 18,
     paddingVertical: 16,
+    ...Platform.select({ web: { flexWrap: 'wrap', gap: 12 } }),
   },
   productTitle: { fontSize: 17, fontWeight: '700' },
-  productHeading: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+  productHeading: { alignItems: 'center', flexDirection: 'row', flexShrink: 1, flexWrap: 'wrap', gap: 8 },
   valueBadge: {
     borderRadius: 999,
     fontSize: 9,
@@ -466,7 +469,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   productPeriod: { fontSize: 13, marginTop: 3 },
-  priceGroup: { alignItems: 'center', flexDirection: 'row', gap: 5 },
+  priceGroup: { alignItems: 'center', flexDirection: 'row', flexShrink: 0, gap: 5 },
   price: { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
   storeStatus: { alignItems: 'center', gap: 10, paddingVertical: 8 },
   unavailable: { fontSize: 14, lineHeight: 20, textAlign: 'center' },

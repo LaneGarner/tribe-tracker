@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
@@ -27,7 +27,7 @@ export default function PreferencesScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.settingRow}>
+          <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Text style={[styles.settingLabel, { color: colors.text }]}>
                 Language
@@ -36,12 +36,11 @@ export default function PreferencesScreen() {
                 English (US)
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+          </View>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <TouchableOpacity style={styles.settingRow}>
+          <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Text style={[styles.settingLabel, { color: colors.text }]}>
                 Timezone
@@ -50,12 +49,11 @@ export default function PreferencesScreen() {
                 Auto-detect
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+          </View>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <TouchableOpacity style={styles.settingRow}>
+          <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Text style={[styles.settingLabel, { color: colors.text }]}>
                 Date Format
@@ -64,8 +62,7 @@ export default function PreferencesScreen() {
                 MM/DD/YYYY
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={[styles.footnote, { color: colors.textTertiary }]}>
@@ -84,6 +81,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    ...Platform.select({ web: { width: '100%', maxWidth: 760, alignSelf: 'center' } }),
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 24,

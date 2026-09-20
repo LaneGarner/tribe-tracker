@@ -36,6 +36,7 @@ import MessageActionsOverlay from '../components/chat/MessageActionsOverlay';
 import { useContentReport } from '../hooks/useContentReport';
 import { isBackendConfigured } from '../config/api';
 import { buildChatDisplayItems, ChatDisplayItem, DateSeparatorItem, DisplayMessage, computeReadReceipts, ReaderInfo } from '../utils/chatUtils';
+import { showAlert } from '../platform/dialogs/alert';
 
 type GroupChatRouteProp = RouteProp<RootStackParamList, 'GroupChat'>;
 type GroupChatNavigationProp = NativeStackNavigationProp<RootStackParamList, 'GroupChat'>;
@@ -204,7 +205,11 @@ export default function GroupChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[
+        styles.container,
+        Platform.OS === 'web' && styles.webContainer,
+        { backgroundColor: colors.background },
+      ]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
@@ -251,7 +256,7 @@ export default function GroupChatScreen() {
           })
         }
         onBlock={message =>
-          Alert.alert(
+          void showAlert(
             'Block User',
             `Block ${message.senderName || 'this user'}? You will no longer be able to message each other.`,
             [
@@ -281,6 +286,11 @@ export default function GroupChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  webContainer: {
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
   },
   messageList: {
     paddingVertical: 8,

@@ -25,3 +25,7 @@ export const APP_LINKS = {
     extra.ACCOUNT_DELETION_URL || `${WEB_BASE_URL}/delete-account`,
   passwordReset: `${WEB_BASE_URL}/admin/reset-password`,
 } as const;
+
+export function passwordResetRedirectUrl(): string {
+  return APP_LINKS.passwordReset;
+}

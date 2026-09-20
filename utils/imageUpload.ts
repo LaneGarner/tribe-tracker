@@ -5,32 +5,20 @@ export async function pickImage(
   source: 'camera' | 'library',
   options?: { aspect?: [number, number]; quality?: number }
 ): Promise<string | null> {
-  const permissionResult =
-    source === 'camera'
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-  if (!permissionResult.granted) {
-    return null;
-  }
-
-  const launchFn =
-    source === 'camera'
-      ? ImagePicker.launchCameraAsync
-      : ImagePicker.launchImageLibraryAsync;
-
+  const permissionResult = source === 'camera'
+    ? await ImagePicker.requestCameraPermissionsAsync()
+    : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permissionResult.granted) return null;
+  const launchFn = source === 'camera'
+    ? ImagePicker.launchCameraAsync
+    : ImagePicker.launchImageLibraryAsync;
   const result = await launchFn({
     mediaTypes: ['images'],
     allowsEditing: true,
     aspect: options?.aspect ?? [1, 1],
     quality: options?.quality ?? 0.7,
   });
-
-  if (result.canceled || !result.assets?.[0]?.uri) {
-    return null;
-  }
-
-  return result.assets[0].uri;
+  return result.canceled ? null : result.assets?.[0]?.uri ?? null;
 }
 
 export async function uploadAvatar(

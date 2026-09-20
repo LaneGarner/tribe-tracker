@@ -159,6 +159,9 @@ class RevenueCatBillingAdapter implements BillingAdapter {
 
   async getProducts(): Promise<BillingProduct[]> {
     if (!this.configured) return [];
+    if (Object.values(REVENUECAT_PRODUCT_IDS).some(id => !id)) {
+      throw new Error('The expected Pro subscription products are not configured.');
+    }
     const offerings = await purchasesSdk().getOfferings();
     this.packages.clear();
     const expectedProductIds = new Set<string>(
@@ -234,11 +237,17 @@ class RevenueCatBillingAdapter implements BillingAdapter {
     if (this.configured && !this.managementUrl) {
       await this.getCustomerState();
     }
-    const fallback =
-      Platform.OS === 'ios'
-        ? 'https://apps.apple.com/account/subscriptions'
-        : 'https://play.google.com/store/account/subscriptions?package=com.lanegarner.tribetracker';
-    await Linking.openURL(this.managementUrl || fallback);
+    if (this.managementUrl) {
+      await Linking.openURL(this.managementUrl);
+      return;
+    }
+    if (Platform.OS === 'web') {
+      throw new Error('Subscription management is temporarily unavailable.');
+    }
+    const fallback = Platform.OS === 'ios'
+      ? 'https://apps.apple.com/account/subscriptions'
+      : 'https://play.google.com/store/account/subscriptions?package=com.lanegarner.tribetracker';
+    await Linking.openURL(fallback);
   }
 }
 
@@ -261,6 +270,9 @@ class UnavailableBillingAdapter implements BillingAdapter {
     return this.getCustomerState();
   }
   async openSubscriptionManagement() {
+    if (Platform.OS === 'web') {
+      throw new Error('Subscription management is temporarily unavailable.');
+    }
     const url =
       Platform.OS === 'ios'
         ? 'https://apps.apple.com/account/subscriptions'

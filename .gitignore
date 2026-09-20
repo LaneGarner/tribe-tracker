@@ -52,3 +52,8 @@ supabase/.temp/
 # Generated review artifacts and local scratch files
 /output/
 /tmp/
+.playwright-dist/
+.ci-dist/
+playwright-report/
+test-results/
+.vercel

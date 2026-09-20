@@ -1,10 +1,10 @@
-import { Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import {
   ReportReason,
   ReportTargetType,
   submitContentReport,
 } from '../services/reports';
+import { showAlert } from '../platform/dialogs/alert';
 
 interface ReportTarget {
   targetType: ReportTargetType;
@@ -26,18 +26,18 @@ export function useContentReport() {
   const submit = async (target: ReportTarget, reason: ReportReason) => {
     const token = getAccessToken();
     if (!token) {
-      Alert.alert('Sign In Required', 'Please sign in to submit a report.');
+      await showAlert('Sign In Required', 'Please sign in to submit a report.');
       return;
     }
 
     try {
       await submitContentReport(token, { ...target, reason });
-      Alert.alert(
+      await showAlert(
         'Report Submitted',
         'Thank you. TribeTracker will review this report.'
       );
     } catch (error) {
-      Alert.alert(
+      await showAlert(
         'Unable to Submit',
         error instanceof Error
           ? error.message
@@ -47,7 +47,7 @@ export function useContentReport() {
   };
 
   const reportContent = (target: ReportTarget) => {
-    Alert.alert(
+    void showAlert(
       'Report Content',
       'Why are you reporting this?',
       [

@@ -87,6 +87,8 @@ export default function DateCarousel({
         <TouchableOpacity
           style={[styles.arrowButton, { borderColor: colors.border }]}
           onPress={handlePrevious}
+          accessibilityRole="button"
+          accessibilityLabel="Previous day"
         >
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
@@ -121,6 +123,8 @@ export default function DateCarousel({
         <TouchableOpacity
           style={[styles.arrowButton, { borderColor: colors.border }]}
           onPress={handleNext}
+          accessibilityRole="button"
+          accessibilityLabel="Next day"
         >
           <Ionicons name="chevron-forward" size={20} color={colors.text} />
         </TouchableOpacity>

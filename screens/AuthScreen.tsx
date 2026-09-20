@@ -19,6 +19,8 @@ import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootStackParamList } from '../types';
 import { APP_LINKS } from '../config/links';
 import { openExternalLink } from '../utils/openExternalLink';
+import { showPrompt } from '../platform/dialogs';
+import { showAlert } from '../platform/dialogs/alert';
 
 type AuthScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -39,48 +41,45 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [adultTermsAccepted, setAdultTermsAccepted] = useState(false);
 
-  const handleForgotPassword = () => {
-    Alert.prompt(
-      'Reset Password',
-      'Enter your email address and we\'ll send you a link to reset your password.',
-      async (inputEmail) => {
-        if (!inputEmail) return;
-        setIsLoading(true);
-        try {
-          const { error } = await resetPassword(inputEmail);
-          if (error) {
-            Alert.alert('Error', error.message);
-          } else {
-            Alert.alert(
-              'Check Your Email',
-              'If an account exists with that email, you\'ll receive a password reset link.'
-            );
-          }
-        } catch {
-          Alert.alert('Error', 'Something went wrong. Please try again.');
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      'plain-text',
-      email,
-      'email-address'
-    );
+  const handleForgotPassword = async () => {
+    const inputEmail = await showPrompt({
+      title: 'Reset Password',
+      message: 'Enter your email address and we\'ll send you a link to reset your password.',
+      defaultValue: email,
+      keyboardType: 'email-address',
+    });
+    if (!inputEmail) return;
+    setIsLoading(true);
+    try {
+      const { error } = await resetPassword(inputEmail);
+      if (error) {
+        void showAlert('Error', error.message);
+      } else {
+        void showAlert(
+          'Check Your Email',
+          'If an account exists with that email, you\'ll receive a password reset link.'
+        );
+      }
+    } catch {
+      void showAlert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      void showAlert('Error', 'Please fill in all fields');
       return;
     }
 
     if (!isLogin && !fullName) {
-      Alert.alert('Error', 'Please enter your name');
+      void showAlert('Error', 'Please enter your name');
       return;
     }
 
     if (!isLogin && !adultTermsAccepted) {
-      Alert.alert(
+      void showAlert(
         'Confirmation Required',
         'Please confirm that you are an adult and agree to the Terms and Privacy Policy.'
       );
@@ -93,16 +92,16 @@ export default function AuthScreen() {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
-          Alert.alert('Login Failed', error.message);
+          void showAlert('Login Failed', error.message);
         }
       } else {
         const { error } = await signUp(email, password, fullName);
         if (error) {
-          Alert.alert('Signup Failed', error.message);
+          void showAlert('Signup Failed', error.message);
         }
       }
     } catch (err) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      void showAlert('Error', 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -160,6 +159,7 @@ export default function AuthScreen() {
                 },
               ]}
               placeholder="Email"
+              accessibilityLabel="Email address"
               placeholderTextColor={colors.textTertiary}
               value={email}
               onChangeText={setEmail}
@@ -180,6 +180,7 @@ export default function AuthScreen() {
                   },
                 ]}
                 placeholder="Password"
+                accessibilityLabel="Password"
                 placeholderTextColor={colors.textTertiary}
                 value={password}
                 onChangeText={setPassword}
@@ -214,6 +215,7 @@ export default function AuthScreen() {
                 },
               ]}
               placeholder="Full Name"
+              accessibilityLabel="Full name"
               placeholderTextColor={colors.textTertiary}
               value={fullName}
               onChangeText={setFullName}
@@ -231,6 +233,7 @@ export default function AuthScreen() {
                 },
               ]}
               placeholder="Email"
+              accessibilityLabel="Email address"
               placeholderTextColor={colors.textTertiary}
               value={email}
               onChangeText={setEmail}
@@ -251,6 +254,7 @@ export default function AuthScreen() {
                   },
                 ]}
                 placeholder="Password"
+                accessibilityLabel="Password"
                 placeholderTextColor={colors.textTertiary}
                 value={password}
                 onChangeText={setPassword}
@@ -289,11 +293,11 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
             <View style={styles.legalLinks}>
-              <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.terms)}>
+              <TouchableOpacity accessibilityRole="link" accessibilityLabel="Open Terms" onPress={() => openExternalLink(APP_LINKS.terms)}>
                 <Text style={[styles.legalLink, { color: colors.primary }]}>Terms</Text>
               </TouchableOpacity>
               <Text style={{ color: colors.textTertiary }}>·</Text>
-              <TouchableOpacity onPress={() => openExternalLink(APP_LINKS.privacy)}>
+              <TouchableOpacity accessibilityRole="link" accessibilityLabel="Open Privacy Policy" onPress={() => openExternalLink(APP_LINKS.privacy)}>
                 <Text style={[styles.legalLink, { color: colors.primary }]}>Privacy Policy</Text>
               </TouchableOpacity>
             </View>
@@ -352,6 +356,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
+    ...Platform.select({ web: { width: '100%', maxWidth: 520, alignSelf: 'center' } }),
     paddingHorizontal: 24,
     alignItems: 'center',
   },

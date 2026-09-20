@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,6 +28,7 @@ import { RootStackParamList, TabParamList, Conversation } from '../types';
 import ConversationRow from '../components/chat/ConversationRow';
 import EmptyChat from '../components/chat/EmptyChat';
 import Skeleton from '../components/ui/Skeleton';
+import { showAlert } from '../platform/dialogs/alert';
 
 type ChatNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'Chat'>,
@@ -94,7 +96,7 @@ export default function ChatScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.skeletonList}>
+        <View style={[styles.skeletonList, Platform.OS === 'web' && styles.webContent]}>
           {[1, 2, 3, 4].map(i => (
             <View key={i} style={[styles.skeletonRow, { backgroundColor: colors.surface }]}>
               <Skeleton width={48} height={48} borderRadius={24} />
@@ -117,6 +119,7 @@ export default function ChatScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={[
           styles.listContent,
+          Platform.OS === 'web' && styles.webContent,
           conversations.length === 0 && styles.emptyList,
         ]}
         ListEmptyComponent={<EmptyChat type="chat" />}
@@ -128,7 +131,7 @@ export default function ChatScreen() {
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() =>
-          Alert.alert('New Conversation', undefined, [
+          void showAlert('New Conversation', undefined, [
             { text: 'New Message', onPress: () => navigation.navigate('NewDm') },
             { text: 'New Group Chat', onPress: () => navigation.navigate('NewGroupChat') },
             { text: 'Cancel', style: 'cancel' },
@@ -168,6 +171,11 @@ const styles = StyleSheet.create({
   },
   skeletonContent: {
     flex: 1,
+  },
+  webContent: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
   },
   fab: {
     position: 'absolute',

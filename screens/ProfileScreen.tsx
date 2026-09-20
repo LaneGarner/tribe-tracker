@@ -6,8 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
-  Share,
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
@@ -25,6 +23,7 @@ import { deleteChallenge, loadChallengesFromStorage, fetchChallengesFromServer }
 import { isBackendConfigured } from '../config/api';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge } from '../types';
+import { showAlert } from '../platform/dialogs/alert';
 import { calculateActiveStreak } from '../utils/streakUtils';
 import { loadBadgesFromStorage, fetchBadgesFromServer } from '../redux/slices/badgesSlice';
 import { addConversation } from '../redux/slices/chatSlice';
@@ -33,6 +32,7 @@ import HexBadge from '../components/badges/HexBadge';
 import Avatar from '../components/Avatar';
 import { useAvatarPicker } from '../hooks/useAvatarPicker';
 import { isBackendConfigured as isApiConfigured, API_URL } from '../config/api';
+import { shareContent } from '../platform/share';
 
 type ProfileRouteProp = RouteProp<RootStackParamList, 'Profile'>;
 type ProfileNavigationProp = NativeStackNavigationProp<
@@ -193,11 +193,11 @@ export default function ProfileScreen() {
       age: editForm.age ? parseInt(editForm.age, 10) : undefined,
     }));
     setIsEditing(false);
-    Alert.alert('Success', 'Profile updated');
+    void showAlert('Success', 'Profile updated');
   };
 
   const handleLeaveChallenge = (participationId: string, challengeName: string) => {
-    Alert.alert(
+    void showAlert(
       'Leave Challenge',
       `Are you sure you want to leave "${challengeName}"? Your progress will be lost.`,
       [
@@ -214,7 +214,7 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteChallenge = (challengeId: string, challengeName: string) => {
-    Alert.alert(
+    void showAlert(
       'Delete Challenge',
       `Are you sure you want to delete "${challengeName}"? This will remove it for all participants.`,
       [
@@ -239,9 +239,17 @@ export default function ProfileScreen() {
       const label = challenge.isPublic ? '' : 'private ';
       const inviteCodeLine = challenge.inviteCode ? `\n\nInvite code: ${challenge.inviteCode}` : '';
       const message = `Join my ${label}challenge "${challenge.name}" on TribeTracker!\n${shareUrl}${inviteCodeLine}`;
-      await Share.share({ message });
-    } catch {
-      // User cancelled share
+      const result = await shareContent({
+        title: `Join ${challenge.name} on TribeTracker`,
+        message,
+        url: shareUrl,
+      });
+      if (result === 'copied') {
+        await showAlert('Invite copied', 'The challenge invitation was copied to your clipboard.');
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      await showAlert('Unable to Share', 'Could not share this challenge. Please try again.');
     }
   };
 
@@ -775,6 +783,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    ...Platform.select({ web: { width: '100%', maxWidth: 920, alignSelf: 'center' } }),
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 24,
