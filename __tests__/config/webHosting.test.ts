@@ -38,7 +38,7 @@ describe('consumer web hosting contract', () => {
   });
 
   it('presents the existing landing, admin, and API through the consumer origin', () => {
-    expect(config.rewrites.slice(0, 4)).toEqual([
+    expect(config.rewrites.slice(0, 9)).toEqual([
       { source: '/', destination: '/landing.html' },
       { source: '/admin', destination: 'https://tribe-tracker-backend.vercel.app/admin' },
       {
@@ -48,6 +48,17 @@ describe('consumer web hosting contract', () => {
       {
         source: '/api/:path*',
         destination: 'https://tribe-tracker-backend.vercel.app/api/:path*',
+      },
+      { source: '/terms', destination: 'https://tribe-tracker-backend.vercel.app/terms' },
+      { source: '/privacy', destination: 'https://tribe-tracker-backend.vercel.app/privacy' },
+      { source: '/support', destination: 'https://tribe-tracker-backend.vercel.app/support' },
+      {
+        source: '/community-guidelines',
+        destination: 'https://tribe-tracker-backend.vercel.app/community-guidelines',
+      },
+      {
+        source: '/delete-account',
+        destination: 'https://tribe-tracker-backend.vercel.app/delete-account',
       },
     ]);
 
