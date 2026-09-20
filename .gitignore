@@ -56,3 +56,4 @@ supabase/.temp/
 .ci-dist/
 playwright-report/
 test-results/
+.vercel
