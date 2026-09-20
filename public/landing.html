@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta
+      name="description"
+      content="Build healthier habits with friends, teams, and communities using TribeTracker."
+    />
+    <title>TribeTracker — Build better habits together</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #0f172a;
+        background: #f8fafc;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; }
+      a { color: inherit; }
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        background:
+          radial-gradient(circle at 10% 10%, rgba(59, 130, 246, .14), transparent 34rem),
+          radial-gradient(circle at 92% 22%, rgba(14, 165, 233, .13), transparent 30rem),
+          #f8fafc;
+      }
+      header, main, footer { width: min(1120px, calc(100% - 40px)); margin-inline: auto; }
+      header { display: flex; align-items: center; justify-content: space-between; padding: 24px 0; }
+      .brand { display: flex; align-items: center; gap: 12px; font-size: 1.2rem; font-weight: 800; text-decoration: none; }
+      .mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #0f172a; color: white; font-weight: 900; }
+      nav { display: flex; align-items: center; gap: 18px; }
+      nav a { color: #475569; font-weight: 650; text-decoration: none; }
+      main { display: grid; grid-template-columns: 1.08fr .92fr; gap: 72px; align-items: center; padding: 72px 0 104px; }
+      .eyebrow { color: #2563eb; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: .78rem; }
+      h1 { margin: 16px 0 20px; max-width: 760px; font-size: clamp(3rem, 7vw, 5.8rem); line-height: .95; letter-spacing: -.055em; }
+      .lede { margin: 0; max-width: 650px; color: #475569; font-size: clamp(1.1rem, 2vw, 1.3rem); line-height: 1.65; }
+      .actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
+      .button { display: inline-flex; min-height: 52px; align-items: center; justify-content: center; padding: 0 22px; border: 1px solid #cbd5e1; border-radius: 14px; background: white; font-weight: 800; text-decoration: none; }
+      .button.primary { border-color: #2563eb; background: #2563eb; color: white; box-shadow: 0 14px 32px rgba(37, 99, 235, .22); }
+      .card { padding: 30px; border: 1px solid rgba(148, 163, 184, .35); border-radius: 28px; background: rgba(255, 255, 255, .82); box-shadow: 0 28px 80px rgba(15, 23, 42, .12); backdrop-filter: blur(18px); }
+      .card h2 { margin: 0 0 20px; font-size: 1.2rem; }
+      .features { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+      .features li { display: grid; grid-template-columns: 38px 1fr; gap: 13px; align-items: start; padding: 14px; border-radius: 16px; background: #f8fafc; }
+      .icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: #dbeafe; color: #1d4ed8; font-weight: 900; }
+      .features strong { display: block; margin-bottom: 3px; }
+      .features span { color: #64748b; line-height: 1.45; }
+      footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px; padding: 28px 0 36px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: .9rem; }
+      footer div { display: flex; flex-wrap: wrap; gap: 18px; }
+      footer a { text-decoration: none; }
+      a:focus-visible { outline: 3px solid #60a5fa; outline-offset: 4px; }
+      @media (max-width: 780px) {
+        header { align-items: flex-start; }
+        nav a:not(.admin-link) { display: none; }
+        main { grid-template-columns: 1fr; gap: 42px; padding: 46px 0 72px; }
+        h1 { font-size: clamp(2.8rem, 15vw, 4.6rem); }
+        .card { padding: 20px; border-radius: 22px; }
+        .button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <a class="brand" href="/" aria-label="TribeTracker home">
+          <span class="mark" aria-hidden="true">TT</span>
+          TribeTracker
+        </a>
+        <nav aria-label="Primary navigation">
+          <a href="/privacy">Privacy</a>
+          <a href="/support">Support</a>
+          <a class="admin-link" href="/admin">Admin sign in</a>
+        </nav>
+      </header>
+      <main>
+        <section>
+          <div class="eyebrow">Better together</div>
+          <h1>Build habits your people help you keep.</h1>
+          <p class="lede">
+            Create challenges, stay accountable, celebrate progress, and build lasting momentum with the people who matter to you.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="/login">Open TribeTracker</a>
+            <a class="button" href="/admin">Organization dashboard</a>
+          </div>
+        </section>
+        <aside class="card" aria-label="TribeTracker highlights">
+          <h2>One place to keep moving forward</h2>
+          <ul class="features">
+            <li><span class="icon" aria-hidden="true">✓</span><span><strong>Shared challenges</strong>Turn goals into something your whole tribe can accomplish.</span></li>
+            <li><span class="icon" aria-hidden="true">↗</span><span><strong>Visible progress</strong>Track habits, streaks, points, and milestones without losing momentum.</span></li>
+            <li><span class="icon" aria-hidden="true">●</span><span><strong>Real accountability</strong>Encouragement, conversation, and friendly competition stay connected.</span></li>
+          </ul>
+        </aside>
+      </main>
+      <footer>
+        <span>© 2026 TribeTracker</span>
+        <div>
+          <a href="/terms">Terms</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/support">Support</a>
+          <a href="/community-guidelines">Community guidelines</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

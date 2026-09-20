@@ -39,7 +39,7 @@ describe('consumer web hosting contract', () => {
 
   it('presents the existing landing, admin, and API through the consumer origin', () => {
     expect(config.rewrites.slice(0, 4)).toEqual([
-      { source: '/', destination: 'https://tribe-tracker-backend.vercel.app/' },
+      { source: '/', destination: '/landing.html' },
       { source: '/admin', destination: 'https://tribe-tracker-backend.vercel.app/admin' },
       {
         source: '/admin/:path*',
