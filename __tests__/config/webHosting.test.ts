@@ -37,6 +37,26 @@ describe('consumer web hosting contract', () => {
     ]));
   });
 
+  it('presents the existing landing, admin, and API through the consumer origin', () => {
+    expect(config.rewrites.slice(0, 4)).toEqual([
+      { source: '/', destination: 'https://tribe-tracker-backend.vercel.app/' },
+      { source: '/admin', destination: 'https://tribe-tracker-backend.vercel.app/admin' },
+      {
+        source: '/admin/:path*',
+        destination: 'https://tribe-tracker-backend.vercel.app/admin/:path*',
+      },
+      {
+        source: '/api/:path*',
+        destination: 'https://tribe-tracker-backend.vercel.app/api/:path*',
+      },
+    ]);
+
+    expect(config.rewrites.at(-1)).toEqual({
+      source: '/(.*)',
+      destination: '/index.html',
+    });
+  });
+
   it('marks the authenticated app noindex and permits required billing/auth connections', () => {
     const globalHeaders = config.headers.find(
       (entry: { source: string }) => entry.source === '/(.*)'

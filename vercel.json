@@ -4,6 +4,10 @@
   "buildCommand": "npm run build:web",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/", "destination": "https://tribe-tracker-backend.vercel.app/" },
+    { "source": "/admin", "destination": "https://tribe-tracker-backend.vercel.app/admin" },
+    { "source": "/admin/:path*", "destination": "https://tribe-tracker-backend.vercel.app/admin/:path*" },
+    { "source": "/api/:path*", "destination": "https://tribe-tracker-backend.vercel.app/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
