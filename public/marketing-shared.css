@@ -1,0 +1,38 @@
+@font-face{font-family:Kanit;src:url('/media/kanit-regular.ttf')}@font-face{font-family:Kanit;src:url('/media/kanit-semibold.ttf');font-weight:600}@font-face{font-family:Kanit;src:url('/media/kanit-extrabold.ttf');font-weight:800}@font-face{font-family:Rajdhani;src:url('/media/rajdhani-semibold.ttf');font-weight:600}
+:root{--ink:#0b0d11;--paper:#f4f3ef;--blue:#3b82f6;--orange:#ff5a36;--cyan:#05bed1;--green:#18bd7e;--muted:#676c76;--rule:#cdd0d5;--display-tracking:-.025em;--control-radius:12px}
+*{box-sizing:border-box}
+html{overflow-x:hidden;scroll-behavior:smooth}
+body.marketing-page{margin:0;overflow-x:hidden;background:var(--paper);color:var(--ink);font-family:Kanit,system-ui,sans-serif}
+:where(.marketing-page) a{color:inherit}
+.marketing-page .wrap{width:min(1200px,calc(100% - 48px));margin-inline:auto}
+.marketing-page .skip{position:fixed;z-index:99;top:10px;left:10px;translate:0 -150%;padding:10px;background:#fff}
+.marketing-page .skip:focus{translate:0}
+.marketing-page .brand{display:flex;align-items:center;gap:11px;font-size:1.12rem;font-weight:800;text-decoration:none}
+.marketing-page .kicker{font-family:Rajdhani,sans-serif;font-size:.82rem;font-weight:600;letter-spacing:.055em;text-transform:capitalize}
+.marketing-page .store-copy small,
+.marketing-page .soon-label,
+.marketing-page .best-label,
+.marketing-page .private-pill,
+.marketing-page .privacy-boundary,
+.marketing-page .group-report small,
+.marketing-page .ai-response small,
+.marketing-page .preview-top,
+.marketing-page .pass-top,
+.marketing-page .org-tags span{
+  letter-spacing:.045em;
+  text-transform:capitalize;
+}
+.marketing-page .store-copy small{text-transform:none}
+.marketing-page h2{letter-spacing:var(--display-tracking)}
+.marketing-page .button{display:inline-flex;min-height:54px;align-items:center;justify-content:center;padding:0 21px;border:1px solid currentColor;border-radius:var(--control-radius);font-weight:600;text-decoration:none;box-shadow:none;transition:translate .22s ease}
+.marketing-page .button:hover{translate:0 -2px}
+.marketing-page .reveal{opacity:0;transform:translateY(24px);transition:opacity .65s ease,transform .65s cubic-bezier(.2,.75,.2,1)}
+.marketing-page .from-left{transform:translateX(-36px)}
+.marketing-page .from-right{transform:translateX(36px)}
+.marketing-page .reveal.is-visible{opacity:1;transform:none}
+.marketing-page footer{font-family:Rajdhani,sans-serif}
+.marketing-page .footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px;padding-top:26px}
+.marketing-page .footer-links{display:flex;flex-wrap:wrap;gap:18px}
+.marketing-page .footer-links a{text-decoration:none}
+@media(max-width:620px){.marketing-page .wrap{width:calc(100% - 28px)}.marketing-page .button{width:100%}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}.marketing-page .reveal,.marketing-page .from-left,.marketing-page .from-right{opacity:1;transform:none}}
