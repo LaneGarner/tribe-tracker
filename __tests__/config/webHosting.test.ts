@@ -8,7 +8,7 @@ const config = JSON.parse(
 describe('consumer web hosting contract', () => {
   it('exports Expo web output from the consumer repository', () => {
     expect(config).toMatchObject({
-      buildCommand: 'npm run build:web',
+      buildCommand: 'npm run build:web && mv dist/index.html dist/app.html',
       outputDirectory: 'dist',
     });
   });
@@ -22,7 +22,7 @@ describe('consumer web hosting contract', () => {
   ])('serves the SPA shell for a direct request to %s', route => {
     const fallback = config.rewrites.find(
       (rewrite: { source: string; destination: string }) =>
-        rewrite.source === '/(.*)' && rewrite.destination === '/index.html'
+        rewrite.source === '/(.*)' && rewrite.destination === '/app.html'
     );
     expect(fallback).toBeDefined();
     expect(route).toMatch(/^\//);
@@ -53,7 +53,7 @@ describe('consumer web hosting contract', () => {
 
     expect(config.rewrites.at(-1)).toEqual({
       source: '/(.*)',
-      destination: '/index.html',
+      destination: '/app.html',
     });
   });
 
