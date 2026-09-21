@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.62" stop-color="#f4f6fa"/>
+      <stop offset="1" stop-color="#e9effc"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#18233b" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <rect x="940" y="0" width="260" height="630" fill="#3979f6"/>
+
+  <g transform="translate(76 66)">
+    <rect width="76" height="76" rx="19" fill="#050505"/>
+    <g transform="translate(8 15) scale(.3) skewX(8) skewY(-11)" fill="#fff">
+      <path d="M0 9Q0 0 9 0h182q9 0 9 9v16q0 9-9 9h-88q-9 0-9 9v104q0 9-9 9H69q-9 0-9-9V43q0-9-9-9H9q-9 0-9-9Z"/>
+      <path d="M200 191q0 9-9 9H9q-9 0-9-9v-16q0-9 9-9h88q9 0 9-9V53q0-9 9-9h16q9 0 9 9v104q0 9 9 9h42q9 0 9 9Z"/>
+    </g>
+    <text x="94" y="50" fill="#111318" font-family="Arial, Helvetica, sans-serif" font-size="31" font-weight="700">TribeTracker</text>
+  </g>
+
+  <g transform="translate(76 220)" font-family="Arial, Helvetica, sans-serif">
+    <text fill="#111318" font-size="75" font-weight="700" letter-spacing="-3">
+      <tspan x="0" y="0">Build better habits</tspan>
+      <tspan x="0" y="82" fill="#3979f6">together.</tspan>
+    </text>
+    <text x="2" y="146" fill="#5c6370" font-size="24">
+      <tspan x="2" dy="0">Shared challenges, visible progress, and support</tspan>
+      <tspan x="2" dy="36">from people working toward the same goal.</tspan>
+    </text>
+  </g>
+
+  <g transform="translate(806 96) rotate(2 150 220)" filter="url(#shadow)" font-family="Arial, Helvetica, sans-serif">
+    <rect width="304" height="446" rx="50" fill="#111318"/>
+    <rect x="10" y="10" width="284" height="426" rx="42" fill="#f7f8fa"/>
+    <rect x="104" y="22" width="96" height="24" rx="12" fill="#080808"/>
+    <text x="34" y="92" fill="#111318" font-size="25" font-weight="700">Today</text>
+    <text x="34" y="119" fill="#777e8a" font-size="14">3 of 5 completed</text>
+    <rect x="34" y="143" width="236" height="66" rx="16" fill="#fff"/>
+    <rect x="51" y="164" width="26" height="26" rx="7" fill="#3979f6"/>
+    <path d="m58 177 6 6 10-13" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="91" y="181" fill="#111318" font-size="15" font-weight="700">Morning walk</text>
+    <text x="91" y="198" fill="#7a818d" font-size="11">+3 points</text>
+    <rect x="34" y="220" width="236" height="66" rx="16" fill="#fff"/>
+    <rect x="51" y="241" width="26" height="26" rx="7" fill="#3979f6"/>
+    <path d="m58 254 6 6 10-13" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="91" y="258" fill="#111318" font-size="15" font-weight="700">Drink water</text>
+    <text x="91" y="275" fill="#7a818d" font-size="11">+2 points</text>
+    <rect x="34" y="297" width="236" height="66" rx="16" fill="#fff"/>
+    <rect x="51" y="318" width="26" height="26" rx="7" fill="none" stroke="#d8dce4" stroke-width="3"/>
+    <text x="91" y="335" fill="#111318" font-size="15" font-weight="700">Read for 20 minutes</text>
+    <rect x="34" y="382" width="236" height="9" rx="5" fill="#dfe3ea"/>
+    <rect x="34" y="382" width="151" height="9" rx="5" fill="#3979f6"/>
+    <text x="34" y="414" fill="#667080" font-size="12">Keep going. Your group is with you.</text>
+  </g>
+</svg>

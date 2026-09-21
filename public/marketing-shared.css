@@ -4,11 +4,12 @@
 html{overflow-x:hidden;scroll-behavior:smooth}
 body.marketing-page{margin:0;overflow-x:hidden;background:var(--paper);color:var(--ink);font-family:Kanit,system-ui,sans-serif}
 :where(.marketing-page) a{color:inherit}
-.marketing-page .wrap{width:min(1200px,calc(100% - 48px));margin-inline:auto}
+.marketing-page .wrap{width:min(1200px,calc(100% - 96px));margin-inline:auto}
 .marketing-page .skip{position:fixed;z-index:99;top:10px;left:10px;translate:0 -150%;padding:10px;background:#fff}
 .marketing-page .skip:focus{translate:0}
 .marketing-page .brand{display:flex;align-items:center;gap:11px;font-size:1.12rem;font-weight:800;text-decoration:none}
 .marketing-page .kicker{font-family:Rajdhani,sans-serif;font-size:.82rem;font-weight:600;letter-spacing:.055em;text-transform:capitalize}
+.marketing-page .kicker + :is(h1,h2,h3){margin-top:12px}
 .marketing-page .store-copy small,
 .marketing-page .soon-label,
 .marketing-page .best-label,
@@ -34,5 +35,6 @@ body.marketing-page{margin:0;overflow-x:hidden;background:var(--paper);color:var
 .marketing-page .footer-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px;padding-top:26px}
 .marketing-page .footer-links{display:flex;flex-wrap:wrap;gap:18px}
 .marketing-page .footer-links a{text-decoration:none}
+@media(max-width:900px){.marketing-page .wrap{width:calc(100% - 64px)}}
 @media(max-width:620px){.marketing-page .wrap{width:calc(100% - 28px)}.marketing-page .button{width:100%}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}.marketing-page .reveal,.marketing-page .from-left,.marketing-page .from-right{opacity:1;transform:none}}
