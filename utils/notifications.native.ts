@@ -2,13 +2,25 @@ import * as Notifications from 'expo-notifications';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Linking } from 'react-native';
-import { NotificationSettings, Challenge, HabitCheckin, ChallengeParticipant } from '../types';
-import { getToday, subtractDays } from './dateUtils';
+import {
+  NotificationSettings,
+  Challenge,
+  HabitCheckin,
+  ChallengeParticipant,
+} from '../types';
+import {
+  getToday,
+  subtractDays,
+  getChallengeStatus,
+  getRecurringCycleInfo,
+} from './dateUtils';
+import { calculateActiveStreak } from './streakUtils';
 import { store } from '../redux/store';
 import dayjs from 'dayjs';
 import { showDialog } from '../platform/dialogs';
 
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   pushEnabled: true,
@@ -57,7 +69,12 @@ export function configureNotificationHandler(): void {
       if (data?.type === 'chat' && data?.conversationId) {
         const activeConvId = store.getState().chat.activeConversationId;
         if (activeConvId === data.conversationId) {
-          return { shouldShowBanner: false, shouldShowList: false, shouldPlaySound: false, shouldSetBadge: false };
+          return {
+            shouldShowBanner: false,
+            shouldShowList: false,
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+          };
         }
       }
       return {
@@ -92,14 +109,13 @@ function parseTime(timeStr: string): { hour: number; minute: number } {
   return { hour, minute };
 }
 
-async function scheduleDailyReminder(time: string, challengeCount: number): Promise<void> {
+async function scheduleDailyReminder(time: string): Promise<void> {
   await cancelNotificationById('daily-reminder');
 
   const { hour, minute } = parseTime(time);
+  // Repeating notifications cannot refresh their content while the app is closed.
   const body =
-    challengeCount === 1
-      ? 'You have 1 challenge to log today. Keep it going!'
-      : `You have ${challengeCount} challenges to log today. Keep it going!`;
+    'Review today’s habits and log anything you still have left. Keep it going!';
 
   await Notifications.scheduleNotificationAsync({
     identifier: 'daily-reminder',
@@ -117,23 +133,27 @@ async function scheduleDailyReminder(time: string, challengeCount: number): Prom
   });
 }
 
-async function scheduleStreakWarning(time: string, streakCount: number): Promise<void> {
+async function scheduleStreakWarning(
+  time: string,
+  streakCount: number
+): Promise<void> {
   await cancelNotificationById('streak-warning');
 
   const { hour, minute } = parseTime(time);
+  const date = dayjs().hour(hour).minute(minute).second(0).millisecond(0);
+  if (!date.isAfter(dayjs())) return;
 
   await Notifications.scheduleNotificationAsync({
     identifier: 'streak-warning',
     content: {
       title: 'Streak at Risk!',
-      body: `You have a ${streakCount}+ day streak on the line. Log your habits before midnight!`,
+      body: `You have a ${streakCount}-day streak on the line. Log your habits before midnight!`,
       sound: 'default',
       ...(Platform.OS === 'android' && { channelId: 'habit-reminders' }),
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: date.toDate(),
     },
   });
 }
@@ -224,37 +244,63 @@ export async function evaluateAndScheduleNotifications(
   const today = getToday();
   const yesterday = subtractDays(today, 1);
 
-  const activeChallenges = challenges.filter(c => c.status === 'active');
-  const upcomingChallenges = challenges.filter(c => c.status === 'upcoming');
+  const joinedIds = new Set(
+    participants.filter((p) => p.userId === userId).map((p) => p.challengeId)
+  );
+  const joinedChallenges = challenges.filter(
+    (c) => joinedIds.has(c.id) && c.status !== 'completed'
+  );
+  const statusFor = (c: Challenge) =>
+    getChallengeStatus(c.startDate, c.endDate || c.startDate, c);
+  const activeChallenges = joinedChallenges.filter(
+    (c) => statusFor(c) === 'active'
+  );
+  const upcomingChallenges = joinedChallenges.filter((c) =>
+    ['upcoming', 'gap'].includes(statusFor(c))
+  );
 
-  // Check which active challenges have been checked in today
-  const todayCheckins = checkins.filter(c => c.checkinDate === today && c.userId === userId);
-  const checkedInChallengeIds = new Set(todayCheckins.map(c => c.challengeId));
-  const uncheckedActiveChallenges = activeChallenges.filter(c => !checkedInChallengeIds.has(c.id));
-
-  // Daily reminder
-  if (settings.dailyReminderEnabled && uncheckedActiveChallenges.length > 0) {
-    await scheduleDailyReminder(settings.dailyReminderTime, uncheckedActiveChallenges.length);
+  // Keep the recurring copy independent of today's progress, which becomes stale tomorrow.
+  if (
+    settings.dailyReminderEnabled &&
+    activeChallenges.some((c) => c.habits.length > 0)
+  ) {
+    await scheduleDailyReminder(settings.dailyReminderTime);
   } else {
     await cancelNotificationById('daily-reminder');
   }
 
-  // Streak protection warning
-  if (settings.streakProtectionEnabled) {
-    // Find participants for this user with at-risk streaks
-    const atRiskParticipants = participants.filter(p => {
-      if (p.userId !== userId) return false;
-      if (checkedInChallengeIds.has(p.challengeId)) return false;
-      // Streak is at risk if they checked in yesterday and have a streak >= 3
-      return p.lastCheckinDate === yesterday && p.longestStreak >= 3;
-    });
-
-    if (atRiskParticipants.length > 0) {
-      const maxStreak = Math.max(...atRiskParticipants.map(p => p.longestStreak));
-      await scheduleStreakWarning(settings.streakProtectionTime, maxStreak);
-    } else {
-      await cancelNotificationById('streak-warning');
-    }
+  // A historical personal best is not the streak currently at risk.
+  const activeIds = new Set(activeChallenges.map((c) => c.id));
+  const userCheckins = checkins.filter((c) => c.userId === userId);
+  const checkedInToday = new Set(
+    userCheckins
+      .filter((c) => c.checkinDate === today)
+      .map((c) => c.challengeId)
+  );
+  const atRiskStreaks = [...activeIds]
+    .filter((id) => !checkedInToday.has(id))
+    .map((id) => {
+      const challenge = activeChallenges.find((c) => c.id === id)!;
+      const cycleStart =
+        getRecurringCycleInfo(challenge)?.cycleStartDate || challenge.startDate;
+      return calculateActiveStreak(
+        userCheckins
+          .filter(
+            (c) =>
+              c.challengeId === id &&
+              c.checkinDate >= cycleStart &&
+              c.checkinDate <= yesterday
+          )
+          .map((c) => c.checkinDate),
+        yesterday
+      );
+    })
+    .filter((streak) => streak >= 3);
+  if (settings.streakProtectionEnabled && atRiskStreaks.length > 0) {
+    await scheduleStreakWarning(
+      settings.streakProtectionTime,
+      Math.max(...atRiskStreaks)
+    );
   } else {
     await cancelNotificationById('streak-warning');
   }
@@ -262,35 +308,51 @@ export async function evaluateAndScheduleNotifications(
   // Challenge start notifications
   if (settings.challengeStartEnabled) {
     for (const challenge of upcomingChallenges) {
-      await scheduleChallengeStartNotification(challenge.id, challenge.name, challenge.startDate);
+      await scheduleChallengeStartNotification(
+        challenge.id,
+        challenge.name,
+        getRecurringCycleInfo(challenge)?.cycleStartDate || challenge.startDate
+      );
     }
   }
 
   // Challenge end notifications
   if (settings.challengeEndEnabled) {
     for (const challenge of activeChallenges) {
-      if (challenge.endDate) {
-        await scheduleChallengeEndNotification(challenge.id, challenge.name, challenge.endDate);
+      const endDate =
+        getRecurringCycleInfo(challenge)?.cycleEndDate || challenge.endDate;
+      if (endDate && !challenge.isOngoing) {
+        await scheduleChallengeEndNotification(
+          challenge.id,
+          challenge.name,
+          endDate
+        );
       }
     }
   }
 
   // Cancel start/end notifications for challenges that are no longer relevant
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  const relevantChallengeIds = new Set([
-    ...upcomingChallenges.map(c => c.id),
-    ...activeChallenges.map(c => c.id),
-  ]);
+  const startIds = new Set(
+    settings.challengeStartEnabled ? upcomingChallenges.map((c) => c.id) : []
+  );
+  const endIds = new Set(
+    settings.challengeEndEnabled
+      ? activeChallenges
+          .filter((c) => !c.isOngoing && (c.endDate || c.isRecurring))
+          .map((c) => c.id)
+      : []
+  );
 
   for (const notification of scheduled) {
     const id = notification.identifier;
     const startMatch = id.match(/^challenge-start-(.+)$/);
     const endMatch = id.match(/^challenge-end-(.+)$/);
 
-    if (startMatch && !relevantChallengeIds.has(startMatch[1])) {
+    if (startMatch && !startIds.has(startMatch[1])) {
       await cancelNotificationById(id);
     }
-    if (endMatch && !relevantChallengeIds.has(endMatch[1])) {
+    if (endMatch && !endIds.has(endMatch[1])) {
       await cancelNotificationById(id);
     }
   }
@@ -307,7 +369,7 @@ export function showPermissionExplanation(onProceed: () => void): void {
       { key: 'cancel', label: 'Not Now', role: 'cancel' },
       { key: 'enable', label: 'Enable' },
     ],
-  }).then(result => {
+  }).then((result) => {
     if (result === 'enable') onProceed();
   });
 }
