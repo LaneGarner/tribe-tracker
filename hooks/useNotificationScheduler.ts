@@ -12,12 +12,15 @@ import {
   markPermissionPrompted,
 } from '../utils/notifications';
 import { registerAndSavePushToken } from '../utils/pushToken';
+import { getChallengeStatus } from '../utils/dateUtils';
 
 export default function useNotificationScheduler(): void {
   const profile = useSelector((state: RootState) => state.profile.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const checkins = useSelector((state: RootState) => state.checkins.data);
-  const participants = useSelector((state: RootState) => state.participants.data);
+  const participants = useSelector(
+    (state: RootState) => state.participants.data
+  );
 
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasPromptedRef = useRef(false);
@@ -25,7 +28,10 @@ export default function useNotificationScheduler(): void {
   const scheduleNotifications = useCallback(() => {
     if (!profile?.id) return;
 
-    const settings = { ...DEFAULT_NOTIFICATION_SETTINGS, ...(profile.notificationSettings ?? {}) };
+    const settings = {
+      ...DEFAULT_NOTIFICATION_SETTINGS,
+      ...(profile.notificationSettings ?? {}),
+    };
 
     evaluateAndScheduleNotifications(
       settings,
@@ -60,7 +66,18 @@ export default function useNotificationScheduler(): void {
   useEffect(() => {
     if (!profile?.id) return;
 
-    const activeChallenges = challenges.filter(c => c.status === 'active');
+    const joinedIds = new Set(
+      participants
+        .filter((p) => p.userId === profile.id)
+        .map((p) => p.challengeId)
+    );
+    const activeChallenges = challenges.filter(
+      (c) =>
+        joinedIds.has(c.id) &&
+        c.status !== 'completed' &&
+        getChallengeStatus(c.startDate, c.endDate || c.startDate, c) ===
+          'active'
+    );
     if (activeChallenges.length === 0) return;
 
     const promptIfNeeded = async () => {
@@ -87,5 +104,5 @@ export default function useNotificationScheduler(): void {
     };
 
     promptIfNeeded();
-  }, [profile?.id, challenges, scheduleNotifications]);
+  }, [profile?.id, challenges, participants, scheduleNotifications]);
 }
