@@ -50,7 +50,7 @@ import { API_URL, isBackendConfigured } from '../config/api';
 import { addParticipant, importParticipant, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
-import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '../utils/dateUtils';
+import { getToday, getChallengeEndDate, formatDate } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
 import HeaderChatButton from '../components/ui/HeaderChatButton';
 import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
@@ -75,6 +75,7 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { showAlert } from '../platform/dialogs/alert';
 import DateField from '../platform/dateTime/DateField';
 import { ResponsiveGrid } from '../components/layout';
+import { getDiscoverChallengeSections } from '../utils/discoverChallenges';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -145,7 +146,15 @@ export default function DiscoverScreen() {
     if (mode === 'browse') {
       const token = getAccessToken();
       if (token) {
-        dispatch(fetchPublicChallenges(token)).finally(() => setInitialFetchDone(true));
+        // User challenge fetch replaces the cache; merge public results afterwards.
+        const refresh = async () => {
+          await Promise.all([
+            dispatch(fetchChallengesFromServer(token)),
+            dispatch(fetchParticipantsFromServer(token)),
+          ]);
+          await dispatch(fetchPublicChallenges(token));
+        };
+        refresh().finally(() => setInitialFetchDone(true));
       }
     }
   }, [mode, dispatch, getAccessToken]);
@@ -232,6 +241,10 @@ export default function DiscoverScreen() {
     await dispatch(loadChallengesFromStorage());
     const token = getAccessToken();
     if (token && isBackendConfigured()) {
+      await Promise.all([
+        dispatch(fetchChallengesFromServer(token)),
+        dispatch(fetchParticipantsFromServer(token)),
+      ]);
       await dispatch(fetchPublicChallenges(token));
     }
     setRefreshing(false);
@@ -242,13 +255,12 @@ export default function DiscoverScreen() {
 
   const profile = useSelector((state: RootState) => state.profile.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
-  const activePublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'active'
+  const participants = useSelector((state: RootState) => state.participants.data);
+  const joinedChallengeIds = new Set(
+    participants.filter(p => p.userId === user?.id).map(p => p.challengeId)
   );
-  const upcomingPublicChallenges = challenges.filter(
-    c => c.isPublic && ['upcoming', 'gap'].includes(getChallengeStatus(c.startDate, c.endDate || c.startDate, c))
-  );
-
+  const { active: activePublicChallenges, upcoming: upcomingChallenges } =
+    getDiscoverChallengeSections(challenges, joinedChallengeIds);
 
   const groupByCategory = (list: Challenge[]) => {
     const groups = new Map<string, Challenge[]>();
@@ -791,6 +803,7 @@ export default function DiscoverScreen() {
           <PublicChallengeCard
             key={challenge.id}
             challenge={challenge}
+            accessLabel={joinedChallengeIds.has(challenge.id) ? 'Joined' : undefined}
             gradientColors={getGradientForIndex(idx)}
             onPress={() =>
               navigation.navigate('ChallengeDetail', {
@@ -926,12 +939,12 @@ export default function DiscoverScreen() {
             renderGroupedChallenges(activePublicChallenges, 0)
           )}
 
-          {upcomingPublicChallenges.length > 0 && (
+          {upcomingChallenges.length > 0 && (
             <>
               <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
                 Upcoming
               </Text>
-              {renderGroupedChallenges(upcomingPublicChallenges, activePublicChallenges.length)}
+              {renderGroupedChallenges(upcomingChallenges, activePublicChallenges.length)}
             </>
           )}
         </>

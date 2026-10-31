@@ -17,12 +17,14 @@ interface PublicChallengeCardProps {
   challenge: Challenge;
   onPress: () => void;
   gradientColors?: [string, string];
+  accessLabel?: string;
 }
 
 export default function PublicChallengeCard({
   challenge,
   onPress,
   gradientColors,
+  accessLabel,
 }: PublicChallengeCardProps) {
   const [bgImageFailed, setBgImageFailed] = useState(false);
   const status = getChallengeStatus(
@@ -85,6 +87,12 @@ export default function PublicChallengeCard({
 
       {/* Status badge */}
       <View style={styles.statusRow}>
+        {accessLabel && (
+          <View style={styles.statusBadge}>
+            <Ionicons name="checkmark-circle-outline" size={12} color="#fff" />
+            <Text style={styles.statusText}>{accessLabel}</Text>
+          </View>
+        )}
         {status === 'active' && (
           <>
             <View style={styles.statusBadge}>
@@ -235,6 +243,8 @@ const styles = StyleSheet.create({
   },
   statusRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     alignItems: 'center',
     justifyContent: 'space-between',
   },
