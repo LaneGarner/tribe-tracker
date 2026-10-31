@@ -35,7 +35,7 @@ const FEATURE_COPY: Record<string, { title: string; subtitle: string }> = {
       'Free includes one active self-created challenge. Pro removes that limit.',
   },
   canGenerateChallenge: {
-    title: 'Create with AI on Pro',
+    title: 'Continue with Pro',
     subtitle:
       'Generate an editable challenge draft, then review every detail before publishing.',
   },
