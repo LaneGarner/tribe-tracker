@@ -248,9 +248,7 @@ export default function DiscoverScreen() {
   const upcomingPublicChallenges = challenges.filter(
     c => c.isPublic && ['upcoming', 'gap'].includes(getChallengeStatus(c.startDate, c.endDate || c.startDate, c))
   );
-  const completedPublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'completed'
-  );
+
 
   const groupByCategory = (list: Challenge[]) => {
     const groups = new Map<string, Challenge[]>();
@@ -934,15 +932,6 @@ export default function DiscoverScreen() {
                 Upcoming
               </Text>
               {renderGroupedChallenges(upcomingPublicChallenges, activePublicChallenges.length)}
-            </>
-          )}
-
-          {completedPublicChallenges.length > 0 && (
-            <>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
-                Completed
-              </Text>
-              {renderGroupedChallenges(completedPublicChallenges, activePublicChallenges.length + upcomingPublicChallenges.length)}
             </>
           )}
         </>
