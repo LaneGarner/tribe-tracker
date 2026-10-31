@@ -23,10 +23,11 @@ import { CHALLENGE_CATEGORIES, getCategoryLabel } from '../constants/categories'
 import { updateProfile } from '../redux/slices/profileSlice';
 import { addParticipant } from '../redux/slices/participantsSlice';
 import { RootState } from '../redux/store';
+import { importChallenge } from '../redux/slices/challengesSlice';
 import { RootStackParamList, ChallengeParticipant } from '../types';
 import { showAlert } from '../platform/dialogs/alert';
 import {
-  fetchChallengeMatches,
+  findOnboardingChallenges,
   MatchChallengeResult,
 } from '../utils/matchChallenges';
 import { setWizardSeen } from '../utils/storage';
@@ -91,7 +92,9 @@ export default function OnboardingWizardScreen() {
   const dispatch = useDispatch();
   const { user, getAccessToken } = useAuth();
   const profile = useSelector((state: RootState) => state.profile.data);
-  const { requireCapability } = useCapabilityGate();
+  const challenges = useSelector((state: RootState) => state.challenges.data);
+  const participants = useSelector((state: RootState) => state.participants.data);
+  const { hasCapability } = useCapabilityGate();
   const { ensureAIConsent } = useAIConsent();
 
   const [step, setStep] = useState<Step>(1);
@@ -172,22 +175,21 @@ export default function OnboardingWizardScreen() {
   };
 
   const findMatches = async () => {
-    if (!(await ensureAIConsent('challenge_matching'))) return;
     setLoadingMatches(true);
     try {
-      const token = getAccessToken();
-      if (!token) {
-        setMatches([]);
-        setStep(4);
-        return;
-      }
-      const result = await fetchChallengeMatches(token, {
+      const result = await findOnboardingChallenges(getAccessToken(), {
         goals,
         goalSpecifics,
         startingPoint: startingPoint || undefined,
         challengeStyle: challengeStyle || undefined,
         desiredHabits,
+      }, {
+        canUseAI: hasCapability('canGenerateChallenge'),
+        ensureAIConsent: () => ensureAIConsent('challenge_matching'),
+        cachedChallenges: challenges,
+        joinedIds: new Set(participants.filter(p => p.userId === user?.id).map(p => p.challengeId)),
       });
+      setSelectedChallengeIds(new Set());
       setMatches(result);
       setStep(4);
     } finally {
@@ -196,9 +198,7 @@ export default function OnboardingWizardScreen() {
   };
 
   const handleFindMatches = () => {
-    requireCapability('canGenerateChallenge', () => {
-      void findMatches();
-    });
+    void findMatches();
   };
 
   const toggleSelectMatch = (challengeId: string) => {
@@ -218,6 +218,7 @@ export default function OnboardingWizardScreen() {
     matches
       .filter(m => selectedChallengeIds.has(m.challengeId))
       .forEach(match => {
+        dispatch(importChallenge(match.challenge));
         const participation: ChallengeParticipant = {
           id: Crypto.randomUUID(),
           challengeId: match.challengeId,
@@ -261,22 +262,10 @@ export default function OnboardingWizardScreen() {
     exitAfterComplete();
   };
 
-  const handleCreateChallengeFromEmpty = async () => {
-    const allowed = requireCapability('canCreatePersonalChallenge', () => {});
-    if (!allowed) return;
+  const handleBrowseChallenges = async () => {
     await setWizardSeen();
     completeOnboarding();
-    if (fromDiscover) {
-      navigation.replace('CreateChallenge', { mode: 'create' });
-      return;
-    }
-    navigation.reset({
-      index: 1,
-      routes: [
-        { name: 'Main' },
-        { name: 'CreateChallenge', params: { mode: 'create' } },
-      ],
-    });
+    navigation.reset({ index: 0, routes: [{ name: 'Main', params: { screen: 'Discover' } }] });
   };
 
   const canContinueStep1 = goals.length > 0;
@@ -613,21 +602,21 @@ export default function OnboardingWizardScreen() {
                   ]}
                 >
                   <Text style={[styles.emptyBody, { color: colors.text }]}>
-                    You can create your own challenge right now.
+                    You can browse existing challenges or finish setup and join one later.
                   </Text>
                   <TouchableOpacity
-                    onPress={handleCreateChallengeFromEmpty}
+                    onPress={handleBrowseChallenges}
                     style={[
                       styles.primaryButton,
                       { backgroundColor: colors.primary, marginTop: 16 },
                     ]}
                     accessibilityRole="button"
-                    accessibilityLabel="Create challenge"
+                    accessibilityLabel="Browse challenges"
                   >
                     <Text
                       style={[styles.primaryButtonText, { color: '#fff' }]}
                     >
-                      Create challenge
+                      Browse challenges
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -904,7 +893,7 @@ export default function OnboardingWizardScreen() {
                 onPress={handleFindMatches}
                 disabled={loadingMatches}
                 accessibilityRole="button"
-                accessibilityLabel="Find my matches"
+                accessibilityLabel="Find challenges"
               >
                 {loadingMatches ? (
                   <ActivityIndicator color={colors.text} />
@@ -912,7 +901,7 @@ export default function OnboardingWizardScreen() {
                   <Text
                     style={[styles.primaryButtonText, { color: '#fff' }]}
                   >
-                    Find my matches
+                    Find challenges
                   </Text>
                 )}
               </TouchableOpacity>
@@ -921,6 +910,14 @@ export default function OnboardingWizardScreen() {
 
           {step === 4 && matches.length > 0 && (
             <View style={styles.footerRow}>
+              <TouchableOpacity
+                style={[styles.secondaryButton, { borderColor: colors.border }]}
+                onPress={handleSkipMatches}
+                accessibilityRole="button"
+                accessibilityLabel="Finish setup without joining a challenge"
+              >
+                <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Skip for now</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
