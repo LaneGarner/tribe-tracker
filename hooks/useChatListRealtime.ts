@@ -89,7 +89,7 @@ export function useChatListRealtime() {
         newDmChannelRef.current = null;
       }
     };
-  }, [user?.id]);
+  }, [user?.id, session?.access_token, dispatch]);
 
   useEffect(() => {
     if (!user?.id || !isSupabaseConfigured() || !conversationIdString) return;
@@ -200,7 +200,11 @@ export function useChatListRealtime() {
     };
 
     const intervalId = setInterval(poll, 5000);
-    const sub = AppState.addEventListener('change', (s: AppStateStatus) => { appState = s; });
+    const sub = AppState.addEventListener('change', (s: AppStateStatus) => {
+      appState = s;
+      if (s === 'active') poll();
+    });
+    poll();
 
     return () => {
       clearInterval(intervalId);

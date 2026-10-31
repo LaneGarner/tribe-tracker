@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext, getColors } from '../../theme/ThemeContext';
 import { Challenge } from '../../types';
-import { formatDate, getDaysRemaining } from '../../utils/dateUtils';
+import { getDaysRemaining } from '../../utils/dateUtils';
 
 interface ReadOnlyHabitListProps {
   challenge: Challenge;
@@ -36,11 +36,12 @@ export default function ReadOnlyHabitList({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }, glassStyle]}>
-      <View style={styles.header}>
-        <View style={styles.headerInfo}>
-          <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-          <Text style={[styles.headerText, { color: colors.textSecondary }]}>
-            Starts {formatDate(challenge.startDate, 'MMM D')} ({daysUntilStart} day{daysUntilStart !== 1 ? 's' : ''})
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <View style={[styles.headerInfo, { backgroundColor: colors.primary + '18' }]}>
+          <Ionicons name="time-outline" size={16} color={colors.primary} />
+          <Text style={[styles.headerText, { color: colors.primary }]}>
+            Upcoming ·{' '}
+            Starts in {daysUntilStart} day{daysUntilStart !== 1 ? 's' : ''}
           </Text>
         </View>
       </View>
@@ -50,12 +51,12 @@ export default function ReadOnlyHabitList({
           key={index}
           style={[
             styles.habitRow,
-            { borderBottomColor: colors.border },
+            { borderBottomColor: colors.border, backgroundColor: colors.background },
             index === challenge.habits.length - 1 && styles.lastRow,
           ]}
         >
           <View style={[styles.bullet, { borderColor: colors.border }]} />
-          <Text style={[styles.habitText, { color: colors.text }]}>
+          <Text style={[styles.habitText, { color: colors.textSecondary }]}>
             {habit}
           </Text>
         </View>
@@ -81,8 +82,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexShrink: 1,
   },
   headerText: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '500',
   },

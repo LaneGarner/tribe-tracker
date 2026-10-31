@@ -88,6 +88,20 @@ describe('chatSlice', () => {
     jest.clearAllMocks();
   });
 
+  it('badges generated recaps once, clears on read, and suppresses while open', () => {
+    const recap = makeMessage({ id: 'recap', senderId: null as any, senderName: 'TribeTracker', type: 'system', content: 'Weekly recap' });
+    let state = reducer(initialState, setConversations([makeConversation()]));
+    state = reducer(state, addRealtimeMessage(recap));
+    expect(state.conversations[0].unreadCount).toBe(1);
+    state = reducer(state, addRealtimeMessage(recap));
+    expect(state.conversations[0].unreadCount).toBe(1);
+    state = reducer(state, markConversationRead('conv1'));
+    expect(state.conversations[0].unreadCount).toBe(0);
+    state = reducer(state, setActiveConversation('conv1'));
+    state = reducer(state, addRealtimeMessage({ ...recap, id: 'recap-2' }));
+    expect(state.conversations[0].unreadCount).toBe(0);
+  });
+
   describe('initial state', () => {
     it('should return the initial state', () => {
       const state = reducer(undefined, { type: 'unknown' });

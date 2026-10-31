@@ -50,6 +50,7 @@ import {
 } from './utils/pendingInvite';
 import { configureNotificationHandler } from './utils/notifications';
 import useNotificationScheduler from './hooks/useNotificationScheduler';
+import { useChatListRealtime } from './hooks/useChatListRealtime';
 import { registerAndSavePushToken } from './utils/pushToken';
 import { lockPortraitOrientation } from './utils/screenOrientation';
 import { linking } from './navigation/linking';
@@ -73,6 +74,7 @@ function AppContent() {
 
   // Schedule notifications based on state
   useNotificationScheduler();
+  useChatListRealtime();
 
   // Load data from storage on app start
   useEffect(() => {

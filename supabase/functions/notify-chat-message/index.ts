@@ -19,7 +19,16 @@ Deno.serve(async (req) => {
   try {
     const { conversationId, senderId, senderName, content } = await req.json();
 
-    if (!conversationId || !senderId) {
+    // Generated messages have no user sender. Only the backend service may
+    // request those notifications; never let clients impersonate the system.
+    const isSystemMessage = senderId === null;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (isSystemMessage && (!serviceKey || req.headers.get("Authorization") !== `Bearer ${serviceKey}`)) {
+      return new Response(JSON.stringify({ error: "Unauthorized system message" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!conversationId || (!senderId && !isSystemMessage)) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -48,12 +57,13 @@ Deno.serve(async (req) => {
     const isGroupChat = conversation.type === "group";
 
     // Get all active members of the conversation (excluding sender)
-    const { data: members, error: membersError } = await supabase
+    let membersQuery = supabase
       .from("conversation_members")
       .select("user_id")
       .eq("conversation_id", conversationId)
-      .eq("status", "active")
-      .neq("user_id", senderId);
+      .eq("status", "active");
+    if (!isSystemMessage) membersQuery = membersQuery.neq("user_id", senderId);
+    const { data: members, error: membersError } = await membersQuery;
 
     if (membersError || !members || members.length === 0) {
       return new Response(JSON.stringify({ ok: true }), {
