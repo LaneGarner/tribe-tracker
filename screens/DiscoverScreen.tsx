@@ -916,14 +916,22 @@ export default function DiscoverScreen() {
       </TouchableOpacity>
 
 
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Active
-      </Text>
-
       {!initialFetchDone ? (
         <PublicChallengeListSkeleton count={3} />
       ) : (
         <>
+          {upcomingChallenges.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Upcoming
+              </Text>
+              {renderGroupedChallenges(upcomingChallenges, 0)}
+            </>
+          )}
+
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: upcomingChallenges.length > 0 ? 24 : 0 }]}>
+            Active
+          </Text>
           {activePublicChallenges.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons
@@ -936,17 +944,10 @@ export default function DiscoverScreen() {
               </Text>
             </View>
           ) : (
-            renderGroupedChallenges(activePublicChallenges, 0)
+            renderGroupedChallenges(activePublicChallenges, upcomingChallenges.length)
           )}
 
-          {upcomingChallenges.length > 0 && (
-            <>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
-                Upcoming
-              </Text>
-              {renderGroupedChallenges(upcomingChallenges, activePublicChallenges.length)}
-            </>
-          )}
+
         </>
       )}
     </>
