@@ -63,9 +63,7 @@ export default function ProfileScreen() {
   // For viewing other users, use memoized selector
   const selectParticipantsByUserId = useMemo(makeSelectParticipantsByUserId, []);
   const participants = useSelector((state: RootState) =>
-    isOwnProfile
-      ? state.participants.data
-      : selectParticipantsByUserId(state, targetUserId || '')
+    selectParticipantsByUserId(state, targetUserId || '')
   );
 
   // Get user info for display (from profile for own, from participant for others)
@@ -133,7 +131,7 @@ export default function ProfileScreen() {
     });
   }, [navigation, colors.primary, isEditing, isOwnProfile]);
 
-  const userParticipations = participants.filter(p => p.userId === targetUserId);
+  const userParticipations = participants;
   const totalPoints = userParticipations.reduce(
     (sum, p) => sum + p.totalPoints,
     0
@@ -148,10 +146,24 @@ export default function ProfileScreen() {
     0
   );
 
+  const challengesById = useMemo(() => new Map(challenges.map(c => [c.id, c])), [challenges]);
+  const checkinDatesByChallenge = useMemo(() => {
+    const dates = new Map<string, string[]>();
+    for (const checkin of checkins) {
+      if (checkin.userId !== targetUserId) continue;
+      const challenge = challengesById.get(checkin.challengeId);
+      if (challenge?.startDate && checkin.checkinDate < challenge.startDate) continue;
+      const list = dates.get(checkin.challengeId) || [];
+      list.push(checkin.checkinDate);
+      dates.set(checkin.challengeId, list);
+    }
+    return dates;
+  }, [checkins, targetUserId, challengesById]);
+
   // Enrich participations with challenge data and calculate active streaks
   const enrichedParticipations = useMemo(() => {
     return userParticipations.map(participation => {
-      const challenge = challenges.find(c => c.id === participation.challengeId);
+      const challenge = challengesById.get(participation.challengeId);
       const isCreator = challenge?.creatorId === targetUserId;
       const daysLeft = challenge?.endDate
         ? Math.max(0, dayjs(challenge.endDate).diff(dayjs(), 'day'))
@@ -166,14 +178,7 @@ export default function ProfileScreen() {
       }
 
       // Calculate active streak from checkin data
-      const participantCheckinDates = checkins
-        .filter(
-          c =>
-            c.challengeId === participation.challengeId &&
-            c.userId === participation.userId &&
-            (!challenge?.startDate || c.checkinDate >= challenge.startDate)
-        )
-        .map(c => c.checkinDate);
+      const participantCheckinDates = checkinDatesByChallenge.get(participation.challengeId) || [];
       const activeStreak = calculateActiveStreak(participantCheckinDates);
 
       return {
@@ -185,7 +190,7 @@ export default function ProfileScreen() {
         activeStreak,
       };
     });
-  }, [userParticipations, challenges, targetUserId, checkins]);
+  }, [userParticipations, challengesById, targetUserId, checkinDatesByChallenge]);
 
   const handleSave = () => {
     dispatch(updateProfile({

@@ -11,22 +11,11 @@ import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { EyeOff } from 'lucide-react-native';
+import { getInitials } from '../utils/avatarInitials';
 import { ANONYMOUS_PHOTO_SENTINEL } from '../utils/pseudonyms';
 
 const AVATAR_GRADIENT = ['#60A5FA', '#A855F7'] as [string, string];
 const ANONYMOUS_GRADIENT = ['#6B7280', '#9CA3AF'] as [string, string];
-
-function getInitials(name?: string, email?: string): string {
-  if (name) {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    return parts[0][0].toUpperCase();
-  }
-  if (email) return email[0].toUpperCase();
-  return '?';
-}
 
 interface AvatarProps {
   imageUrl?: string | null;

@@ -58,6 +58,13 @@ import { parsePendingDeepLink } from './utils/deepLinks';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
+// Keep store subscriptions for background work out of the navigation shell.
+function BackgroundTasks() {
+  useNotificationScheduler();
+  useChatListRealtime();
+  return null;
+}
+
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
   const { colorScheme } = useContext(ThemeContext);
@@ -71,10 +78,6 @@ function AppContent() {
       configureNotificationHandler();
     }
   }, []);
-
-  // Schedule notifications based on state
-  useNotificationScheduler();
-  useChatListRealtime();
 
   // Load data from storage on app start
   useEffect(() => {
@@ -233,6 +236,7 @@ export default function App() {
           <AuthProvider>
             <MembershipProvider>
               <AIConsentProvider>
+                <BackgroundTasks />
                 <AppContent />
               </AIConsentProvider>
             </MembershipProvider>

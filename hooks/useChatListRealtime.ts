@@ -193,10 +193,15 @@ export function useChatListRealtime() {
     if (!session?.access_token || !isBackendConfigured()) return;
 
     let appState = AppState.currentState;
-
-    const poll = () => {
-      if (appState !== 'active') return;
-      dispatch(fetchConversationsFromServer(session.access_token!));
+    let inFlight = false;
+    const poll = async () => {
+      if (appState !== 'active' || inFlight) return;
+      inFlight = true;
+      try {
+        await dispatch(fetchConversationsFromServer(session.access_token!));
+      } finally {
+        inFlight = false;
+      }
     };
 
     const intervalId = setInterval(poll, 5000);

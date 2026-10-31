@@ -28,6 +28,7 @@ jest.mock('../../config/api', () => ({
 import reducer, {
   setConversations,
   fetchMessagesFromServer,
+  fetchConversationsFromServer,
   addConversation,
   updateConversation,
   addMessage,
@@ -116,6 +117,21 @@ describe('chatSlice', () => {
     expect(state.messageLoadStatus?.conv1).toBe('ready');
     state = reducer(state, fetchMessagesFromServer.pending('page', { ...arg, cursor: 'older' }));
     expect(state.messageLoadStatus?.conv1).toBe('ready');
+  });
+
+  it('preserves unchanged conversation references and skips polling storage writes', async () => {
+    const conversations = [makeConversation()];
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ conversations: JSON.parse(JSON.stringify(conversations)) }) });
+    try {
+      const result = await fetchConversationsFromServer('token')(
+        jest.fn(), () => ({ chat: { ...initialState, conversations } }) as any, undefined
+      );
+      expect(result.payload).toBe(conversations);
+      expect(saveConversations).not.toHaveBeenCalled();
+    } finally {
+      global.fetch = originalFetch;
+    }
   });
 
   describe('initial state', () => {

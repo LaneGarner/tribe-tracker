@@ -101,13 +101,16 @@ export const loadChatFromStorage = createAsyncThunk(
 
 export const fetchConversationsFromServer = createAsyncThunk(
   'chat/fetchConversationsFromServer',
-  async (token: string) => {
+  async (token: string, { getState }) => {
     const response = await fetch(`${API_URL}/api/conversations`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error('Failed to fetch conversations');
     const data = await response.json();
     const conversations: Conversation[] = data.conversations || [];
+    const previous = (getState() as RootState).chat.conversations;
+    // Preserve references and skip disk writes when fallback polling has no changes.
+    if (JSON.stringify(previous) === JSON.stringify(conversations)) return previous;
     await saveConversations(conversations);
     return conversations;
   }
