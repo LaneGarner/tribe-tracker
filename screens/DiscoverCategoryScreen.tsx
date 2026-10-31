@@ -15,6 +15,7 @@ import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
 import { PublicChallengeListSkeleton } from '../components/challenge/PublicChallengeCardSkeleton';
 import { ResponsiveGrid } from '../components/layout';
 import { isBackendConfigured } from '../config/api';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 export default function DiscoverCategoryScreen() {
   const { params } = useRoute<RouteProp<RootStackParamList, 'DiscoverCategory'>>();
@@ -23,6 +24,7 @@ export default function DiscoverCategoryScreen() {
   const { user, getAccessToken } = useAuth();
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
+  const { gutter, insets } = useResponsiveLayout();
   const category = CHALLENGE_CATEGORIES.find(c => c.key === params.categoryKey);
   const challenges = useSelector((state: RootState) => state.challenges.data);
   const participants = useSelector((state: RootState) => state.participants.data);
@@ -67,7 +69,7 @@ export default function DiscoverCategoryScreen() {
         onPress={() => navigation.navigate('ChallengeDetail', { challengeId: challenge.id })} />
     ));
     return (
-      <View>
+      <View style={styles.section}>
         <Text accessibilityRole="header" style={[styles.heading, { color: colors.text }]}>{title} · {list.length}</Text>
         {Platform.OS === 'web'
           ? <ResponsiveGrid compactColumns={1} mediumColumns={2} wideColumns={3}>{cards}</ResponsiveGrid>
@@ -77,7 +79,11 @@ export default function DiscoverCategoryScreen() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={styles.content}
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={[styles.content, {
+      paddingLeft: gutter + insets.left,
+      paddingRight: gutter + insets.right,
+      paddingBottom: Math.max(insets.bottom, 24) + 24,
+    }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => {
         setRefreshing(true);
         try { await refresh(); } finally { setRefreshing(false); }
@@ -95,7 +101,8 @@ export default function DiscoverCategoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 16, paddingBottom: 40, width: '100%', maxWidth: 1200, alignSelf: 'center' },
-  heading: { fontSize: 22, fontWeight: '700', marginHorizontal: 20, marginTop: 20, marginBottom: 12 },
+  content: { paddingTop: 24, width: '100%', maxWidth: 1200, alignSelf: 'center' },
+  section: { marginBottom: 24 },
+  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
   notice: { margin: 24, textAlign: 'center', fontSize: 16 },
 });

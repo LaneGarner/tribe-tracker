@@ -792,25 +792,24 @@ export default function DiscoverScreen() {
     ]);
   };
 
-  const renderGroupedChallenges = (list: Challenge[], startIndex: number, upcoming = false) => {
+  const renderChallengeCard = (challenge: Challenge, idx: number) => (
+    <PublicChallengeCard
+      key={challenge.id}
+      challenge={challenge}
+      accessLabel={joinedChallengeIds.has(challenge.id) ? 'Joined' : undefined}
+      gradientColors={getGradientForIndex(idx)}
+      onPress={() =>
+        navigation.navigate('ChallengeDetail', {
+          challengeId: challenge.id,
+        })
+      }
+    />
+  );
+
+  const renderGroupedChallenges = (list: Challenge[], startIndex: number) => {
     let flatIndex = startIndex;
     return groupByCategory(list).map(({ category: cat, challenges: grouped }) => {
-      const cards = rankDiscoverChallenges(grouped, upcoming).slice(0, upcoming ? 6 : 3).map((challenge) => {
-        const idx = flatIndex++;
-        return (
-          <PublicChallengeCard
-            key={challenge.id}
-            challenge={challenge}
-            accessLabel={joinedChallengeIds.has(challenge.id) ? 'Joined' : undefined}
-            gradientColors={getGradientForIndex(idx)}
-            onPress={() =>
-              navigation.navigate('ChallengeDetail', {
-                challengeId: challenge.id,
-              })
-            }
-          />
-        );
-      });
+      const cards = rankDiscoverChallenges(grouped).slice(0, 3).map(challenge => renderChallengeCard(challenge, flatIndex++));
 
       return <View key={cat.key}>
         <View
@@ -932,7 +931,11 @@ export default function DiscoverScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Upcoming
               </Text>
-              {renderGroupedChallenges(upcomingChallenges, 0, true)}
+              {Platform.OS === 'web' ? (
+                <ResponsiveGrid compactColumns={1} mediumColumns={2} wideColumns={3} gap={16}>
+                  {rankDiscoverChallenges(upcomingChallenges, true).map(renderChallengeCard)}
+                </ResponsiveGrid>
+              ) : rankDiscoverChallenges(upcomingChallenges, true).map(renderChallengeCard)}
             </>
           )}
 
