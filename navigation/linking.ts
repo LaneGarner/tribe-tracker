@@ -18,6 +18,7 @@ export const linkingConfig: LinkingOptions<RootStackParamList>['config'] = {
     },
     CreateChallenge: 'invite/:inviteCode',
     ChallengeDetail: 'challenge/:challengeId',
+    DiscoverCategory: 'discover/category/:categoryKey',
     ViewMember: 'members/:userId',
     TaskAnalytics: 'challenge/:challengeId/analytics',
     OrganizationInvite: 'organization-invite/:token',

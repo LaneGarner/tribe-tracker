@@ -27,6 +27,7 @@ describe('primary web route mappings', () => {
 describe('addressable feature routes', () => {
   it.each([
     ['ViewMember', { userId: 'user_123' }, '/members/user_123'],
+    ['DiscoverCategory', { categoryKey: 'Mental Health' }, '/discover/category/Mental%20Health'],
     ['TaskAnalytics', { challengeId: 'challenge-42' }, '/challenge/challenge-42/analytics'],
     ['Profile', { userId: 'user_123' }, '/profile/user_123'],
     ['PrivacyCenter', undefined, '/settings/privacy'],

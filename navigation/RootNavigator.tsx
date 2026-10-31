@@ -15,6 +15,7 @@ import AuthScreen from '../screens/AuthScreen';
 // Core screens
 import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
+import DiscoverCategoryScreen from '../screens/DiscoverCategoryScreen';
 import TaskAnalyticsScreen from '../screens/TaskAnalyticsScreen';
 
 // Profile & Settings screens
@@ -182,6 +183,7 @@ export default function RootNavigator() {
           ) : null}
 
           {/* Core screens */}
+          <Stack.Screen name="DiscoverCategory" component={DiscoverCategoryScreen} options={{ title: 'Challenges' }} />
           <Stack.Screen
             name="ChallengeDetail"
             component={ChallengeDetailScreen}

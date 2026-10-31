@@ -75,7 +75,7 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { showAlert } from '../platform/dialogs/alert';
 import DateField from '../platform/dateTime/DateField';
 import { ResponsiveGrid } from '../components/layout';
-import { getDiscoverChallengeSections } from '../utils/discoverChallenges';
+import { getDiscoverChallengeSections, rankDiscoverChallenges, discoverCategoryKey } from '../utils/discoverChallenges';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -265,9 +265,7 @@ export default function DiscoverScreen() {
   const groupByCategory = (list: Challenge[]) => {
     const groups = new Map<string, Challenge[]>();
     for (const c of list) {
-      const key = c.category || DEFAULT_CATEGORY;
-      // Map unrecognized categories to general
-      const resolvedKey = CHALLENGE_CATEGORIES.some(cat => cat.key === key) ? key : DEFAULT_CATEGORY;
+      const resolvedKey = discoverCategoryKey(c);
       const existing = groups.get(resolvedKey) || [];
       existing.push(c);
       groups.set(resolvedKey, existing);
@@ -794,10 +792,10 @@ export default function DiscoverScreen() {
     ]);
   };
 
-  const renderGroupedChallenges = (list: Challenge[], startIndex: number) => {
+  const renderGroupedChallenges = (list: Challenge[], startIndex: number, upcoming = false) => {
     let flatIndex = startIndex;
     return groupByCategory(list).map(({ category: cat, challenges: grouped }) => {
-      const cards = grouped.map((challenge) => {
+      const cards = rankDiscoverChallenges(grouped, upcoming).slice(0, upcoming ? 6 : 3).map((challenge) => {
         const idx = flatIndex++;
         return (
           <PublicChallengeCard
@@ -832,11 +830,20 @@ export default function DiscoverScreen() {
             {cat.label}
           </Text>
         </View>
+
         {Platform.OS === 'web' ? (
           <ResponsiveGrid compactColumns={1} mediumColumns={2} wideColumns={3} gap={16}>
             {cards}
           </ResponsiveGrid>
         ) : cards}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('DiscoverCategory', { categoryKey: cat.key })}
+          accessibilityRole="button"
+          accessibilityLabel={`Show all ${cat.label} challenges`}
+          style={{ alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 12 }}
+        >
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Show all</Text>
+        </TouchableOpacity>
       </View>
     });
   };
@@ -925,7 +932,7 @@ export default function DiscoverScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Upcoming
               </Text>
-              {renderGroupedChallenges(upcomingChallenges, 0)}
+              {renderGroupedChallenges(upcomingChallenges, 0, true)}
             </>
           )}
 

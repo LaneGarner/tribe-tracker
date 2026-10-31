@@ -253,6 +253,7 @@ export type RootStackParamList = {
   Auth: undefined;
   Main: NavigatorScreenParams<TabParamList> | undefined;
   ChallengeDetail: { challengeId: string };
+  DiscoverCategory: { categoryKey: string };
   CreateChallenge: { mode?: 'browse' | 'create' | 'join'; challengeId?: string; inviteCode?: string } | undefined;
   ViewMember: { userId: string };
   TaskAnalytics: { challengeId: string };

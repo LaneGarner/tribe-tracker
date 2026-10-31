@@ -1,4 +1,4 @@
-import { getDiscoverChallengeSections } from '../../utils/discoverChallenges';
+import { getDiscoverChallengeSections, discoverCategoryKey, rankDiscoverChallenges } from '../../utils/discoverChallenges';
 import { Challenge } from '../../types';
 
 const challenge = (id: string, overrides: Partial<Challenge> = {}): Challenge => ({
@@ -34,4 +34,27 @@ it('keeps active browsing public and orders upcoming challenges by start date', 
   ], new Set(['private-active']));
   expect(active.map(c => c.id)).toEqual(['active']);
   expect(upcoming.map(c => c.id)).toEqual(['sooner', 'later']);
+});
+
+it('ranks active challenges by participation without mutating the full category list', () => {
+  const list = Array.from({ length: 8 }, (_, i) => challenge(String(i), { participantCount: i }));
+  const ranked = rankDiscoverChallenges(list);
+  expect(ranked.slice(0, 3).map(c => c.id)).toEqual(['7', '6', '5']);
+  expect(ranked).toHaveLength(8);
+  expect(list[0].id).toBe('0');
+});
+
+it('prioritizes nearest upcoming starts before popularity and keeps all results available', () => {
+  const list = Array.from({ length: 8 }, (_, i) => challenge(String(i), {
+    startDate: `2026-11-${String(i + 1).padStart(2, '0')}`, participantCount: i,
+  }));
+  const ranked = rankDiscoverChallenges(list, true);
+  expect(ranked.slice(0, 6).map(c => c.id)).toEqual(['0', '1', '2', '3', '4', '5']);
+  expect(ranked).toHaveLength(8);
+});
+
+it('maps legacy and missing categories to General consistently', () => {
+  expect(discoverCategoryKey(challenge('unknown', { category: 'Unknown' }))).toBe('General');
+  expect(discoverCategoryKey(challenge('missing'))).toBe('General');
+  expect(discoverCategoryKey(challenge('health', { category: 'Health' }))).toBe('Health');
 });
