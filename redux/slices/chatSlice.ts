@@ -20,6 +20,7 @@ interface ChatState {
   messageCursors: Record<string, string | null>;
   hasMoreMessages: Record<string, boolean>;
   activeConversationId: string | null;
+  messageLoadStatus?: Record<string, 'loading' | 'ready' | 'error'>;
 }
 
 function mergeMessage(state: ChatState, msg: ChatMessage): boolean {
@@ -325,7 +326,20 @@ const chatSlice = createSlice({
         state.error = action.error.message || 'Failed to fetch conversations';
         state.loading = false;
       })
+      .addCase(fetchMessagesFromServer.pending, (state, action) => {
+        if (!action.meta.arg.cursor) {
+          (state.messageLoadStatus ??= {})[action.meta.arg.conversationId] = 'loading';
+        }
+      })
+      .addCase(fetchMessagesFromServer.rejected, (state, action) => {
+        if (!action.meta.arg.cursor) {
+          (state.messageLoadStatus ??= {})[action.meta.arg.conversationId] = 'error';
+        }
+      })
       .addCase(fetchMessagesFromServer.fulfilled, (state, action) => {
+        if (!action.meta.arg.cursor) {
+          (state.messageLoadStatus ??= {})[action.payload.conversationId] = 'ready';
+        }
         const { conversationId, messages, hasMore, isLoadingMore } = action.payload;
         // Preserve reactions / optimistic flags from existing entries
         const prevById = new Map<string, ChatMessage>();

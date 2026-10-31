@@ -27,6 +27,7 @@ jest.mock('../../config/api', () => ({
 
 import reducer, {
   setConversations,
+  fetchMessagesFromServer,
   addConversation,
   updateConversation,
   addMessage,
@@ -100,6 +101,21 @@ describe('chatSlice', () => {
     state = reducer(state, setActiveConversation('conv1'));
     state = reducer(state, addRealtimeMessage({ ...recap, id: 'recap-2' }));
     expect(state.conversations[0].unreadCount).toBe(0);
+  });
+
+  it('tracks first message loads separately from pagination and other conversations', () => {
+    const arg = { token: 'token', conversationId: 'conv1' };
+    let state = reducer(initialState, fetchMessagesFromServer.pending('load', arg));
+    expect(state.messageLoadStatus?.conv1).toBe('loading');
+    expect(state.messageLoadStatus?.conv2).toBeUndefined();
+    state = reducer(state, fetchMessagesFromServer.rejected(new Error('Offline'), 'load', arg));
+    expect(state.messageLoadStatus?.conv1).toBe('error');
+    state = reducer(state, fetchMessagesFromServer.pending('retry', arg));
+    expect(state.messageLoadStatus?.conv1).toBe('loading');
+    state = reducer(state, fetchMessagesFromServer.fulfilled({ conversationId: 'conv1', messages: [], hasMore: false, isLoadingMore: false }, 'retry', arg));
+    expect(state.messageLoadStatus?.conv1).toBe('ready');
+    state = reducer(state, fetchMessagesFromServer.pending('page', { ...arg, cursor: 'older' }));
+    expect(state.messageLoadStatus?.conv1).toBe('ready');
   });
 
   describe('initial state', () => {
