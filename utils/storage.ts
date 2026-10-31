@@ -1,3 +1,6 @@
+import { current, isDraft } from '@reduxjs/toolkit';
+import { createWriteQueue } from './writeQueue';
+import { serializeMessageCache } from './messageCache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Challenge,
@@ -11,6 +14,13 @@ import {
   BlockedUser,
 } from '../types';
 import { API_URL } from '../config/api';
+
+const storageWrites = createWriteQueue();
+function queueJSON(key: string, value: unknown) {
+  // Reducers pass Immer drafts, which are revoked when the reducer returns.
+  const snapshot = isDraft(value) ? current(value as any) : value;
+  return storageWrites.enqueue(key, () => AsyncStorage.setItem(key, JSON.stringify(snapshot)));
+}
 
 // Storage keys
 const KEYS = {
@@ -36,7 +46,7 @@ const KEYS = {
 // Challenge storage functions
 export const saveChallenges = async (challenges: Challenge[]) => {
   try {
-    await AsyncStorage.setItem(KEYS.CHALLENGES, JSON.stringify(challenges));
+    await queueJSON(KEYS.CHALLENGES, challenges);
   } catch (error) {
     console.error('Error saving challenges:', error);
   }
@@ -44,6 +54,7 @@ export const saveChallenges = async (challenges: Challenge[]) => {
 
 export const loadChallenges = async (): Promise<Challenge[]> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.CHALLENGES);
     return data ? JSON.parse(data) : [];
   } catch (error) {
@@ -55,7 +66,7 @@ export const loadChallenges = async (): Promise<Challenge[]> => {
 // Participants storage functions
 export const saveParticipants = async (participants: ChallengeParticipant[]) => {
   try {
-    await AsyncStorage.setItem(KEYS.PARTICIPANTS, JSON.stringify(participants));
+    await queueJSON(KEYS.PARTICIPANTS, participants);
   } catch (error) {
     console.error('Error saving participants:', error);
   }
@@ -63,6 +74,7 @@ export const saveParticipants = async (participants: ChallengeParticipant[]) => 
 
 export const loadParticipants = async (): Promise<ChallengeParticipant[]> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.PARTICIPANTS);
     return data ? JSON.parse(data) : [];
   } catch (error) {
@@ -74,7 +86,7 @@ export const loadParticipants = async (): Promise<ChallengeParticipant[]> => {
 // Checkins storage functions
 export const saveCheckins = async (checkins: HabitCheckin[]) => {
   try {
-    await AsyncStorage.setItem(KEYS.CHECKINS, JSON.stringify(checkins));
+    await queueJSON(KEYS.CHECKINS, checkins);
   } catch (error) {
     console.error('Error saving checkins:', error);
   }
@@ -82,6 +94,7 @@ export const saveCheckins = async (checkins: HabitCheckin[]) => {
 
 export const loadCheckins = async (): Promise<HabitCheckin[]> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.CHECKINS);
     return data ? JSON.parse(data) : [];
   } catch (error) {
@@ -93,7 +106,7 @@ export const loadCheckins = async (): Promise<HabitCheckin[]> => {
 // Profile storage functions
 export const saveProfile = async (profile: UserProfile) => {
   try {
-    await AsyncStorage.setItem(KEYS.PROFILE, JSON.stringify(profile));
+    await queueJSON(KEYS.PROFILE, profile);
   } catch (error) {
     console.error('Error saving profile:', error);
   }
@@ -101,6 +114,7 @@ export const saveProfile = async (profile: UserProfile) => {
 
 export const loadProfile = async (): Promise<UserProfile | null> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.PROFILE);
     return data ? JSON.parse(data) : null;
   } catch (error) {
@@ -120,6 +134,7 @@ export const saveChallengeOrder = async (order: string[]) => {
 
 export const loadChallengeOrder = async (): Promise<string[]> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.CHALLENGE_ORDER);
     return data ? JSON.parse(data) : [];
   } catch (error) {
@@ -139,6 +154,7 @@ export const saveThemeMode = async (themeMode: string) => {
 
 export const loadThemeMode = async (): Promise<string> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.THEME_MODE);
     return data || 'system';
   } catch (error) {
@@ -183,6 +199,7 @@ export const savePendingSync = async (items: PendingSyncItem[]) => {
 
 export const loadPendingSync = async (): Promise<PendingSyncItem[]> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.PENDING_SYNC);
     return data ? JSON.parse(data) : [];
   } catch (error) {
@@ -208,6 +225,7 @@ export const clearPendingSync = async () => {
 // Clear all user data (on logout)
 export const clearUserData = async (): Promise<void> => {
   try {
+    await storageWrites.flush();
     await Promise.all([
       AsyncStorage.removeItem(KEYS.CHALLENGES),
       AsyncStorage.removeItem(KEYS.PARTICIPANTS),
@@ -232,6 +250,7 @@ export const clearUserData = async (): Promise<void> => {
 // Clear chat data locally and from the server
 export const clearChatData = async (token?: string | null): Promise<void> => {
   try {
+    await storageWrites.flush();
     await AsyncStorage.multiRemove([KEYS.CONVERSATIONS, KEYS.MESSAGES, KEYS.BLOCKED_USERS]);
 
     if (token) {
@@ -274,6 +293,7 @@ export const saveCoachInsights = async (entry: CoachInsightsCacheEntry) => {
 
 export const loadCoachInsights = async (): Promise<CoachInsightsCacheEntry | null> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.COACH_INSIGHTS);
     return data ? (JSON.parse(data) as CoachInsightsCacheEntry) : null;
   } catch (error) {
@@ -311,6 +331,7 @@ export const saveBadgeDefinitions = async (definitions: BadgeDefinition[]) => {
 
 export const loadBadgeDefinitions = async (): Promise<BadgeDefinition[]> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.BADGE_DEFINITIONS);
     return data ? JSON.parse(data) : [];
   } catch (error) {
@@ -330,6 +351,7 @@ export const saveBadges = async (badges: UserBadge[]) => {
 
 export const loadBadges = async (): Promise<UserBadge[]> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.BADGES);
     return data ? JSON.parse(data) : [];
   } catch (error) {
@@ -341,7 +363,7 @@ export const loadBadges = async (): Promise<UserBadge[]> => {
 // Conversation storage functions
 export const saveConversations = async (conversations: Conversation[]) => {
   try {
-    await AsyncStorage.setItem(KEYS.CONVERSATIONS, JSON.stringify(conversations));
+    await queueJSON(KEYS.CONVERSATIONS, conversations);
   } catch (error) {
     console.error('Error saving conversations:', error);
   }
@@ -349,6 +371,7 @@ export const saveConversations = async (conversations: Conversation[]) => {
 
 export const loadConversations = async (): Promise<Conversation[]> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.CONVERSATIONS);
     return data ? JSON.parse(data) : [];
   } catch (error) {
@@ -360,11 +383,8 @@ export const loadConversations = async (): Promise<Conversation[]> => {
 // Message storage functions (keyed by conversation, capped at 100 per convo)
 export const saveMessages = async (messages: Record<string, ChatMessage[]>) => {
   try {
-    const capped: Record<string, ChatMessage[]> = {};
-    for (const [convId, msgs] of Object.entries(messages)) {
-      capped[convId] = msgs.slice(-100);
-    }
-    await AsyncStorage.setItem(KEYS.MESSAGES, JSON.stringify(capped));
+    const snapshot = isDraft(messages) ? current(messages) : messages;
+    await storageWrites.enqueue(KEYS.MESSAGES, () => AsyncStorage.setItem(KEYS.MESSAGES, serializeMessageCache(snapshot)));
   } catch (error) {
     console.error('Error saving messages:', error);
   }
@@ -372,6 +392,7 @@ export const saveMessages = async (messages: Record<string, ChatMessage[]>) => {
 
 export const loadMessages = async (): Promise<Record<string, ChatMessage[]>> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.MESSAGES);
     return data ? JSON.parse(data) : {};
   } catch (error) {
@@ -391,6 +412,7 @@ export const saveBlockedUsers = async (blockedUsers: BlockedUser[]) => {
 
 export const loadBlockedUsers = async (): Promise<BlockedUser[]> => {
   try {
+    await storageWrites.flush();
     const data = await AsyncStorage.getItem(KEYS.BLOCKED_USERS);
     return data ? JSON.parse(data) : [];
   } catch (error) {

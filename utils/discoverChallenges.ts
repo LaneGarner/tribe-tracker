@@ -35,3 +35,28 @@ export function rankDiscoverChallenges(challenges: Challenge[], upcoming = false
     return (b.participantCount || 0) - (a.participantCount || 0) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
   });
 }
+
+export type DiscoverListRow =
+  | { key: string; kind: 'sticky' | 'intro' | 'loading' | 'upcoming' | 'active' | 'empty' }
+  | { key: string; kind: 'category' | 'showAll'; category: typeof CHALLENGE_CATEGORIES[number] }
+  | { key: string; kind: 'challenge'; challenge: Challenge; index: number };
+
+export function buildDiscoverRows(active: Challenge[], upcoming: Challenge[], ready: boolean): DiscoverListRow[] {
+  const rows: DiscoverListRow[] = [{ key: 'sticky', kind: 'sticky' }, { key: 'intro', kind: 'intro' }];
+  if (!ready) return [...rows, { key: 'loading', kind: 'loading' }];
+  let index = 0;
+  if (upcoming.length) {
+    rows.push({ key: 'upcoming', kind: 'upcoming' });
+    for (const challenge of rankDiscoverChallenges(upcoming, true)) rows.push({ key: `upcoming:${challenge.id}`, kind: 'challenge', challenge, index: index++ });
+  }
+  rows.push({ key: 'active', kind: 'active' });
+  if (!active.length) rows.push({ key: 'empty', kind: 'empty' });
+  for (const category of CHALLENGE_CATEGORIES) {
+    const candidates = active.filter(challenge => discoverCategoryKey(challenge) === category.key);
+    if (!candidates.length) continue;
+    rows.push({ key: `category:${category.key}`, kind: 'category', category });
+    for (const challenge of rankDiscoverChallenges(candidates).slice(0, 3)) rows.push({ key: `active:${challenge.id}`, kind: 'challenge', challenge, index: index++ });
+    rows.push({ key: `all:${category.key}`, kind: 'showAll', category });
+  }
+  return rows;
+}

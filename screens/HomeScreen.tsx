@@ -41,7 +41,7 @@ if (!isExpoGo) {
 }
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { loadChallengesFromStorage, fetchChallengesFromServer, updateChallenge } from '../redux/slices/challengesSlice';
+import { loadChallengesFromStorage, fetchChallengesFromServer } from '../redux/slices/challengesSlice';
 import { loadCheckinsFromStorage, fetchCheckinsFromServer } from '../redux/slices/checkinsSlice';
 import { loadParticipantsFromStorage, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
@@ -265,11 +265,6 @@ export default function HomeScreen() {
   // Load data on mount - storage first, then server
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([
-        dispatch(loadChallengesFromStorage()),
-        dispatch(loadCheckinsFromStorage()),
-        dispatch(loadParticipantsFromStorage()),
-      ]);
       if (session?.access_token && isBackendConfigured()) {
         await Promise.all([
           dispatch(fetchChallengesFromServer(session.access_token)),
@@ -322,23 +317,6 @@ export default function HomeScreen() {
     }
     return { activeChallenges, upcomingChallenges };
   }, [participants, challenges, user?.id, currentDate]);
-
-  // Cycle transition detection for recurring challenges
-  useEffect(() => {
-    activeChallenges.forEach(c => {
-      if (!c.isRecurring) return;
-      const info = getRecurringCycleInfo(c);
-      if (info && c.currentCycle !== info.currentCycle) {
-        dispatch(updateChallenge({
-          ...c,
-          currentCycle: info.currentCycle,
-          cycleStartDate: info.cycleStartDate,
-          cycleEndDate: info.cycleEndDate,
-          updatedAt: new Date().toISOString(),
-        }));
-      }
-    });
-  }, [activeChallenges, dispatch]);
 
   // Show skeleton until initial fetch completes when there's no data
   const isInitialLoad = !initialFetchDone && activeChallenges.length === 0 && upcomingChallenges.length === 0;

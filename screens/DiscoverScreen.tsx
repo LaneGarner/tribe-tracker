@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -75,7 +76,7 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { showAlert } from '../platform/dialogs/alert';
 import DateField from '../platform/dateTime/DateField';
 import { ResponsiveGrid } from '../components/layout';
-import { getDiscoverChallengeSections, rankDiscoverChallenges, discoverCategoryKey } from '../utils/discoverChallenges';
+import { getDiscoverChallengeSections, rankDiscoverChallenges, discoverCategoryKey, buildDiscoverRows, DiscoverListRow } from '../utils/discoverChallenges';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -886,8 +887,8 @@ export default function DiscoverScreen() {
     </View>
   );
 
-  const renderBrowse = () => (
-    <>
+  const renderBrowseIntro = () => (<>
+
       <View style={styles.browseIntro}>
         <Text style={[styles.browseIntroTitle, { color: colors.text }]}>
           Public Challenges
@@ -922,6 +923,11 @@ export default function DiscoverScreen() {
       </TouchableOpacity>
 
 
+  </>);
+
+  const renderBrowse = () => (
+    <>
+      {renderBrowseIntro()}
       {!initialFetchDone ? (
         <PublicChallengeListSkeleton count={3} />
       ) : (
@@ -1770,6 +1776,40 @@ export default function DiscoverScreen() {
         </View>
       </SafeAreaView>
     );
+  }
+
+  if (mode === 'browse' && Platform.OS !== 'web') {
+    const renderRow = ({ item }: { item: DiscoverListRow }) => {
+      switch (item.kind) {
+        case 'sticky': return renderBrowseStickyHeader();
+        case 'intro': return renderBrowseIntro();
+        case 'loading': return <PublicChallengeListSkeleton count={3} />;
+        case 'challenge': return renderChallengeCard(item.challenge, item.index);
+        case 'upcoming': return <Text style={[styles.sectionTitle, { color: colors.text }]}>Upcoming</Text>;
+        case 'active': return <Text style={[styles.sectionTitle, { color: colors.text, marginTop: upcomingChallenges.length ? 24 : 0 }]}>Active</Text>;
+        case 'empty': return <View style={styles.emptyState}>
+          <Ionicons name="globe-outline" size={48} color={colors.textTertiary} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No active public challenges</Text>
+        </View>;
+        case 'category': return <View style={styles.categorySubHeader} accessibilityRole="header" accessible accessibilityLabel={item.category.label}>
+          <Ionicons name={item.category.icon as any} size={16} color={colors.textSecondary} />
+          <Text style={[styles.categorySubHeaderText, { color: colors.textSecondary }]}>{item.category.label}</Text>
+        </View>;
+        case 'showAll': return <TouchableOpacity
+          onPress={() => navigation.navigate('DiscoverCategory', { categoryKey: item.category.key })}
+          accessibilityRole="button" accessibilityLabel={`Show all ${item.category.label} challenges`}
+          style={{ alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 12 }}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Show all</Text>
+        </TouchableOpacity>;
+      }
+    };
+    return <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.background, paddingTop: topTabContentOffset }]}>
+      <FlatList data={buildDiscoverRows(activePublicChallenges, upcomingChallenges, initialFetchDone)} renderItem={renderRow}
+        keyExtractor={item => item.key} stickyHeaderIndices={[0]} initialNumToRender={8} maxToRenderPerBatch={8} windowSize={7}
+        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} />
+      <HeaderChatButton />
+    </SafeAreaView>;
   }
 
   return (

@@ -1,3 +1,5 @@
+import { sharedRequest } from '../../utils/sharedRequest';
+import { copyWithStructuralSharing } from '@reduxjs/toolkit/query';
 import { createSlice, PayloadAction, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { Conversation, ChatMessage, BlockedUser, ConversationMember, Reaction } from '../../types';
 import {
@@ -101,7 +103,7 @@ export const loadChatFromStorage = createAsyncThunk(
 
 export const fetchConversationsFromServer = createAsyncThunk(
   'chat/fetchConversationsFromServer',
-  async (token: string, { getState }) => {
+  async (token: string, { getState }) => sharedRequest(`conversations:${token}`, async () => {
     const response = await fetch(`${API_URL}/api/conversations`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -110,15 +112,15 @@ export const fetchConversationsFromServer = createAsyncThunk(
     const conversations: Conversation[] = data.conversations || [];
     const previous = (getState() as RootState).chat.conversations;
     // Preserve references and skip disk writes when fallback polling has no changes.
-    if (JSON.stringify(previous) === JSON.stringify(conversations)) return previous;
-    await saveConversations(conversations);
-    return conversations;
-  }
+    const next = copyWithStructuralSharing(previous, conversations);
+    if (next !== previous) await saveConversations(next);
+    return next;
+  })
 );
 
 export const fetchMessagesFromServer = createAsyncThunk(
   'chat/fetchMessagesFromServer',
-  async ({ token, conversationId, cursor }: { token: string; conversationId: string; cursor?: string }) => {
+  async ({ token, conversationId, cursor }: { token: string; conversationId: string; cursor?: string }) => sharedRequest(`history:${token}:${conversationId}:${cursor || "latest"}`, async () => {
     let url = `${API_URL}/api/messages?conversationId=${conversationId}&limit=50`;
     if (cursor) url += `&before=${cursor}`;
     const response = await fetch(url, {
@@ -132,12 +134,12 @@ export const fetchMessagesFromServer = createAsyncThunk(
       hasMore: data.hasMore as boolean,
       isLoadingMore: !!cursor,
     };
-  }
+  })
 );
 
 export const pollNewMessages = createAsyncThunk(
   'chat/pollNewMessages',
-  async ({ token, conversationId, after }: { token: string; conversationId: string; after: string }) => {
+  async ({ token, conversationId, after }: { token: string; conversationId: string; after: string }) => sharedRequest(`messages:${token}:${conversationId}:${after}`, async () => {
     const url = `${API_URL}/api/messages?conversationId=${conversationId}&after=${encodeURIComponent(after)}`;
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
@@ -145,7 +147,7 @@ export const pollNewMessages = createAsyncThunk(
     if (!response.ok) throw new Error('Poll failed');
     const data = await response.json();
     return { conversationId, messages: data.messages as ChatMessage[] };
-  }
+  })
 );
 
 export const markConversationAsRead = createAsyncThunk(

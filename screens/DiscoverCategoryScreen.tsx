@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useLayoutEffect, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, StyleSheet, Platform } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, StyleSheet, Platform, FlatList } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
@@ -61,12 +61,15 @@ export default function DiscoverCategoryScreen() {
   const { upcoming, active } = getDiscoverChallengeSections(
     challenges.filter(c => category && discoverCategoryKey(c) === category.key), joinedIds
   );
+  const renderCard = (challenge: Challenge) => (
+    <PublicChallengeCard challenge={challenge}
+      accessLabel={joinedIds.has(challenge.id) ? 'Joined' : undefined}
+      onPress={() => navigation.navigate('ChallengeDetail', { challengeId: challenge.id })} />
+  );
   const section = (title: string, list: Challenge[], isUpcoming: boolean) => {
     if (!list.length) return null;
     const cards = rankDiscoverChallenges(list, isUpcoming).map(challenge => (
-      <PublicChallengeCard key={challenge.id} challenge={challenge}
-        accessLabel={joinedIds.has(challenge.id) ? 'Joined' : undefined}
-        onPress={() => navigation.navigate('ChallengeDetail', { challengeId: challenge.id })} />
+      <View key={challenge.id}>{renderCard(challenge)}</View>
     ));
     return (
       <View style={styles.section}>
@@ -78,16 +81,38 @@ export default function DiscoverCategoryScreen() {
     );
   };
 
+  const contentStyle = [styles.content, {
+    paddingLeft: gutter + insets.left,
+    paddingRight: gutter + insets.right,
+    paddingBottom: Math.max(insets.bottom, 24) + 24,
+  }];
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try { await refresh(); } finally { setRefreshing(false); }
+  };
+  if (Platform.OS !== 'web') {
+    type Row = { key: string; title: string } | { key: string; challenge: Challenge };
+    const rows: Row[] = [];
+    for (const [title, list, isUpcoming] of [['Upcoming', upcoming, true], ['Active', active, false]] as const) {
+      if (!list.length) continue;
+      rows.push({ key: title, title: `${title} · ${list.length}` });
+      rows.push(...rankDiscoverChallenges(list, isUpcoming).map(challenge => ({ key: challenge.id, challenge })));
+    }
+    return <FlatList data={rows} keyExtractor={row => row.key}
+      style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={contentStyle}
+      initialNumToRender={8} maxToRenderPerBatch={8} windowSize={7}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      ListHeaderComponent={failed ? <Text style={[styles.notice, { color: colors.textSecondary }]}>Couldn’t refresh challenges. Pull down to try again.</Text> : null}
+      ListEmptyComponent={loading ? <PublicChallengeListSkeleton count={3} /> : !failed ?
+        <Text style={[styles.notice, { color: colors.textSecondary }]}>{category ? 'No upcoming or active challenges in this category yet.' : 'Category not found.'}</Text> : null}
+      renderItem={({ item }) => 'title' in item
+        ? <Text accessibilityRole="header" style={[styles.heading, { color: colors.text, marginTop: item.key === 'Active' && upcoming.length ? 24 : 0 }]}>{item.title}</Text>
+        : renderCard(item.challenge)} />;
+  }
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={[styles.content, {
-      paddingLeft: gutter + insets.left,
-      paddingRight: gutter + insets.right,
-      paddingBottom: Math.max(insets.bottom, 24) + 24,
-    }]}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => {
-        setRefreshing(true);
-        try { await refresh(); } finally { setRefreshing(false); }
-      }} />}>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={contentStyle}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       {loading && !upcoming.length && !active.length ? <PublicChallengeListSkeleton count={3} /> : <>
         {failed && <Text style={[styles.notice, { color: colors.textSecondary }]}>Couldn’t refresh challenges. Pull down to try again.</Text>}
         {section('Upcoming', upcoming, true)}

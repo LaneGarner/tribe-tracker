@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import React, { useContext, useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -39,7 +39,7 @@ import { loadParticipantsFromStorage, fetchParticipantsFromServer } from '../red
 import { useAuth } from '../context/AuthContext';
 import { isBackendConfigured } from '../config/api';
 import { RootStackParamList, TabParamList, Challenge } from '../types';
-import { getChallengeStatus, getDaysRemaining, getRecurringCycleInfo } from '../utils/dateUtils';
+import { getChallengeStatus, getDaysRemaining, getRecurringCycleInfo, getToday } from '../utils/dateUtils';
 import Leaderboard from '../components/challenge/Leaderboard';
 import ChallengeChip from '../components/challenge/ChallengeChip';
 import { getGradientForChallenge } from '../constants/gradients';
@@ -85,29 +85,25 @@ export default function LeaderboardScreen() {
   const pillPositions = useRef<Record<string, { x: number; width: number }>>({});
   const hasAutoSelected = useRef(false);
 
-  // Filter to only show active challenges the user has joined
-  const userChallengeIds = new Set(
-    participants.filter(p => p.userId === user?.id).map(p => p.challengeId)
-  );
-  const activeChallenges = challenges.filter(
-    c => {
-      if (!userChallengeIds.has(c.id)) return false;
-      if (participants.filter(p => p.challengeId === c.id).length <= 1) return false;
+  const today = getToday();
+  const activeChallenges = useMemo(() => {
+    const joinedIds = new Set<string>();
+    const participantCounts = new Map<string, number>();
+    for (const participant of participants) {
+      if (participant.userId === user?.id) joinedIds.add(participant.challengeId);
+      participantCounts.set(participant.challengeId, (participantCounts.get(participant.challengeId) || 0) + 1);
+    }
+    return challenges.filter(c => {
+      if (!joinedIds.has(c.id) || (participantCounts.get(c.id) || 0) <= 1) return false;
       const status = getChallengeStatus(c.startDate, c.endDate || c.startDate, c);
       return status === 'active' || status === 'gap';
-    }
-  );
-
-  // Sort active challenges by saved order
-  const orderedChallenges = [...activeChallenges].sort((a, b) => {
-    const indexA = challengeOrder.indexOf(a.id);
-    const indexB = challengeOrder.indexOf(b.id);
-    // If not in order array, put at end
-    if (indexA === -1 && indexB === -1) return 0;
-    if (indexA === -1) return 1;
-    if (indexB === -1) return -1;
-    return indexA - indexB;
-  });
+    });
+  }, [participants, challenges, user?.id, today]);
+  const orderedChallenges = useMemo(() => {
+    const positions = new Map(challengeOrder.map((id, index) => [id, index]));
+    return [...activeChallenges].sort((a, b) =>
+      (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity));
+  }, [activeChallenges, challengeOrder]);
 
   // Challenge carousel boundary detection
   const currentChallengeIndex = orderedChallenges.findIndex(c => c.id === selectedChallengeId);
@@ -245,9 +241,9 @@ export default function LeaderboardScreen() {
   };
 
   const selectedChallenge = challenges.find(c => c.id === selectedChallengeId);
-  const challengeParticipants = participants.filter(
+  const challengeParticipants = useMemo(() => participants.filter(
     p => p.challengeId === selectedChallengeId
-  );
+  ), [participants, selectedChallengeId]);
 
   // Compute per-cycle stats from checkins when viewing cycle leaderboard
   const cycleInfo = selectedChallenge ? getRecurringCycleInfo(selectedChallenge) : null;
@@ -272,9 +268,9 @@ export default function LeaderboardScreen() {
   }, [isRecurring, cycleInfo?.currentCycle, leaderboardMode, checkins, selectedChallengeId, challengeParticipants]);
 
   const displayParticipants = (leaderboardMode === 'cycle' && cycleParticipants) || challengeParticipants;
-  const sortedParticipants = [...displayParticipants].sort(
+  const sortedParticipants = useMemo(() => [...displayParticipants].sort(
     (a, b) => b.totalPoints - a.totalPoints
-  );
+  ), [displayParticipants]);
   const currentUserParticipant = sortedParticipants.find(
     p => p.userId === user?.id
   );
@@ -380,25 +376,13 @@ export default function LeaderboardScreen() {
           )}
         </View>
       )}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          Platform.OS === 'web' && { width: '100%', maxWidth: webContentWidth, alignSelf: 'center' },
-        ]}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Challenge info */}
-        {orderedChallenges.length > 0 ? (
-          <SwipeableView
-            ref={challengeSwipeRef}
-            onSwipeLeft={handleChallengeSwipeLeft}
-            onSwipeRight={handleChallengeSwipeRight}
-            canSwipeLeft={canSwipeNextChallenge}
-            canSwipeRight={canSwipePrevChallenge}
-          >
+      {orderedChallenges.length > 0 ? (
+        <SwipeableView style={{ flex: 1 }} ref={challengeSwipeRef}
+          onSwipeLeft={handleChallengeSwipeLeft} onSwipeRight={handleChallengeSwipeRight}
+          canSwipeLeft={canSwipeNextChallenge} canSwipeRight={canSwipePrevChallenge}>
+            <Leaderboard
+              virtualized
+              scrollHeader={<>
             {selectedChallenge && (
               <View style={styles.selectedChallengeHeader}>
                 <Text style={[styles.selectedChallengeTitle, { color: colors.text }]}>
@@ -498,8 +482,9 @@ export default function LeaderboardScreen() {
               </View>
             )}
 
-            {/* Leaderboard */}
-            <Leaderboard
+              </>}
+              scrollContentStyle={[styles.scrollContent, Platform.OS === 'web' && { width: '100%', maxWidth: webContentWidth, alignSelf: 'center' }]}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
               participants={displayParticipants}
               currentUserId={user?.id}
               onParticipantPress={participant => {
@@ -512,8 +497,10 @@ export default function LeaderboardScreen() {
               challengeId={selectedChallenge?.id}
               challengeStartDate={selectedChallenge?.startDate}
             />
-          </SwipeableView>
-        ) : (
+        </SwipeableView>
+      ) : (
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <View style={styles.emptyState}>
             <Trophy size={64} color={colors.textTertiary} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
@@ -523,8 +510,8 @@ export default function LeaderboardScreen() {
               Join or create a challenge to see the leaderboard.
             </Text>
           </View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      )}
       <HeaderChatButton />
     </View>
   );

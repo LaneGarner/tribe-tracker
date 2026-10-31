@@ -134,6 +134,18 @@ describe('chatSlice', () => {
     }
   });
 
+  it('shares concurrent conversation requests without losing either result', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ conversations: [makeConversation()] }) });
+    try {
+      const run = () => fetchConversationsFromServer('shared-token')(jest.fn(), () => ({ chat: initialState }) as any, undefined);
+      const results = await Promise.all([run(), run()]);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(results[0].payload).toBe(results[1].payload);
+      expect(saveConversations).toHaveBeenCalledTimes(1);
+    } finally { global.fetch = originalFetch; }
+  });
+
   describe('initial state', () => {
     it('should return the initial state', () => {
       const state = reducer(undefined, { type: 'unknown' });

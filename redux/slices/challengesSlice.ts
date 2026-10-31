@@ -1,3 +1,6 @@
+import { sharedRequest } from '../../utils/sharedRequest';
+import { copyWithStructuralSharing } from '@reduxjs/toolkit/query';
+import type { RootState } from '../store';
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { Challenge } from '../../types';
 import { saveChallenges, loadChallenges } from '../../utils/storage';
@@ -27,7 +30,7 @@ export const loadChallengesFromStorage = createAsyncThunk(
 // Async thunk to fetch challenges from the backend API
 export const fetchChallengesFromServer = createAsyncThunk(
   'challenges/fetchFromServer',
-  async (token: string) => {
+  async (token: string, { getState }) => sharedRequest(`challenges:${token}`, async () => {
     const response = await fetch(`${API_URL}/api/challenges`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -38,15 +41,17 @@ export const fetchChallengesFromServer = createAsyncThunk(
     }
     const data = await response.json();
     const challenges: Challenge[] = data.challenges || [];
-    await saveChallenges(challenges);
-    return challenges;
-  }
+    const previous = (getState() as RootState).challenges.data;
+    const next = copyWithStructuralSharing(previous, challenges);
+    if (next !== previous) await saveChallenges(next);
+    return next;
+  })
 );
 
 // Async thunk to fetch public challenges from the backend API
 export const fetchPublicChallenges = createAsyncThunk(
   'challenges/fetchPublicChallenges',
-  async (token: string, { getState }) => {
+  async (token: string) => sharedRequest(`public-challenges:${token}`, async () => {
     const response = await fetch(`${API_URL}/api/challenges?isPublic=true`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -57,7 +62,7 @@ export const fetchPublicChallenges = createAsyncThunk(
     }
     const data = await response.json();
     return data.challenges || [];
-  }
+  })
 );
 
 const challengesSlice = createSlice({

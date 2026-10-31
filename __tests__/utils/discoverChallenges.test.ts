@@ -1,4 +1,4 @@
-import { getDiscoverChallengeSections, discoverCategoryKey, rankDiscoverChallenges } from '../../utils/discoverChallenges';
+import { getDiscoverChallengeSections, discoverCategoryKey, rankDiscoverChallenges, buildDiscoverRows } from '../../utils/discoverChallenges';
 import { Challenge } from '../../types';
 
 const challenge = (id: string, overrides: Partial<Challenge> = {}): Challenge => ({
@@ -57,4 +57,14 @@ it('maps legacy and missing categories to General consistently', () => {
   expect(discoverCategoryKey(challenge('unknown', { category: 'Unknown' }))).toBe('General');
   expect(discoverCategoryKey(challenge('missing'))).toBe('General');
   expect(discoverCategoryKey(challenge('health', { category: 'Health' }))).toBe('Health');
+});
+
+it('keeps every upcoming challenge and the same active previews in virtualized browsing', () => {
+  const upcoming = Array.from({ length: 20 }, (_, i) => challenge(`up-${i}`));
+  const active = Array.from({ length: 12 }, (_, i) => challenge(`active-${i}`, { category: 'Health', participantCount: i }));
+  const rows = buildDiscoverRows(active, upcoming, true);
+  expect(rows.filter(row => row.kind === 'challenge')).toHaveLength(23);
+  expect(rows.filter(row => row.kind === 'showAll')).toHaveLength(1);
+  expect(rows[0].kind).toBe('sticky');
+  expect(buildDiscoverRows(active, upcoming, false).map(row => row.kind)).toEqual(['sticky', 'intro', 'loading']);
 });
