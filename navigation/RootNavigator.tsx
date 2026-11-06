@@ -6,6 +6,7 @@ import { RootStackParamList } from '../types';
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { RootState } from '../redux/store';
+import { selectProfileBootstrapResolved } from '../redux/selectors/profileSelectors';
 import { hasSeenWizard } from '../utils/storage';
 import TabNavigator from './TabNavigator';
 
@@ -15,6 +16,7 @@ import AuthScreen from '../screens/AuthScreen';
 // Core screens
 import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
+import DiscoverCategoryScreen from '../screens/DiscoverCategoryScreen';
 import TaskAnalyticsScreen from '../screens/TaskAnalyticsScreen';
 
 // Profile & Settings screens
@@ -67,22 +69,7 @@ export default function RootNavigator() {
   const colors = getColors(colorScheme);
   const { user, isPasswordRecovery } = useAuth();
   const profileData = useSelector((state: RootState) => state.profile.data);
-  const profileLoading = useSelector(
-    (state: RootState) => state.profile.loading
-  );
-  const profileHasFetched = useSelector(
-    (state: RootState) => state.profile.hasFetchedFromServer
-  );
-
-  // We consider the profile "resolved" once we've attempted a server fetch
-  // (success or fail), OR once we have local data AND are not actively
-  // loading. This prevents:
-  //   - Flash of Main before wizard for existing users with
-  //     onboardingCompleted !== true
-  //   - Flash of wizard for users who HAVE completed onboarding (we wait
-  //     until data is in)
-  const profileResolved =
-    !profileLoading && (profileHasFetched || profileData !== null);
+  const profileResolved = useSelector(selectProfileBootstrapResolved);
 
   // Local flag persists independently of the profile row so that users who
   // skip the wizard don't see it again even if the server profile lacks the
@@ -182,6 +169,7 @@ export default function RootNavigator() {
           ) : null}
 
           {/* Core screens */}
+          <Stack.Screen name="DiscoverCategory" component={DiscoverCategoryScreen} options={{ title: 'Challenges' }} />
           <Stack.Screen
             name="ChallengeDetail"
             component={ChallengeDetailScreen}

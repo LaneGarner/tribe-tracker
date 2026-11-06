@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -50,7 +51,7 @@ import { API_URL, isBackendConfigured } from '../config/api';
 import { addParticipant, importParticipant, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, Challenge, ChallengeParticipant } from '../types';
-import { getToday, getChallengeEndDate, formatDate, getChallengeStatus } from '../utils/dateUtils';
+import { getToday, getChallengeEndDate, formatDate } from '../utils/dateUtils';
 import Toggle from '../components/Toggle';
 import HeaderChatButton from '../components/ui/HeaderChatButton';
 import PublicChallengeCard from '../components/challenge/PublicChallengeCard';
@@ -75,6 +76,7 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { showAlert } from '../platform/dialogs/alert';
 import DateField from '../platform/dateTime/DateField';
 import { ResponsiveGrid } from '../components/layout';
+import { getDiscoverChallengeSections, rankDiscoverChallenges, discoverCategoryKey, buildDiscoverRows, DiscoverListRow } from '../utils/discoverChallenges';
 
 type CreateChallengeNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -145,7 +147,15 @@ export default function DiscoverScreen() {
     if (mode === 'browse') {
       const token = getAccessToken();
       if (token) {
-        dispatch(fetchPublicChallenges(token)).finally(() => setInitialFetchDone(true));
+        // User challenge fetch replaces the cache; merge public results afterwards.
+        const refresh = async () => {
+          await Promise.all([
+            dispatch(fetchChallengesFromServer(token)),
+            dispatch(fetchParticipantsFromServer(token)),
+          ]);
+          await dispatch(fetchPublicChallenges(token));
+        };
+        refresh().finally(() => setInitialFetchDone(true));
       }
     }
   }, [mode, dispatch, getAccessToken]);
@@ -232,6 +242,10 @@ export default function DiscoverScreen() {
     await dispatch(loadChallengesFromStorage());
     const token = getAccessToken();
     if (token && isBackendConfigured()) {
+      await Promise.all([
+        dispatch(fetchChallengesFromServer(token)),
+        dispatch(fetchParticipantsFromServer(token)),
+      ]);
       await dispatch(fetchPublicChallenges(token));
     }
     setRefreshing(false);
@@ -242,22 +256,17 @@ export default function DiscoverScreen() {
 
   const profile = useSelector((state: RootState) => state.profile.data);
   const challenges = useSelector((state: RootState) => state.challenges.data);
-  const activePublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'active'
+  const participants = useSelector((state: RootState) => state.participants.data);
+  const joinedChallengeIds = new Set(
+    participants.filter(p => p.userId === user?.id).map(p => p.challengeId)
   );
-  const upcomingPublicChallenges = challenges.filter(
-    c => c.isPublic && ['upcoming', 'gap'].includes(getChallengeStatus(c.startDate, c.endDate || c.startDate, c))
-  );
-  const completedPublicChallenges = challenges.filter(
-    c => c.isPublic && getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'completed'
-  );
+  const { active: activePublicChallenges, upcoming: upcomingChallenges } =
+    getDiscoverChallengeSections(challenges, joinedChallengeIds);
 
   const groupByCategory = (list: Challenge[]) => {
     const groups = new Map<string, Challenge[]>();
     for (const c of list) {
-      const key = c.category || DEFAULT_CATEGORY;
-      // Map unrecognized categories to general
-      const resolvedKey = CHALLENGE_CATEGORIES.some(cat => cat.key === key) ? key : DEFAULT_CATEGORY;
+      const resolvedKey = discoverCategoryKey(c);
       const existing = groups.get(resolvedKey) || [];
       existing.push(c);
       groups.set(resolvedKey, existing);
@@ -784,24 +793,24 @@ export default function DiscoverScreen() {
     ]);
   };
 
+  const renderChallengeCard = (challenge: Challenge, idx: number) => (
+    <PublicChallengeCard
+      key={challenge.id}
+      challenge={challenge}
+      accessLabel={joinedChallengeIds.has(challenge.id) ? 'Joined' : undefined}
+      gradientColors={getGradientForIndex(idx)}
+      onPress={() =>
+        navigation.navigate('ChallengeDetail', {
+          challengeId: challenge.id,
+        })
+      }
+    />
+  );
+
   const renderGroupedChallenges = (list: Challenge[], startIndex: number) => {
     let flatIndex = startIndex;
     return groupByCategory(list).map(({ category: cat, challenges: grouped }) => {
-      const cards = grouped.map((challenge) => {
-        const idx = flatIndex++;
-        return (
-          <PublicChallengeCard
-            key={challenge.id}
-            challenge={challenge}
-            gradientColors={getGradientForIndex(idx)}
-            onPress={() =>
-              navigation.navigate('ChallengeDetail', {
-                challengeId: challenge.id,
-              })
-            }
-          />
-        );
-      });
+      const cards = rankDiscoverChallenges(grouped).slice(0, 3).map(challenge => renderChallengeCard(challenge, flatIndex++));
 
       return <View key={cat.key}>
         <View
@@ -821,11 +830,20 @@ export default function DiscoverScreen() {
             {cat.label}
           </Text>
         </View>
+
         {Platform.OS === 'web' ? (
           <ResponsiveGrid compactColumns={1} mediumColumns={2} wideColumns={3} gap={16}>
             {cards}
           </ResponsiveGrid>
         ) : cards}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('DiscoverCategory', { categoryKey: cat.key })}
+          accessibilityRole="button"
+          accessibilityLabel={`Show all ${cat.label} challenges`}
+          style={{ alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 12 }}
+        >
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Show all</Text>
+        </TouchableOpacity>
       </View>
     });
   };
@@ -869,8 +887,8 @@ export default function DiscoverScreen() {
     </View>
   );
 
-  const renderBrowse = () => (
-    <>
+  const renderBrowseIntro = () => (<>
+
       <View style={styles.browseIntro}>
         <Text style={[styles.browseIntroTitle, { color: colors.text }]}>
           Public Challenges
@@ -905,14 +923,31 @@ export default function DiscoverScreen() {
       </TouchableOpacity>
 
 
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>
-        Active
-      </Text>
+  </>);
 
+  const renderBrowse = () => (
+    <>
+      {renderBrowseIntro()}
       {!initialFetchDone ? (
         <PublicChallengeListSkeleton count={3} />
       ) : (
         <>
+          {upcomingChallenges.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Upcoming
+              </Text>
+              {Platform.OS === 'web' ? (
+                <ResponsiveGrid compactColumns={1} mediumColumns={2} wideColumns={3} gap={16}>
+                  {rankDiscoverChallenges(upcomingChallenges, true).map(renderChallengeCard)}
+                </ResponsiveGrid>
+              ) : rankDiscoverChallenges(upcomingChallenges, true).map(renderChallengeCard)}
+            </>
+          )}
+
+          <Text style={[styles.sectionTitle, { color: colors.text, marginTop: upcomingChallenges.length > 0 ? 24 : 0 }]}>
+            Active
+          </Text>
           {activePublicChallenges.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons
@@ -925,26 +960,10 @@ export default function DiscoverScreen() {
               </Text>
             </View>
           ) : (
-            renderGroupedChallenges(activePublicChallenges, 0)
+            renderGroupedChallenges(activePublicChallenges, upcomingChallenges.length)
           )}
 
-          {upcomingPublicChallenges.length > 0 && (
-            <>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
-                Upcoming
-              </Text>
-              {renderGroupedChallenges(upcomingPublicChallenges, activePublicChallenges.length)}
-            </>
-          )}
 
-          {completedPublicChallenges.length > 0 && (
-            <>
-              <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
-                Completed
-              </Text>
-              {renderGroupedChallenges(completedPublicChallenges, activePublicChallenges.length + upcomingPublicChallenges.length)}
-            </>
-          )}
         </>
       )}
     </>
@@ -1757,6 +1776,40 @@ export default function DiscoverScreen() {
         </View>
       </SafeAreaView>
     );
+  }
+
+  if (mode === 'browse' && Platform.OS !== 'web') {
+    const renderRow = ({ item }: { item: DiscoverListRow }) => {
+      switch (item.kind) {
+        case 'sticky': return renderBrowseStickyHeader();
+        case 'intro': return renderBrowseIntro();
+        case 'loading': return <PublicChallengeListSkeleton count={3} />;
+        case 'challenge': return renderChallengeCard(item.challenge, item.index);
+        case 'upcoming': return <Text style={[styles.sectionTitle, { color: colors.text }]}>Upcoming</Text>;
+        case 'active': return <Text style={[styles.sectionTitle, { color: colors.text, marginTop: upcomingChallenges.length ? 24 : 0 }]}>Active</Text>;
+        case 'empty': return <View style={styles.emptyState}>
+          <Ionicons name="globe-outline" size={48} color={colors.textTertiary} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No active public challenges</Text>
+        </View>;
+        case 'category': return <View style={styles.categorySubHeader} accessibilityRole="header" accessible accessibilityLabel={item.category.label}>
+          <Ionicons name={item.category.icon as any} size={16} color={colors.textSecondary} />
+          <Text style={[styles.categorySubHeaderText, { color: colors.textSecondary }]}>{item.category.label}</Text>
+        </View>;
+        case 'showAll': return <TouchableOpacity
+          onPress={() => navigation.navigate('DiscoverCategory', { categoryKey: item.category.key })}
+          accessibilityRole="button" accessibilityLabel={`Show all ${item.category.label} challenges`}
+          style={{ alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 12 }}>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Show all</Text>
+        </TouchableOpacity>;
+      }
+    };
+    return <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.background, paddingTop: topTabContentOffset }]}>
+      <FlatList data={buildDiscoverRows(activePublicChallenges, upcomingChallenges, initialFetchDone)} renderItem={renderRow}
+        keyExtractor={item => item.key} stickyHeaderIndices={[0]} initialNumToRender={8} maxToRenderPerBatch={8} windowSize={7}
+        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} />
+      <HeaderChatButton />
+    </SafeAreaView>;
   }
 
   return (

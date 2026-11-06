@@ -4,27 +4,33 @@ import { AppState, AppStateStatus } from 'react-native';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { addRealtimeMessage, setActiveConversation, pollNewMessages, updateMemberLastReadAt, deleteMessage, editMessage, addReaction, removeReaction } from '../redux/slices/chatSlice';
+import { addRealtimeMessage, setActiveConversation, pollNewMessages, fetchMessagesFromServer, updateMemberLastReadAt, deleteMessage, editMessage, addReaction, removeReaction } from '../redux/slices/chatSlice';
 import { ChatMessage } from '../types';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { isBackendConfigured } from '../config/api';
+import { startAdaptivePolling } from '../utils/adaptivePolling';
+import { useIsFocused } from '@react-navigation/native';
 
 export function useConversationRealtime(conversationId: string) {
   const dispatch = useDispatch<AppDispatch>();
   const { user, session } = useAuth();
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const isFocused = useIsFocused();
+  const realtimeHealthy = useRef(false);
+  const refreshPolling = useRef<(() => void) | null>(null);
 
   // Track active conversation for unread count suppression
   useEffect(() => {
+    if (!isFocused) return;
     dispatch(setActiveConversation(conversationId));
     return () => {
       dispatch(setActiveConversation(null));
     };
-  }, [dispatch, conversationId]);
+  }, [dispatch, conversationId, isFocused]);
 
   // Subscribe to messages for this conversation (realtime)
   useEffect(() => {
-    if (!user?.id || !isSupabaseConfigured() || !conversationId) return;
+    if (!user?.id || !isSupabaseConfigured() || !conversationId || !isFocused) return;
 
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
@@ -147,6 +153,8 @@ export function useConversationRealtime(conversationId: string) {
         }
       )
       .subscribe((status, err) => {
+        realtimeHealthy.current = status === 'SUBSCRIBED';
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') refreshPolling.current?.();
         if (status === 'SUBSCRIBED') {
           console.log(`[Realtime] conv-messages-${conversationId} subscribed`);
         }
@@ -161,7 +169,7 @@ export function useConversationRealtime(conversationId: string) {
         channelRef.current = null;
       }
     };
-  }, [user?.id, conversationId]);
+  }, [user?.id, conversationId, isFocused]);
 
   // Polling fallback: fetch new messages every 3 seconds
   const messages = useSelector((state: RootState) => state.chat.messages[conversationId]);
@@ -172,23 +180,28 @@ export function useConversationRealtime(conversationId: string) {
   }, [messages]);
 
   useEffect(() => {
-    if (!session?.access_token || !conversationId || !isBackendConfigured()) return;
+    if (!session?.access_token || !conversationId || !isBackendConfigured() || !isFocused) return;
 
     let appState = AppState.currentState;
 
-    const poll = () => {
-      if (appState !== 'active') return;
-      const after = latestTimestampRef.current;
-      if (!after) return;
-      dispatch(pollNewMessages({ token: session.access_token!, conversationId, after }));
-    };
-
-    const intervalId = setInterval(poll, 3000);
-    const sub = AppState.addEventListener('change', (s: AppStateStatus) => { appState = s; });
-
+    const polling = startAdaptivePolling({
+      isActive: () => appState === 'active',
+      interval: () => realtimeHealthy.current ? 30000 : 3000,
+      run: async () => {
+        const after = latestTimestampRef.current;
+        if (after) await dispatch(pollNewMessages({ token: session.access_token!, conversationId, after }));
+        else await dispatch(fetchMessagesFromServer({ token: session.access_token!, conversationId }));
+      },
+    });
+    refreshPolling.current = polling.refresh;
+    const sub = AppState.addEventListener('change', (s: AppStateStatus) => {
+      appState = s;
+      if (s === 'active') void polling.refresh();
+    });
     return () => {
-      clearInterval(intervalId);
+      refreshPolling.current = null;
+      polling.stop();
       sub.remove();
     };
-  }, [session?.access_token, conversationId, dispatch]);
+  }, [session?.access_token, conversationId, dispatch, isFocused]);
 }

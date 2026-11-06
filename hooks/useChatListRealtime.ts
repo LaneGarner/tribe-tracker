@@ -8,6 +8,7 @@ import { addRealtimeMessage, addConversation, updateMemberStatus, fetchConversat
 import { ChatMessage, Conversation } from '../types';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { isBackendConfigured, API_URL } from '../config/api';
+import { startAdaptivePolling } from '../utils/adaptivePolling';
 
 export function useChatListRealtime() {
   const dispatch = useDispatch<AppDispatch>();
@@ -18,6 +19,9 @@ export function useChatListRealtime() {
   const newDmChannelRef = useRef<RealtimeChannel | null>(null);
   const conversationIdsRef = useRef<Set<string>>(new Set());
   const subscriptionCounterRef = useRef(0);
+
+  const realtimeStatus = useRef({ requests: false, messages: false, members: false });
+  const refreshPolling = useRef<(() => void) | null>(null);
 
   // Stable dependency: sorted, joined conversation IDs
   const conversationIdString = useMemo(
@@ -75,6 +79,8 @@ export function useChatListRealtime() {
         }
       )
       .subscribe((status, err) => {
+        realtimeStatus.current.requests = status === 'SUBSCRIBED';
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') refreshPolling.current?.();
         if (status === 'SUBSCRIBED') {
           console.log('[Realtime] new-dm-requests subscribed');
         }
@@ -89,7 +95,7 @@ export function useChatListRealtime() {
         newDmChannelRef.current = null;
       }
     };
-  }, [user?.id]);
+  }, [user?.id, session?.access_token, dispatch]);
 
   useEffect(() => {
     if (!user?.id || !isSupabaseConfigured() || !conversationIdString) return;
@@ -139,6 +145,8 @@ export function useChatListRealtime() {
         }
       )
       .subscribe((status, err) => {
+        realtimeStatus.current.messages = status === 'SUBSCRIBED';
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') refreshPolling.current?.();
         if (status === 'SUBSCRIBED') {
           console.log(`[Realtime] chat-list-messages-${suffix} subscribed`);
         }
@@ -168,6 +176,8 @@ export function useChatListRealtime() {
         }
       )
       .subscribe((status, err) => {
+        realtimeStatus.current.members = status === 'SUBSCRIBED';
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') refreshPolling.current?.();
         if (status === 'SUBSCRIBED') {
           console.log(`[Realtime] chat-members-${suffix} subscribed`);
         }
@@ -193,17 +203,23 @@ export function useChatListRealtime() {
     if (!session?.access_token || !isBackendConfigured()) return;
 
     let appState = AppState.currentState;
-
-    const poll = () => {
-      if (appState !== 'active') return;
-      dispatch(fetchConversationsFromServer(session.access_token!));
-    };
-
-    const intervalId = setInterval(poll, 5000);
-    const sub = AppState.addEventListener('change', (s: AppStateStatus) => { appState = s; });
-
+    const polling = startAdaptivePolling({
+      run: () => dispatch(fetchConversationsFromServer(session.access_token!)),
+      isActive: () => appState === 'active',
+      interval: () => {
+        const status = realtimeStatus.current;
+        const healthy = status.requests && (!conversationIdsRef.current.size || (status.messages && status.members));
+        return healthy ? 30000 : 5000;
+      },
+    });
+    refreshPolling.current = polling.refresh;
+    const sub = AppState.addEventListener('change', (s: AppStateStatus) => {
+      appState = s;
+      if (s === 'active') void polling.refresh();
+    });
     return () => {
-      clearInterval(intervalId);
+      refreshPolling.current = null;
+      polling.stop();
       sub.remove();
     };
   }, [session?.access_token, dispatch]);

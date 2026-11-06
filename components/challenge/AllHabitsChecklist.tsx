@@ -113,6 +113,17 @@ export default function AllHabitsChecklist({
   const allUserCheckins = useSelector(selectAllUserCheckins);
   const relevantParticipants = useSelector(selectRelevantParticipants);
 
+  const checkinsByChallenge = useMemo(() => {
+    const map = new Map<string, HabitCheckin>();
+    for (const checkin of relevantCheckins) if (!map.has(checkin.challengeId)) map.set(checkin.challengeId, checkin);
+    return map;
+  }, [relevantCheckins]);
+  const participantsByChallenge = useMemo(() => {
+    const map = new Map<string, typeof relevantParticipants[number]>();
+    for (const participant of relevantParticipants) if (!map.has(participant.challengeId)) map.set(participant.challengeId, participant);
+    return map;
+  }, [relevantParticipants]);
+
   // Build deduplicated habit rows
   const dedupRows: DedupRow[] = useMemo(() => {
     const map = new Map<string, DedupRow>();
@@ -139,30 +150,26 @@ export default function AllHabitsChecklist({
   const rowCompletion = useMemo(() => {
     return dedupRows.map(row => {
       const results = row.entries.map(entry => {
-        const checkin = relevantCheckins.find(
-          c => c.challengeId === entry.challenge.id
-        );
+        const checkin = checkinsByChallenge.get(entry.challenge.id);
         return !!checkin?.habitsCompleted?.[entry.habitIndex];
       });
       const allChecked = results.length > 0 && results.every(r => r);
       const anyChecked = results.some(r => r);
       return { allChecked, anyChecked };
     });
-  }, [dedupRows, relevantCheckins]);
+  }, [dedupRows, checkinsByChallenge]);
 
   const totalEntries = dedupRows.length;
   const completedEntries = rowCompletion.filter(r => r.allChecked).length;
 
   // Update stats for a single challenge based on an updated checkins array
   const updateStatsForChallenge = useCallback(
-    (challenge: Challenge, updatedAllUserCheckins: HabitCheckin[]) => {
-      const participant = relevantParticipants.find(
-        p => p.challengeId === challenge.id
-      );
+    (challenge: Challenge, updatedCheckinsByChallenge: Map<string, HabitCheckin[]>) => {
+      const participant = participantsByChallenge.get(challenge.id);
       if (!participant) return;
 
-      const challengeCheckins = updatedAllUserCheckins.filter(
-        c => c.challengeId === challenge.id && c.checkinDate >= challenge.startDate
+      const challengeCheckins = (updatedCheckinsByChallenge.get(challenge.id) || []).filter(
+        c => c.checkinDate >= challenge.startDate
       );
 
       const totalPoints = challengeCheckins.reduce(
@@ -194,7 +201,7 @@ export default function AllHabitsChecklist({
         })
       );
     },
-    [dispatch, relevantParticipants]
+    [dispatch, participantsByChallenge]
   );
 
   const handleToggleRow = useCallback(
@@ -207,9 +214,7 @@ export default function AllHabitsChecklist({
       const mutatedCheckinsByChallenge = new Map<string, HabitCheckin | null>();
 
       row.entries.forEach(({ challenge, habitIndex }) => {
-        const existingCheckin = relevantCheckins.find(
-          c => c.challengeId === challenge.id
-        );
+        const existingCheckin = checkinsByChallenge.get(challenge.id);
 
         if (existingCheckin) {
           const updatedHabits = [...existingCheckin.habitsCompleted];
@@ -260,24 +265,28 @@ export default function AllHabitsChecklist({
       });
 
       // Build an updated "all user checkins" set and update stats per affected challenge
-      let updatedAllCheckins = [...allUserCheckins];
-      mutatedCheckinsByChallenge.forEach((updatedCheckin, challengeId) => {
-        // Remove all existing checkins for this challenge on this date
-        updatedAllCheckins = updatedAllCheckins.filter(
-          c => !(c.challengeId === challengeId && c.checkinDate === checkinDate)
-        );
-        if (updatedCheckin) {
-          updatedAllCheckins.push(updatedCheckin);
-        }
-      });
-
+      const affectedIds = new Set(mutatedCheckinsByChallenge.keys());
+      const updatedAllCheckins = allUserCheckins.filter(
+        c => !(affectedIds.has(c.challengeId) && c.checkinDate === checkinDate)
+      );
+      for (const checkin of mutatedCheckinsByChallenge.values()) if (checkin) updatedAllCheckins.push(checkin);
+      const grouped = new Map<string, HabitCheckin[]>();
+      for (const checkin of updatedAllCheckins) {
+        if (!affectedIds.has(checkin.challengeId)) continue;
+        const entries = grouped.get(checkin.challengeId) || [];
+        entries.push(checkin);
+        grouped.set(checkin.challengeId, entries);
+      }
+      const updatedIds = new Set<string>();
       row.entries.forEach(({ challenge }) => {
-        updateStatsForChallenge(challenge, updatedAllCheckins);
+        if (updatedIds.has(challenge.id)) return;
+        updatedIds.add(challenge.id);
+        updateStatsForChallenge(challenge, grouped);
       });
     },
     [
       canEdit,
-      relevantCheckins,
+      checkinsByChallenge,
       allUserCheckins,
       dispatch,
       user?.id,

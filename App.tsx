@@ -50,12 +50,20 @@ import {
 } from './utils/pendingInvite';
 import { configureNotificationHandler } from './utils/notifications';
 import useNotificationScheduler from './hooks/useNotificationScheduler';
+import { useChatListRealtime } from './hooks/useChatListRealtime';
 import { registerAndSavePushToken } from './utils/pushToken';
 import { lockPortraitOrientation } from './utils/screenOrientation';
 import { linking } from './navigation/linking';
 import { parsePendingDeepLink } from './utils/deepLinks';
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+// Keep store subscriptions for background work out of the navigation shell.
+function BackgroundTasks() {
+  useNotificationScheduler();
+  useChatListRealtime();
+  return null;
+}
 
 function AppContent() {
   const dispatch = useDispatch<AppDispatch>();
@@ -70,9 +78,6 @@ function AppContent() {
       configureNotificationHandler();
     }
   }, []);
-
-  // Schedule notifications based on state
-  useNotificationScheduler();
 
   // Load data from storage on app start
   useEffect(() => {
@@ -231,6 +236,7 @@ export default function App() {
           <AuthProvider>
             <MembershipProvider>
               <AIConsentProvider>
+                <BackgroundTasks />
                 <AppContent />
               </AIConsentProvider>
             </MembershipProvider>

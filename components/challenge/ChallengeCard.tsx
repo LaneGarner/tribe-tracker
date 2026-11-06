@@ -119,6 +119,14 @@ export default function ChallengeCard({
             </Text>
           )}
         </View>
+        {status === 'upcoming' && (
+          <View style={[styles.rankBadge, { backgroundColor: '#DBEAFE' }]}>
+            <Ionicons name="time-outline" size={16} color="#1E40AF" />
+            <Text style={[styles.rankBadgeText, { color: '#1E40AF' }]}>
+              Upcoming{'\n'}{getDaysRemaining(challenge.startDate)} day{getDaysRemaining(challenge.startDate) !== 1 ? 's' : ''} to go
+            </Text>
+          </View>
+        )}
         {participation && status !== 'upcoming' && status !== 'gap' && (
           <View style={styles.badgeRow}>
             {userRank !== null && (

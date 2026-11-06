@@ -22,7 +22,6 @@ import {
   loadChatFromStorage,
   selectAllConversationsSorted,
 } from '../redux/slices/chatSlice';
-import { useChatListRealtime } from '../hooks/useChatListRealtime';
 import { isBackendConfigured } from '../config/api';
 import { RootStackParamList, TabParamList, Conversation } from '../types';
 import ConversationRow from '../components/chat/ConversationRow';
@@ -47,7 +46,6 @@ export default function ChatScreen() {
   const conversations = useSelector(selectAllConversationsSorted);
 
   // Set up realtime subscriptions
-  useChatListRealtime();
 
   // Load from storage on mount
   useEffect(() => {

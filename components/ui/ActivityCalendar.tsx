@@ -132,49 +132,28 @@ export default function ActivityCalendar({
   const startDay = displayMonth.startOf('month').day(); // 0-6 (Sun-Sat)
   const daysInMonth = displayMonth.daysInMonth();
 
-  // Build checkin map for quick lookup: date -> challengeIds with checkins
-  const checkinMap = useMemo(() => {
-    const map: Record<string, Set<string>> = {};
-    checkins.forEach(checkin => {
-      if (!map[checkin.checkinDate]) {
-        map[checkin.checkinDate] = new Set();
+  // Only index the displayed month, once, rather than searching history for each cell.
+  const monthKey = displayMonth.format('YYYY-MM');
+  const { checkinMap, perfectDayMap, firstCheckinByDate } = useMemo(() => {
+    const checkinMap: Record<string, Set<string>> = {};
+    const firstCheckinByDate = new Map<string, HabitCheckin>();
+    const byDate = new Map<string, Map<string, HabitCheckin>>();
+    for (const checkin of checkins) {
+      if (!checkin.checkinDate.startsWith(monthKey)) continue;
+      if (!firstCheckinByDate.has(checkin.checkinDate)) firstCheckinByDate.set(checkin.checkinDate, checkin);
+      const entries = byDate.get(checkin.checkinDate) || new Map<string, HabitCheckin>();
+      if (!entries.has(checkin.challengeId)) entries.set(checkin.challengeId, checkin);
+      byDate.set(checkin.checkinDate, entries);
+      if (checkin.habitsCompleted.some(Boolean)) {
+        (checkinMap[checkin.checkinDate] ||= new Set()).add(checkin.challengeId);
       }
-      // Only add if there's at least one habit completed
-      if (checkin.habitsCompleted.some(h => h)) {
-        map[checkin.checkinDate].add(checkin.challengeId);
-      }
-    });
-    return map;
-  }, [checkins]);
-
-  // Build perfect day map: date -> true if all habits completed for all challenges
-  const perfectDayMap = useMemo(() => {
-    const map: Record<string, boolean> = {};
-    if (challenges.length === 0) return map;
-
-    // Group checkins by date
-    const checkinsByDate: Record<string, HabitCheckin[]> = {};
-    checkins.forEach(checkin => {
-      if (!checkinsByDate[checkin.checkinDate]) {
-        checkinsByDate[checkin.checkinDate] = [];
-      }
-      checkinsByDate[checkin.checkinDate].push(checkin);
-    });
-
-    // Check each date
-    Object.entries(checkinsByDate).forEach(([date, dayCheckins]) => {
-      // For each active challenge, check if there's a checkin with all habits completed
-      const allComplete = challenges.every(challenge => {
-        const checkin = dayCheckins.find(c => c.challengeId === challenge.id);
-        return checkin?.allHabitsCompleted === true;
-      });
-      if (allComplete) {
-        map[date] = true;
-      }
-    });
-
-    return map;
-  }, [checkins, challenges]);
+    }
+    const perfectDayMap: Record<string, boolean> = {};
+    if (challenges.length) for (const [date, entries] of byDate) {
+      if (challenges.every(challenge => entries.get(challenge.id)?.allHabitsCompleted === true)) perfectDayMap[date] = true;
+    }
+    return { checkinMap, perfectDayMap, firstCheckinByDate };
+  }, [checkins, challenges, monthKey]);
 
   // Generate calendar grid
   const weeks: (number | null)[][] = [];
@@ -244,7 +223,7 @@ export default function ActivityCalendar({
 
   const getIntensityDot = (day: number): { color: string; opacity: number } | null => {
     const dateStr = getDateString(day);
-    const dayCheckin = checkins.find(c => c.checkinDate === dateStr);
+    const dayCheckin = firstCheckinByDate.get(dateStr);
     if (!dayCheckin) return null;
 
     const completed = dayCheckin.habitsCompleted.filter(h => h).length;

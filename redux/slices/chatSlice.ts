@@ -1,3 +1,5 @@
+import { sharedRequest } from '../../utils/sharedRequest';
+import { copyWithStructuralSharing } from '@reduxjs/toolkit/query';
 import { createSlice, PayloadAction, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { Conversation, ChatMessage, BlockedUser, ConversationMember, Reaction } from '../../types';
 import {
@@ -20,6 +22,7 @@ interface ChatState {
   messageCursors: Record<string, string | null>;
   hasMoreMessages: Record<string, boolean>;
   activeConversationId: string | null;
+  messageLoadStatus?: Record<string, 'loading' | 'ready' | 'error'>;
 }
 
 function mergeMessage(state: ChatState, msg: ChatMessage): boolean {
@@ -100,21 +103,24 @@ export const loadChatFromStorage = createAsyncThunk(
 
 export const fetchConversationsFromServer = createAsyncThunk(
   'chat/fetchConversationsFromServer',
-  async (token: string) => {
+  async (token: string, { getState }) => sharedRequest(`conversations:${token}`, async () => {
     const response = await fetch(`${API_URL}/api/conversations`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error('Failed to fetch conversations');
     const data = await response.json();
     const conversations: Conversation[] = data.conversations || [];
-    await saveConversations(conversations);
-    return conversations;
-  }
+    const previous = (getState() as RootState).chat.conversations;
+    // Preserve references and skip disk writes when fallback polling has no changes.
+    const next = copyWithStructuralSharing(previous, conversations);
+    if (next !== previous) await saveConversations(next);
+    return next;
+  })
 );
 
 export const fetchMessagesFromServer = createAsyncThunk(
   'chat/fetchMessagesFromServer',
-  async ({ token, conversationId, cursor }: { token: string; conversationId: string; cursor?: string }) => {
+  async ({ token, conversationId, cursor }: { token: string; conversationId: string; cursor?: string }) => sharedRequest(`history:${token}:${conversationId}:${cursor || "latest"}`, async () => {
     let url = `${API_URL}/api/messages?conversationId=${conversationId}&limit=50`;
     if (cursor) url += `&before=${cursor}`;
     const response = await fetch(url, {
@@ -128,12 +134,12 @@ export const fetchMessagesFromServer = createAsyncThunk(
       hasMore: data.hasMore as boolean,
       isLoadingMore: !!cursor,
     };
-  }
+  })
 );
 
 export const pollNewMessages = createAsyncThunk(
   'chat/pollNewMessages',
-  async ({ token, conversationId, after }: { token: string; conversationId: string; after: string }) => {
+  async ({ token, conversationId, after }: { token: string; conversationId: string; after: string }) => sharedRequest(`messages:${token}:${conversationId}:${after}`, async () => {
     const url = `${API_URL}/api/messages?conversationId=${conversationId}&after=${encodeURIComponent(after)}`;
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
@@ -141,7 +147,7 @@ export const pollNewMessages = createAsyncThunk(
     if (!response.ok) throw new Error('Poll failed');
     const data = await response.json();
     return { conversationId, messages: data.messages as ChatMessage[] };
-  }
+  })
 );
 
 export const markConversationAsRead = createAsyncThunk(
@@ -325,7 +331,20 @@ const chatSlice = createSlice({
         state.error = action.error.message || 'Failed to fetch conversations';
         state.loading = false;
       })
+      .addCase(fetchMessagesFromServer.pending, (state, action) => {
+        if (!action.meta.arg.cursor) {
+          (state.messageLoadStatus ??= {})[action.meta.arg.conversationId] = 'loading';
+        }
+      })
+      .addCase(fetchMessagesFromServer.rejected, (state, action) => {
+        if (!action.meta.arg.cursor) {
+          (state.messageLoadStatus ??= {})[action.meta.arg.conversationId] = 'error';
+        }
+      })
       .addCase(fetchMessagesFromServer.fulfilled, (state, action) => {
+        if (!action.meta.arg.cursor) {
+          (state.messageLoadStatus ??= {})[action.payload.conversationId] = 'ready';
+        }
         const { conversationId, messages, hasMore, isLoadingMore } = action.payload;
         // Preserve reactions / optimistic flags from existing entries
         const prevById = new Map<string, ChatMessage>();

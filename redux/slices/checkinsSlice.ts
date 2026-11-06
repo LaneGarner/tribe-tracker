@@ -1,3 +1,6 @@
+import { sharedRequest } from '../../utils/sharedRequest';
+import { copyWithStructuralSharing } from '@reduxjs/toolkit/query';
+import type { RootState } from '../store';
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { HabitCheckin } from '../../types';
 import { saveCheckins, loadCheckins } from '../../utils/storage';
@@ -27,7 +30,7 @@ export const loadCheckinsFromStorage = createAsyncThunk(
 // Async thunk to fetch checkins from the backend API
 export const fetchCheckinsFromServer = createAsyncThunk(
   'checkins/fetchFromServer',
-  async (token: string) => {
+  async (token: string, { getState }) => sharedRequest(`checkins:${token}`, async () => {
     const response = await fetch(`${API_URL}/api/checkins`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -38,9 +41,11 @@ export const fetchCheckinsFromServer = createAsyncThunk(
     }
     const data = await response.json();
     const checkins: HabitCheckin[] = data.checkins || [];
-    await saveCheckins(checkins);
-    return checkins;
-  }
+    const previous = (getState() as RootState).checkins.data;
+    const next = copyWithStructuralSharing(previous, checkins);
+    if (next !== previous) await saveCheckins(next);
+    return next;
+  })
 );
 
 const checkinsSlice = createSlice({

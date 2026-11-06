@@ -1,3 +1,4 @@
+import { createNextState } from '@reduxjs/toolkit';
 jest.mock('../../config/api', () => ({
   API_URL: 'https://test-api.vercel.app',
 }));
@@ -479,4 +480,21 @@ describe('error handling', () => {
       await expect(saveMessages({})).resolves.toBeUndefined();
     });
   });
+});
+
+it('flushes queued writes before sign-out so user data cannot be restored by a delayed write', async () => {
+  const pending = saveMessages({ conv: [{ id: 'queued' }] } as any);
+  await clearUserData();
+  await pending;
+  expect(await loadMessages()).toEqual({});
+});
+
+it('captures queued message data before an Immer draft is revoked', async () => {
+  let write!: Promise<void>;
+  createNextState({ messages: {} } as { messages: Record<string, any[]> }, draft => {
+    draft.messages.conv = [{ id: 'draft-message' }];
+    write = saveMessages(draft.messages as any);
+  });
+  await write;
+  expect(await loadMessages()).toEqual({ conv: [{ id: 'draft-message' }] });
 });

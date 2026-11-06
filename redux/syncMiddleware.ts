@@ -202,14 +202,7 @@ export const syncMiddleware: Middleware = store => next => unknownAction => {
           const participant = state.participants.data.find(
             (p: ChallengeParticipant) => p.id === id
           );
-          console.log('[Sync] updateParticipantStats - payload:', action.payload);
-          console.log('[Sync] updateParticipantStats - found participant:', participant);
           if (participant) {
-            console.log('[Sync] Sending participant stats to server:', {
-              id,
-              totalPoints: participant.totalPoints,
-              currentStreak: participant.currentStreak,
-            });
             await pushToServer(`participants?id=${id}`, {
               participant: {
                 ...participant,

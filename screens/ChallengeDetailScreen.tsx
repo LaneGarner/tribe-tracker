@@ -439,19 +439,6 @@ export default function ChallengeDetailScreen() {
     : (status === 'active' ? getCurrentChallengeDay(challenge.startDate) : 0);
   const totalDays = challenge.durationDays;
 
-  // Cycle transition detection: update challenge if cycle advanced
-  React.useEffect(() => {
-    if (cycleInfo && challenge.currentCycle !== cycleInfo.currentCycle) {
-      dispatch(updateChallenge({
-        ...challenge,
-        currentCycle: cycleInfo.currentCycle,
-        cycleStartDate: cycleInfo.cycleStartDate,
-        cycleEndDate: cycleInfo.cycleEndDate,
-        updatedAt: new Date().toISOString(),
-      }));
-    }
-  }, [cycleInfo?.currentCycle]);
-
   const executeJoin = async (joinAnonymously: boolean) => {
     setIsJoining(true);
 

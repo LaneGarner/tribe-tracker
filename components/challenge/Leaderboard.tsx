@@ -1,5 +1,5 @@
 import React, { useContext, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, FlatList, RefreshControlProps, StyleProp } from 'react-native';
 import { Crown, Medal, Award, Trophy, Flame } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector } from 'react-redux';
@@ -8,6 +8,7 @@ import { RootState } from '../../redux/store';
 import { ChallengeParticipant } from '../../types';
 import { calculateActiveStreak } from '../../utils/streakUtils';
 import Avatar from '../Avatar';
+import { indexCheckinsByUser } from '../../utils/checkinIndex';
 
 interface LeaderboardProps {
   participants: ChallengeParticipant[];
@@ -19,6 +20,10 @@ interface LeaderboardProps {
   headerTitle?: string;
   listContainerStyle?: ViewStyle;
   footer?: React.ReactNode;
+  virtualized?: boolean;
+  scrollHeader?: React.ReactNode;
+  scrollContentStyle?: StyleProp<ViewStyle>;
+  refreshControl?: React.ReactElement<RefreshControlProps>;
 }
 
 const PODIUM_COLORS = {
@@ -49,6 +54,7 @@ export default function Leaderboard({
   listContainerStyle,
   footer,
   challengeStartDate,
+  virtualized = false, scrollHeader, scrollContentStyle, refreshControl,
 }: LeaderboardProps) {
   const { colorScheme } = useContext(ThemeContext);
   const colors = getColors(colorScheme);
@@ -66,18 +72,16 @@ export default function Leaderboard({
   // Build a map of userId -> active streak
   const streaksByUserId = useMemo(() => {
     const map: Record<string, number> = {};
+    const datesByUser = indexCheckinsByUser(checkins);
     participants.forEach(p => {
-      const userCheckinDates = checkins
-        .filter(c => c.userId === p.userId)
-        .map(c => c.checkinDate);
-      map[p.userId] = calculateActiveStreak(userCheckinDates);
+      map[p.userId] = calculateActiveStreak(datesByUser.get(p.userId) || []);
     });
     return map;
   }, [participants, checkins]);
 
-  const sortedParticipants = [...participants].sort(
+  const sortedParticipants = useMemo(() => [...participants].sort(
     (a, b) => b.totalPoints - a.totalPoints
-  );
+  ), [participants]);
 
   const top3 = sortedParticipants.slice(0, 3);
   const showPodiumSection = showPodium && top3.length >= 3;
@@ -249,9 +253,109 @@ export default function Leaderboard({
     );
   };
 
-  return (
-    <View style={styles.container}>
-      {showPodiumSection && (
+  const renderParticipantRow = (participant: ChallengeParticipant, index: number) => {
+    const rank = index + 1;
+    const isCurrentUser = participant.userId === currentUserId;
+    const isTopThree = rank <= 3;
+
+    const rowContent = (
+      <>
+        {getRankBadge(rank)}
+
+        <View style={styles.avatarShadow}>
+          <Avatar
+            imageUrl={participant.userPhotoUrl}
+            name={participant.userName}
+            size={44}
+          />
+        </View>
+
+        <View style={styles.info}>
+          <View style={styles.nameRow}>
+            <Text
+              style={[styles.name, { color: colors.text }]}
+              numberOfLines={1}
+            >
+              {participant.userName}
+            </Text>
+            {isCurrentUser && (
+              <View style={[
+                styles.youBadge,
+                {
+                  backgroundColor: colorScheme === 'dark' ? '#064E3B' : '#D1FAE5',
+                  borderColor: colorScheme === 'dark' ? '#065F46' : '#A7F3D0',
+                }
+              ]}>
+                <Text style={[styles.youBadgeText, { color: colorScheme === 'dark' ? '#34D399' : '#059669' }]}>You</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.statsRow}>
+            <Text
+              style={[styles.pointsText, { color: colors.textSecondary }]}
+            >
+              {participant.totalPoints} pts
+            </Text>
+            {(streaksByUserId[participant.userId] ?? participant.currentStreak) > 0 && (
+              <>
+                <Text
+                  style={[styles.statDot, { color: colors.textTertiary }]}
+                >
+                  ·
+                </Text>
+                <Flame size={14} color="#F97316" />
+                <Text
+                  style={[
+                    styles.streakValue,
+                    { color: colors.textSecondary },
+                  ]}
+                >
+                  {streaksByUserId[participant.userId] ?? participant.currentStreak} day streak
+                </Text>
+              </>
+            )}
+          </View>
+        </View>
+      </>
+    );
+
+    if (isCurrentUser) {
+      return (
+        <TouchableOpacity
+          key={participant.id}
+          onPress={() => onParticipantPress?.(participant)}
+          disabled={!onParticipantPress}
+          activeOpacity={0.7}
+        >
+          <LinearGradient
+            colors={colorScheme === 'dark' ? ['#064E3B', '#1E3A5F'] : ['#DCFCE7', '#DBEAFE']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.row, styles.rowCurrentUser]}
+          >
+            {rowContent}
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        key={participant.id}
+        style={[
+          styles.row,
+          isTopThree && { backgroundColor: colorScheme === 'dark' ? colors.surfaceSecondary : '#FEFCE8' },
+        ]}
+        onPress={() => onParticipantPress?.(participant)}
+        disabled={!onParticipantPress}
+        activeOpacity={0.7}
+      >
+        {rowContent}
+      </TouchableOpacity>
+    );
+  };
+
+  const podium = (showPodiumSection && (
         <View style={styles.podiumSection}>
           <View style={styles.podiumRow}>
             {renderPodiumColumn(top3[1], 2)}
@@ -259,119 +363,34 @@ export default function Leaderboard({
             {renderPodiumColumn(top3[2], 3)}
           </View>
         </View>
-      )}
-
-      <View
-        style={[styles.listContainer, { backgroundColor: colors.surface }, listContainerStyle]}
-      >
-        <View style={styles.listHeader}>
+      ));
+  const listHeading = (        <View style={styles.listHeader}>
           <Trophy size={20} color={colors.primary} />
           <Text style={[styles.listHeaderText, { color: colors.text }]}>
             {headerTitle ?? `All Participants (${sortedParticipants.length})`}
           </Text>
-        </View>
+        </View>);
+  if (virtualized) {
+    return <FlatList style={{ flex: 1 }} data={sortedParticipants} keyExtractor={participant => participant.id}
+      contentContainerStyle={scrollContentStyle} refreshControl={refreshControl}
+      initialNumToRender={10} maxToRenderPerBatch={10} windowSize={7}
+      ListHeaderComponent={<>{scrollHeader}{podium}
+        <View style={[styles.listContainer, { backgroundColor: colors.surface, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 0 }, listContainerStyle]}>{listHeading}</View>
+      </>}
+      renderItem={({ item, index }) => <View style={{ marginHorizontal: 16, paddingHorizontal: 16, backgroundColor: colors.surface }}>{renderParticipantRow(item, index)}</View>}
+      ListFooterComponent={<View style={{ marginHorizontal: 16, paddingHorizontal: 16, paddingBottom: 16, borderBottomLeftRadius: 20, borderBottomRightRadius: 20, backgroundColor: colors.surface }}>{footer}</View>} />;
+  }
 
-        {sortedParticipants.map((participant, index) => {
-          const rank = index + 1;
-          const isCurrentUser = participant.userId === currentUserId;
-          const isTopThree = rank <= 3;
+  return (
+    <View style={styles.container}>
+      {podium}
 
-          const rowContent = (
-            <>
-              {getRankBadge(rank)}
+      <View
+        style={[styles.listContainer, { backgroundColor: colors.surface }, listContainerStyle]}
+      >
+        {listHeading}
 
-              <View style={styles.avatarShadow}>
-                <Avatar
-                  imageUrl={participant.userPhotoUrl}
-                  name={participant.userName}
-                  size={44}
-                />
-              </View>
-
-              <View style={styles.info}>
-                <View style={styles.nameRow}>
-                  <Text
-                    style={[styles.name, { color: colors.text }]}
-                    numberOfLines={1}
-                  >
-                    {participant.userName}
-                  </Text>
-                  {isCurrentUser && (
-                    <View style={[
-                      styles.youBadge,
-                      {
-                        backgroundColor: colorScheme === 'dark' ? '#064E3B' : '#D1FAE5',
-                        borderColor: colorScheme === 'dark' ? '#065F46' : '#A7F3D0',
-                      }
-                    ]}>
-                      <Text style={[styles.youBadgeText, { color: colorScheme === 'dark' ? '#34D399' : '#059669' }]}>You</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.statsRow}>
-                  <Text
-                    style={[styles.pointsText, { color: colors.textSecondary }]}
-                  >
-                    {participant.totalPoints} pts
-                  </Text>
-                  {(streaksByUserId[participant.userId] ?? participant.currentStreak) > 0 && (
-                    <>
-                      <Text
-                        style={[styles.statDot, { color: colors.textTertiary }]}
-                      >
-                        ·
-                      </Text>
-                      <Flame size={14} color="#F97316" />
-                      <Text
-                        style={[
-                          styles.streakValue,
-                          { color: colors.textSecondary },
-                        ]}
-                      >
-                        {streaksByUserId[participant.userId] ?? participant.currentStreak} day streak
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </View>
-            </>
-          );
-
-          if (isCurrentUser) {
-            return (
-              <TouchableOpacity
-                key={participant.id}
-                onPress={() => onParticipantPress?.(participant)}
-                disabled={!onParticipantPress}
-                activeOpacity={0.7}
-              >
-                <LinearGradient
-                  colors={colorScheme === 'dark' ? ['#064E3B', '#1E3A5F'] : ['#DCFCE7', '#DBEAFE']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.row, styles.rowCurrentUser]}
-                >
-                  {rowContent}
-                </LinearGradient>
-              </TouchableOpacity>
-            );
-          }
-
-          return (
-            <TouchableOpacity
-              key={participant.id}
-              style={[
-                styles.row,
-                isTopThree && { backgroundColor: colorScheme === 'dark' ? colors.surfaceSecondary : '#FEFCE8' },
-              ]}
-              onPress={() => onParticipantPress?.(participant)}
-              disabled={!onParticipantPress}
-              activeOpacity={0.7}
-            >
-              {rowContent}
-            </TouchableOpacity>
-          );
-        })}
+        {sortedParticipants.map(renderParticipantRow)}
         {footer}
       </View>
     </View>

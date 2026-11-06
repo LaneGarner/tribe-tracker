@@ -31,7 +31,7 @@ import MessageBubble from '../components/chat/MessageBubble';
 import DateSeparator from '../components/chat/DateSeparator';
 import ChatInput from '../components/chat/ChatInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
-import EmptyChat from '../components/chat/EmptyChat';
+import MessageListPlaceholder from '../components/chat/MessageListPlaceholder';
 import MessageActionsOverlay from '../components/chat/MessageActionsOverlay';
 import { useContentReport } from '../hooks/useContentReport';
 import { isBackendConfigured } from '../config/api';
@@ -64,6 +64,9 @@ export default function GroupChatScreen() {
   const selectMessages = useMemo(makeSelectMessagesByConversationId, []);
   const messages = useSelector((state: RootState) =>
     selectMessages(state, conversationId)
+  );
+  const messageLoadStatus = useSelector((state: RootState) =>
+    state.chat.messageLoadStatus?.[conversationId]
   );
   const hasMore = useSelector((state: RootState) =>
     state.chat.hasMoreMessages[conversationId] ?? true
@@ -214,11 +217,17 @@ export default function GroupChatScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {displayItems.length === 0 && (
-        <View style={StyleSheet.absoluteFill}>
-          <EmptyChat type="messages" />
+        <View style={{ flex: 1 }}>
+          <MessageListPlaceholder
+            loading={!!session?.access_token && isBackendConfigured() && (!messageLoadStatus || messageLoadStatus === 'loading')}
+            failed={messageLoadStatus === 'error'}
+            onRetry={() => {
+              if (session?.access_token) dispatch(fetchMessagesFromServer({ token: session.access_token, conversationId }));
+            }}
+          />
         </View>
       )}
-      <FlatList
+      {displayItems.length > 0 && <FlatList
         ref={flatListRef}
         data={displayItems}
         renderItem={renderItem}
@@ -230,7 +239,7 @@ export default function GroupChatScreen() {
         ListHeaderComponent={
           typingUsers.length > 0 ? <TypingIndicator typingUsers={typingUsers} isGroupChat /> : null
         }
-      />
+      />}
       <ChatInput
         onSend={handleSend}
         onEdit={chatActions.handleEditSubmit}

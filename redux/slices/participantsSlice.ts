@@ -1,3 +1,6 @@
+import { sharedRequest } from '../../utils/sharedRequest';
+import { copyWithStructuralSharing } from '@reduxjs/toolkit/query';
+import type { RootState } from '../store';
 import { createSlice, PayloadAction, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { ChallengeParticipant } from '../../types';
 import { saveParticipants, loadParticipants } from '../../utils/storage';
@@ -27,7 +30,7 @@ export const loadParticipantsFromStorage = createAsyncThunk(
 // Async thunk to fetch participants from the backend API
 export const fetchParticipantsFromServer = createAsyncThunk(
   'participants/fetchFromServer',
-  async (token: string) => {
+  async (token: string, { getState }) => sharedRequest(`participants:${token}`, async () => {
     const response = await fetch(`${API_URL}/api/participants`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -38,9 +41,11 @@ export const fetchParticipantsFromServer = createAsyncThunk(
     }
     const data = await response.json();
     const participants: ChallengeParticipant[] = data.participants || [];
-    await saveParticipants(participants);
-    return participants;
-  }
+    const previous = (getState() as RootState).participants.data;
+    const next = copyWithStructuralSharing(previous, participants);
+    if (next !== previous) await saveParticipants(next);
+    return next;
+  })
 );
 
 const participantsSlice = createSlice({

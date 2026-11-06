@@ -41,7 +41,7 @@ if (!isExpoGo) {
 }
 import { ThemeContext, getColors } from '../theme/ThemeContext';
 import { RootState, AppDispatch } from '../redux/store';
-import { loadChallengesFromStorage, fetchChallengesFromServer, updateChallenge } from '../redux/slices/challengesSlice';
+import { loadChallengesFromStorage, fetchChallengesFromServer } from '../redux/slices/challengesSlice';
 import { loadCheckinsFromStorage, fetchCheckinsFromServer } from '../redux/slices/checkinsSlice';
 import { loadParticipantsFromStorage, fetchParticipantsFromServer } from '../redux/slices/participantsSlice';
 import { useAuth } from '../context/AuthContext';
@@ -265,11 +265,6 @@ export default function HomeScreen() {
   // Load data on mount - storage first, then server
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([
-        dispatch(loadChallengesFromStorage()),
-        dispatch(loadCheckinsFromStorage()),
-        dispatch(loadParticipantsFromStorage()),
-      ]);
       if (session?.access_token && isBackendConfigured()) {
         await Promise.all([
           dispatch(fetchChallengesFromServer(session.access_token)),
@@ -309,56 +304,32 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Get challenge IDs the user has joined
-  const userChallengeIds = new Set(
-    participants.filter(p => p.userId === user?.id).map(p => p.challengeId)
-  );
-
-  // Filter to only show active challenges the user has joined (including recurring in gap)
-  const activeChallenges = challenges.filter(
-    c => {
-      if (!userChallengeIds.has(c.id)) return false;
-      const status = getChallengeStatus(c.startDate, c.endDate || c.startDate, c);
-      return status === 'active' || status === 'gap';
+  const currentDate = getToday();
+  const { activeChallenges, upcomingChallenges } = useMemo(() => {
+    const joinedIds = new Set(participants.filter(p => p.userId === user?.id).map(p => p.challengeId));
+    const activeChallenges: Challenge[] = [];
+    const upcomingChallenges: Challenge[] = [];
+    for (const challenge of challenges) {
+      if (!joinedIds.has(challenge.id) || challenge.status === 'completed') continue;
+      const status = getChallengeStatus(challenge.startDate, challenge.endDate || challenge.startDate, challenge);
+      if (status === 'active' || status === 'gap') activeChallenges.push(challenge);
+      if (status === 'upcoming') upcomingChallenges.push(challenge);
     }
-  );
-
-  // Filter upcoming challenges the user has joined
-  const upcomingChallenges = challenges.filter(
-    c =>
-      userChallengeIds.has(c.id) &&
-      getChallengeStatus(c.startDate, c.endDate || c.startDate, c) === 'upcoming'
-  );
-
-  // Cycle transition detection for recurring challenges
-  useEffect(() => {
-    activeChallenges.forEach(c => {
-      if (!c.isRecurring) return;
-      const info = getRecurringCycleInfo(c);
-      if (info && c.currentCycle !== info.currentCycle) {
-        dispatch(updateChallenge({
-          ...c,
-          currentCycle: info.currentCycle,
-          cycleStartDate: info.cycleStartDate,
-          cycleEndDate: info.cycleEndDate,
-          updatedAt: new Date().toISOString(),
-        }));
-      }
-    });
-  }, [activeChallenges.length]);
+    return { activeChallenges, upcomingChallenges };
+  }, [participants, challenges, user?.id, currentDate]);
 
   // Show skeleton until initial fetch completes when there's no data
   const isInitialLoad = !initialFetchDone && activeChallenges.length === 0 && upcomingChallenges.length === 0;
 
   // Sort active + upcoming challenges by saved order
-  const orderedChallenges = [...activeChallenges, ...upcomingChallenges].sort((a, b) => {
+  const orderedChallenges = useMemo(() => [...activeChallenges, ...upcomingChallenges].sort((a, b) => {
     const indexA = challengeOrder.indexOf(a.id);
     const indexB = challengeOrder.indexOf(b.id);
     if (indexA === -1 && indexB === -1) return 0;
     if (indexA === -1) return 1;
     if (indexB === -1) return -1;
     return indexA - indexB;
-  });
+  }), [activeChallenges, upcomingChallenges, challengeOrder]);
 
   // Move challenge left in order
   const moveChallengeLeft = useCallback((challengeId: string) => {
